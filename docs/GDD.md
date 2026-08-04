@@ -4,9 +4,9 @@ Eres un nuevo oficial de la Agencia de Aduana Espiritual, contratado el mismo d�
 
 Tono: humor.
 
-**Final de derrota** (al llegar a 5 errores, sin importar el día): te despiden en el acto y el apocalipsis Yokai se desata sobre la Tierra — nadie más tenía la vista tan fina como la tuya para este trabajo. *(borrador, ajustar si quieres otra redacción)*
+**Final de derrota** (al llegar a 5 errores, sin importar el día): te despiden en el acto y el apocalipsis Yokai se desata sobre la Tierra — nadie más tenía la vista tan fina como la tuya para este trabajo. *(borrador)*
 
-**Final de victoria** (completar los 5 días sin llegar a 5 errores): salvaste el mundo. Como agradecimiento, la agencia te asciende a Jefe de Sección (con oficina nueva, aunque sin ventana) y además te regalan un unicornio de peluche gigante que insiste en llamarse "Su Majestad". *(borrador, ajustar si quieres otra redacción)*
+**Final de victoria** (completar los 5 días sin llegar a 5 errores): salvaste el mundo. Como agradecimiento, la agencia te asciende a Jefe de Sección (con oficina nueva, aunque sin ventana) y además te regalan un unicornio de peluche gigante que insiste en llamarse "Su Majestad". *(borrador)*
 
 ----------------------------------------
 
