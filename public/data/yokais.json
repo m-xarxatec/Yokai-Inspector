@@ -1,0 +1,5 @@
+[
+  { "id": "oni", "nombre": "Oni", "rasgoReal": "tieneCuernos" },
+  { "id": "kitsune", "nombre": "Kitsune", "rasgoReal": "ojosAmarillos" },
+  { "id": "kappa", "nombre": "Kappa", "rasgoReal": "regionRio" }
+]

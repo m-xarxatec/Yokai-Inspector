@@ -1,0 +1,32 @@
+[
+  {
+    "dia": 1,
+    "descripcion": "Rechazar a cualquier visitante con cuernos visibles (rasgo exclusivo de los Oni; el sello negro NO es prueba por sí solo).",
+    "propiedad": "tieneCuernos",
+    "valorProhibido": true
+  },
+  {
+    "dia": 2,
+    "descripcion": "Rechazar a cualquier visitante con ojos amarillos (rasgo exclusivo de los Kitsune).",
+    "propiedad": "ojosAmarillos",
+    "valorProhibido": true
+  },
+  {
+    "dia": 3,
+    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la región 'rio' (rasgo exclusivo de los Kappa; orejas grandes NO son prueba por sí solas).",
+    "propiedad": "region",
+    "valorProhibido": "rio"
+  },
+  {
+    "dia": 4,
+    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare especie 'humano' pero en realidad tenga cuernos, ojos amarillos o región 'rio'. Las reglas de los días 1-3 se mantienen activas.",
+    "propiedad": "mintioSobreEspecie",
+    "valorProhibido": true
+  },
+  {
+    "dia": 5,
+    "descripcion": "Rechazar a cualquier visitante con sello negro en el pasaporte: la agencia descubrió que es el sello de los documentos falsificados en el inframundo. Aplica a todos por igual, sin importar la especie ni si ya habían pasado antes con ese sello.",
+    "propiedad": "sello",
+    "valorProhibido": "negro"
+  }
+]

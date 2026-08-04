@@ -1,0 +1,32 @@
+[
+  {
+    "dia": 1,
+    "objetivoVisitantes": 6,
+    "reglasActivas": [1],
+    "mensajeIntro": "Es tu primer día en la Agencia de Aduana Espiritual. Nadie te dio inducción ni manual de bienvenida, pero el letrero sobre tu ventanilla es muy claro: PROHIBIDA LA ENTRADA A QUIEN TENGA CUERNOS. Los Oni no pasan. Bienvenido al trabajo."
+  },
+  {
+    "dia": 2,
+    "objetivoVisitantes": 6,
+    "reglasActivas": [1, 2],
+    "mensajeIntro": "Después de intensas investigaciones y lectura de muchos libros y mitología, la agencia ha llegado a la conclusión de que los Kitsune tienen los ojos amarillos. Procede la regla. (Los cuernos de los Oni siguen sin estar permitidos.)"
+  },
+  {
+    "dia": 3,
+    "objetivoVisitantes": 6,
+    "reglasActivas": [1, 2, 3],
+    "mensajeIntro": "Tras una semana de reportes perdidos y café frío, la agencia confirma algo curioso: todos los Kappa vienen de la región del río, sin excepción. Que no se te escape ninguno. (Cuernos y ojos amarillos siguen prohibidos.)"
+  },
+  {
+    "dia": 4,
+    "objetivoVisitantes": 6,
+    "reglasActivas": [1, 2, 3, 4],
+    "mensajeIntro": "La agencia descubrió que algunos visitantes mienten en su pasaporte diciendo ser humanos cuando no lo son. Desde hoy: si alguien declara ser humano pero tiene cuernos, ojos amarillos o viene del río, está mintiendo. Recházalo. (Las reglas anteriores se mantienen.)"
+  },
+  {
+    "dia": 5,
+    "objetivoVisitantes": 6,
+    "reglasActivas": [1, 2, 3, 4, 5],
+    "mensajeIntro": "La agencia ha descubierto que el sello negro en el pasaporte es el sello de los documentos falsificados en el inframundo. Desde hoy, no se puede permitir la entrada a nadie con ese sello, aunque ya haya pasado antes."
+  }
+]
