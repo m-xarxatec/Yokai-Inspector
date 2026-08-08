@@ -12,8 +12,7 @@ export class Yokai extends Character{
 
             if (yokaiType === "oni")haveHorns = true;
             if (yokaiType === "kitsune") yellowEyes = true;
- //           if (yokaiType === "kappa");  logica por solucionar
-
+            
             super(name, passport, face, eyes, yellowEyes, nose, ear, horns, haveHorns, hair, phrase);
 
             this.#yokaiType = yokaiType;
