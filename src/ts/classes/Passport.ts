@@ -1,27 +1,27 @@
-export class Paasport {
-    #nombre: string;
+export class Passport {
+    #name: string;
     #region: string; 
-    #especieDeclarada: string;
-    #sello: string;
+    #declaredSpecie: string;
+    #stamp: string;
 
 
-    constructor(nombre: string, region: string, especieDeclarada: string, sello: string){
-        this.#nombre = nombre;
+    constructor(name: string, region: string, declaredSpecie: string, stamp: string){
+        this.#name = name;
         this.#region = region;
-        this.#especieDeclarada = especieDeclarada;
-        this.#sello = sello
+        this.#declaredSpecie = declaredSpecie;
+        this.#stamp = stamp;
     }
 
-    get obtenerNombre() {
-        return this.#nombre;
+    get obtainName() {
+        return this.#name;
     }
-    get obtenerRegion() {
+    get obtainRegion() {
         return this.#region;
     }
-    get obtenerEspecieDeclarada() {
-        return this.#especieDeclarada;
+    get obtainDeclaredSpecie() {
+        return this.#declaredSpecie;
     }
-    get obtenerSello() {
-        return this.#sello;
+    get obtainStamp() {
+        return this.#stamp;
     }
 }
