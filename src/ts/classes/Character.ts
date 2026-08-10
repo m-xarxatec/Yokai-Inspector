@@ -1,4 +1,4 @@
-import { Passport } from "./Passport.ts";
+import { Passport } from "./Passport.js";
 
 export abstract class Character{
     

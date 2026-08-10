@@ -1,5 +1,5 @@
-import { Character } from "./Character.ts";
-import { Passport } from "./Passport.ts";
+import { Character } from "./Character.js";
+import { Passport } from "./Passport.js";
 
 export class Human extends Character{
 
