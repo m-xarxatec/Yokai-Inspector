@@ -61,12 +61,14 @@ export class Game {
                 const activeRules = rules.filter((rule) => d.reglasActivas.includes(rule.getDay()));
                 return new Day(d.dia, d.objetivoVisitantes, activeRules, d.mensajeIntro);
             }), "f");
-            __classPrivateFieldGet(this, _Game_instances, "m", _Game_startDay).call(this);
             onComplete();
         }).catch(error => {
             console.log("no se pudieron cargar los datos del juego");
             window.alert("hubo un problema cargando el juego, mira la consola para detectarlo");
         });
+    }
+    startNewGame() {
+        __classPrivateFieldGet(this, _Game_instances, "m", _Game_startDay).call(this);
     }
     decide(accept) {
         const currentDay = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1];

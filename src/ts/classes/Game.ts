@@ -54,9 +54,12 @@ export class Game{
                     const activeRules = rules.filter((rule: Rule) => d.reglasActivas.includes(rule.getDay()));
                     return new Day(d.dia, d.objetivoVisitantes, activeRules, d.mensajeIntro);});
 
-                this.#startDay();
                 onComplete();}).catch(error => {console.log("no se pudieron cargar los datos del juego");
                 window.alert("hubo un problema cargando el juego, mira la consola para detectarlo");});
+    }
+
+    startNewGame(): void {
+        this.#startDay();
     }
 
     #startDay(): void {
