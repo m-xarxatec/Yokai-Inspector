@@ -1,0 +1,14 @@
+{
+  "name": "yokai-inspector",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Yokai Inspector - juego web de POO basica inspirado en Papers Please",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
