@@ -1,8 +1,8 @@
 {
-  "rostro": [],
-  "ojos": [],
-  "nariz": [],
-  "orejas": [],
-  "cuernos": [],
-  "sombrero": []
+  "rostro": ["variante-1", "variante-2", "variante-3"],
+  "ojos": ["variante-1", "variante-2", "variante-3"],
+  "nariz": ["variante-1", "variante-2", "variante-3"],
+  "orejas": ["variante-1", "variante-2", "variante-3"],
+  "cuernos": ["variante-1", "variante-2", "variante-3"],
+  "sombrero": ["variante-1", "variante-2", "variante-3"]
 }
