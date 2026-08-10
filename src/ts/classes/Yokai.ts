@@ -17,4 +17,12 @@ export class Yokai extends Character{
 
             this.#yokaiType = yokaiType;
         }
+
+    
+    specieLiar(): boolean {
+        let yokaiLiar = false;
+        if (this.obtainPassport.obtainDeclaredSpecie === "humano" && (this.obtainPassport.obtainRegion === "rio" || this.obtainHaveHorns || this.obtainYellowEyes)) yokaiLiar = true;
+        return yokaiLiar;
+
+    }
 }

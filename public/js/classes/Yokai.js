@@ -18,6 +18,12 @@ export class Yokai extends Character {
         _Yokai_yokaiType.set(this, void 0);
         __classPrivateFieldSet(this, _Yokai_yokaiType, yokaiType, "f");
     }
+    specieLiar() {
+        let yokaiLiar = false;
+        if (this.obtainPassport.obtainDeclaredSpecie === "humano" && (this.obtainPassport.obtainRegion === "rio" || this.obtainHaveHorns || this.obtainYellowEyes))
+            yokaiLiar = true;
+        return yokaiLiar;
+    }
 }
 _Yokai_yokaiType = new WeakMap();
 //# sourceMappingURL=Yokai.js.map
