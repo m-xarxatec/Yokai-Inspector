@@ -1,4 +1,4 @@
-import { Character } from "./Character";
+import { Character } from "./Character.js";
 
 export class Rule {
   #day: number;
@@ -32,15 +32,15 @@ export class Rule {
   isViolated(character: Character): boolean {
     switch (this.#property) {
       case "tieneCuernos":
-        return character.tieneCuernosVisibles() === this.#forbiddenValue;
+        return character.obtainHaveHorns === this.#forbiddenValue;
       case "ojosAmarillos":
-        return character.tieneOjosAmarillos() === this.#forbiddenValue;
+        return character.obtainYellowEyes === this.#forbiddenValue;
       case "region":
-        return character.obtenerPasaporte().obtenerRegion() === this.#forbiddenValue;
+        return character.obtainPassport.obtainRegion === this.#forbiddenValue;
       case "sello":
-        return character.obtenerPasaporte().obtenerSello() === this.#forbiddenValue;
+        return character.obtainPassport.obtainStamp === this.#forbiddenValue;
       case "mintioSobreEspecie":
-        return character.mintioSobreEspecie() === this.#forbiddenValue;
+        return character.specieLiar() === this.#forbiddenValue;
       default:
         return false;
     }
