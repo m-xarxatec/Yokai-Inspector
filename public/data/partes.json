@@ -1,8 +1,17 @@
 {
-  "rostro": [],
-  "ojos": [],
-  "nariz": [],
-  "orejas": [],
-  "cuernos": [],
-  "sombrero": []
+  "rostro": [
+    "rostro-1", "rostro-2", "rostro-3", "rostro-4", "rostro-5", "rostro-6",
+    "rostro-7", "rostro-8", "rostro-9", "rostro-10", "rostro-11", "rostro-12",
+    "rostro-13", "rostro-14", "rostro-15", "rostro-16", "rostro-17", "rostro-18",
+    "rostro-19", "rostro-20", "rostro-21", "rostro-22", "rostro-23", "rostro-24"
+  ],
+  "ojos": [
+    "eyes-1", "eyes-2", "eyes-3", "eyes-4", "eyes-5", "eyes-6", "eyes-7",
+    "eyes-8", "eyes-9", "eyes-10", "eyes-11", "eyes-12", "eyes-13",
+    "eyes-14", "eyes-15", "eyes-16", "eyes-17"
+  ],
+  "ojosAmarillos": "yellowEyes",
+  "boca": ["variante-1", "variante-2", "variante-3"],
+  "cuernos": ["variante-1", "variante-2", "variante-3"],
+  "sombrero": ["variante-1", "variante-2", "variante-3"]
 }

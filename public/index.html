@@ -1,1 +1,73 @@
- 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yokai Inspector</title>
+  <link rel="stylesheet" href="styles/style.css">
+</head>
+<body>
+
+  <section id="menu-screen">
+    <h1>Yokai Inspector</h1>
+    <button id="new-game-btn">Iniciar nuevo juego</button>
+    <button id="continue-btn">Continuar partida</button>
+
+    <h2>Últimas partidas</h2>
+    <table id="history-table">
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Errores</th>
+          <th>Dinero</th>
+          <th>Resultado</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section id="game-screen" class="hidden">
+    <div id="hud">
+      <span id="day-counter">Día: -</span>
+      <span id="error-counter">Errores: -</span>
+      <span id="money-counter">Dinero: -</span>
+    </div>
+
+    <div id="passport-view">
+      <p id="passport-name">Nombre: -</p>
+      <p id="passport-region">Región: -</p>
+      <p id="passport-species">Especie declarada: -</p>
+      <p id="passport-stamp">Sello: -</p>
+    </div>
+
+    <div id="character-portrait">
+      <div class="part part-face"></div>
+      <div class="part part-eyes"></div>
+      <div class="part part-mouth"></div>
+      <div class="part part-horns"></div>
+      <div class="part part-hair"></div>
+    </div>
+
+    <p id="dialogue-bubble"></p>
+
+    <div id="decision-buttons">
+      <button id="accept-btn">Aceptar</button>
+      <button id="reject-btn">Rechazar</button>
+    </div>
+  </section>
+
+  <section id="day-result-screen" class="hidden">
+    <p id="day-result-summary"></p>
+    <p id="next-day-message"></p>
+    <button id="continue-day-btn">Continuar</button>
+  </section>
+
+  <section id="final-screen" class="hidden">
+    <p id="final-message"></p>
+    <button id="back-to-menu-btn">Volver al menú</button>
+  </section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

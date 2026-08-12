@@ -21,7 +21,7 @@
     "dia": 4,
     "objetivoVisitantes": 6,
     "reglasActivas": [1, 2, 3, 4],
-    "mensajeIntro": "La agencia descubrió que algunos visitantes mienten en su pasaporte diciendo ser humanos cuando no lo son. Desde hoy: si alguien declara ser humano pero tiene cuernos, ojos amarillos o viene del río, está mintiendo. Recházalo. (Las reglas anteriores se mantienen.)"
+    "mensajeIntro": "A partir de ahora todos los visitantes deben declarar su especie en el pasaporte. Pero cuidado: ningún Yokai va a reconocer lo que es — puede declarar ser humano, otra especie, o cualquier cosa. Lo único que no cambia es lo que ves: cuernos, ojos amarillos, o venir del río. Si lo que declara no coincide con lo que observás, está mintiendo. (Las reglas anteriores se mantienen.)"
   },
   {
     "dia": 5,

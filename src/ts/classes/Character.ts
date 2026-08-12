@@ -7,22 +7,20 @@ export abstract class Character{
     #face: string;
     #eyes: string;
     #yellowEyes: boolean;
-    #nose: string;
-    #ear: string;
+    #mouth: string;
     #horns: string;
     #haveHorns: boolean;
     #hair: string;
     #phrase: string;
 
-    constructor(name: string, passport: Passport, face: string, eyes: string, yellowEyes: boolean, nose: string,
-         ear: string, horns: string, haveHorns: boolean, hair: string, phrase: string){
+    constructor(name: string, passport: Passport, face: string, eyes: string, yellowEyes: boolean, mouth: string,
+         horns: string, haveHorns: boolean, hair: string, phrase: string){
             this.#name = name;
             this.#passport = passport;
             this.#face = face;
             this.#eyes = eyes;
             this.#yellowEyes = yellowEyes;
-            this.#nose = nose;
-            this.#ear = ear;
+            this.#mouth = mouth;
             this.#horns = horns;
             this.#haveHorns = haveHorns;
             this.#hair = hair;
@@ -45,11 +43,8 @@ export abstract class Character{
     get obtainYellowEyes(): boolean{
         return this.#yellowEyes;
     }
-    get obtainNose() {
-        return this.#nose;
-    }
-    get obtainEar() {
-        return this.#ear;
+    get obtainMouth() {
+        return this.#mouth;
     }
     get obtainHorns() {
         return this.#horns;

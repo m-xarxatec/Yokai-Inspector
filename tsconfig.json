@@ -6,6 +6,7 @@
     "moduleResolution": "NodeNext",
     "rootDir": "src/ts",
     "outDir": "public/js",
+    "strict": true,
     "sourceMap": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
