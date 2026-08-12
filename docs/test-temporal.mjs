@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const publicDir = path.join(__dirname, "public");
+const publicDir = path.join(__dirname, "..", "public");
 
 let store = {};
 
@@ -25,8 +25,8 @@ global.fetch = async (url) => {
 
 resetMocks();
 
-const { Game } = await import("./public/js/classes/Game.js");
-const { getHistory } = await import("./public/js/Storage.js");
+const { Game } = await import("../public/js/classes/Game.js");
+const { getHistory } = await import("../public/js/Storage.js");
 
 function loadDataAsync(game) {
   return new Promise((resolve) => game.loadData(resolve));
@@ -220,7 +220,7 @@ console.log("visitantes revisados:", totalRevisados, "| inconsistencias:", incon
 // ================= TEST 8: integridad de historial y partida actual tras terminar el juego =================
 console.log("\n========== TEST 8: historial refleja el resultado real, y no queda partida 'en curso' tras terminar ==========");
 resetMocks();
-const { loadCurrentGame } = await import("./public/js/Storage.js");
+const { loadCurrentGame } = await import("../public/js/Storage.js");
 const gameH = new Game();
 await loadDataAsync(gameH);
 gameH.startNewGame();
