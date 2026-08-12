@@ -26,6 +26,7 @@ global.fetch = async (url) => {
 resetMocks();
 
 const { Game } = await import("../public/js/classes/Game.js");
+const { Yokai } = await import("../public/js/classes/Yokai.js");
 const { getHistory } = await import("../public/js/Storage.js");
 
 function loadDataAsync(game) {
@@ -205,7 +206,16 @@ let totalRevisados = 0;
 while (!gameG.isWon() && !gameG.isLost()) {
   const visitor = gameG.currentVisitor;
   const p = visitor.obtainPassport;
-  const esperado = p.obtainDeclaredSpecie === "humano" && (visitor.obtainHaveHorns || visitor.obtainYellowEyes || p.obtainRegion === "rio");
+  // un Human siempre da false sin importar lo que declare (specieLiar() esta hardcodeado ahi);
+  // solo para un Yokai tiene sentido comparar especie declarada vs especie aparente.
+  let esperado = false;
+  if (visitor instanceof Yokai) {
+    let especieAparente = "humano";
+    if (visitor.obtainHaveHorns) especieAparente = "oni";
+    if (visitor.obtainYellowEyes) especieAparente = "kitsune";
+    if (p.obtainRegion === "rio") especieAparente = "kappa";
+    esperado = p.obtainDeclaredSpecie !== especieAparente;
+  }
   const real = visitor.specieLiar();
   totalRevisados++;
   if (esperado !== real) {

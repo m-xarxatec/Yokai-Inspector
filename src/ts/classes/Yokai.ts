@@ -20,9 +20,12 @@ export class Yokai extends Character{
 
     
     specieLiar(): boolean {
-        let yokaiLiar = false;
-        if (this.obtainPassport.obtainDeclaredSpecie === "humano" && (this.obtainPassport.obtainRegion === "rio" || this.obtainHaveHorns || this.obtainYellowEyes)) yokaiLiar = true;
-        return yokaiLiar;
+        // la especie "aparente" es la que se deduce mirando al personaje, no lo que dice el pasaporte
+        let especieAparente = "humano";
+        if (this.obtainHaveHorns) especieAparente = "oni";
+        if (this.obtainYellowEyes) especieAparente = "kitsune";
+        if (this.obtainPassport.obtainRegion === "rio") especieAparente = "kappa";
 
+        return this.obtainPassport.obtainDeclaredSpecie !== especieAparente;
     }
 }
