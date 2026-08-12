@@ -47,10 +47,12 @@ Ver `public/data/reglas.json` — 5 reglas acumulativas, una nueva por día:
 1. Oni: cuernos visibles (el sello negro NO es prueba por sí solo).
 2. Kitsune: ojos amarillos.
 3. Kappa: región declarada = "río".
-4. Mentira: pasaporte dice "humano" pero tiene cuernos, ojos amarillos o región río.
+4. Mentira: la especie declarada aparece recién desde este día (antes está oculta) — ningún Yokai declara su especie real, puede decir "humano", otra especie, o cualquier tontería. Se descubre comparando lo declarado contra lo observado (cuernos, ojos amarillos, región río).
 5. Sello negro en el pasaporte (documento falsificado), aplica a todos.
 
 Colores de sello (`public/data/sellos.json`): dorado y rojo son decorativos, negro es el único que causa rechazo (desde el día 5).
+
+Especies declaradas (`public/data/species.json`): incluye las 3 especies de Yokai, "humano", y varias opciones sin sentido (para que ni Humanos ni Yokai tengan un patrón fijo de qué declaran) — tanto Humanos como Yokai sortean su especie declarada de esta misma lista.
 
 ----------------------------------------
 
