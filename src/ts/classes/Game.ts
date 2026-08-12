@@ -22,6 +22,7 @@ export class Game{
     #names: string[];
     #phrases: string[]
     #stamps: any[];
+    #species: string[];
 
     constructor(){
         this.#dayNumber = 1;
@@ -32,7 +33,11 @@ export class Game{
         this.#days = [];
         this.#currentVisitor = null;
         this.#visitorsSeenToday = 0;
-        this.#todayProblematicSlots = []; 
+        this.#todayProblematicSlots = [];
+        this.#names = [];
+        this.#phrases = [];
+        this.#stamps = [];
+        this.#species = [];
     }
 
     loadData(onComplete: () => void): void {
@@ -43,11 +48,13 @@ export class Game{
             fetch("data/frases.json").then(r => r.json()),
             fetch("data/reglas.json").then(r => r.json()),
             fetch("data/dias.json").then(r => r.json()),
-            fetch("data/sellos.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps]) =>{
+            fetch("data/sellos.json").then(r => r.json()),
+            fetch("data/species.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) =>{
                 this.#parts = parts;
                 this.#names = names;
                 this.#phrases = phrases;
                 this.#stamps = stamps;
+                this.#species = species;
 
                 const rules = rawRules.map((r: any) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
                 this.#days = rawDays.map((d: any) => {
@@ -94,7 +101,8 @@ export class Game{
             const region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
             const safeStamps = ["dorado", "rojo"];
             const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)]
-            const passport = new Passport(name, region, "humano", stamp);
+            const declaredSpecie = this.#species[Math.floor(Math.random() * this.#species.length)];
+            const passport = new Passport(name, region, declaredSpecie, stamp);
             return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
 
         }
@@ -133,6 +141,14 @@ export class Game{
         if (property === "sello") {
         declaredSpecie = "humano";
         stamp = "negro";
+        }
+
+        // desde el dia 4, ningun Yokai reconoce su especie real - declara cualquier otra cosa del
+        // array (puede ser "humano", otra especie de Yokai, o directamente una tonteria), sin
+        // importar que regla lo genero. La unica forma de descubrirlo es mirar sus rasgos reales.
+        if (this.#dayNumber >= 4 && property !== "sello") {
+        const opcionesDeMentira = this.#species.filter((especie: string) => especie !== yokaiType);
+        declaredSpecie = opcionesDeMentira[Math.floor(Math.random() * opcionesDeMentira.length)];
         }
 
         const passport = new Passport(name, region, declaredSpecie, stamp);

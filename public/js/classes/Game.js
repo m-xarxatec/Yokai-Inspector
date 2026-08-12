@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_todayProblematicSlots, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_startDay, _Game_generateVisitor;
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_todayProblematicSlots, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_startDay, _Game_generateVisitor;
 import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory } from "../Storage.js";
 import { Passport } from "./Passport.js";
 import { Human } from "./Human.js";
@@ -32,6 +32,7 @@ export class Game {
         _Game_names.set(this, void 0);
         _Game_phrases.set(this, void 0);
         _Game_stamps.set(this, void 0);
+        _Game_species.set(this, void 0);
         __classPrivateFieldSet(this, _Game_dayNumber, 1, "f");
         __classPrivateFieldSet(this, _Game_errors, 0, "f");
         __classPrivateFieldSet(this, _Game_money, 10, "f");
@@ -41,6 +42,10 @@ export class Game {
         __classPrivateFieldSet(this, _Game_currentVisitor, null, "f");
         __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
         __classPrivateFieldSet(this, _Game_todayProblematicSlots, [], "f");
+        __classPrivateFieldSet(this, _Game_names, [], "f");
+        __classPrivateFieldSet(this, _Game_phrases, [], "f");
+        __classPrivateFieldSet(this, _Game_stamps, [], "f");
+        __classPrivateFieldSet(this, _Game_species, [], "f");
     }
     loadData(onComplete) {
         Promise.all([
@@ -50,12 +55,14 @@ export class Game {
             fetch("data/frases.json").then(r => r.json()),
             fetch("data/reglas.json").then(r => r.json()),
             fetch("data/dias.json").then(r => r.json()),
-            fetch("data/sellos.json").then(r => r.json())
-        ]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps]) => {
+            fetch("data/sellos.json").then(r => r.json()),
+            fetch("data/species.json").then(r => r.json())
+        ]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) => {
             __classPrivateFieldSet(this, _Game_parts, parts, "f");
             __classPrivateFieldSet(this, _Game_names, names, "f");
             __classPrivateFieldSet(this, _Game_phrases, phrases, "f");
             __classPrivateFieldSet(this, _Game_stamps, stamps, "f");
+            __classPrivateFieldSet(this, _Game_species, species, "f");
             const rules = rawRules.map((r) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
             __classPrivateFieldSet(this, _Game_days, rawDays.map((d) => {
                 const activeRules = rules.filter((rule) => d.reglasActivas.includes(rule.getDay()));
@@ -133,7 +140,7 @@ export class Game {
         return true;
     }
 }
-_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_todayProblematicSlots = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
+_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_todayProblematicSlots = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
     __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
     const goal = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1].getVisitorGoal();
     const problematicCount = Math.min(__classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, goal - 1);
@@ -158,7 +165,8 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
         const region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
         const safeStamps = ["dorado", "rojo"];
         const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)];
-        const passport = new Passport(name, region, "humano", stamp);
+        const declaredSpecie = __classPrivateFieldGet(this, _Game_species, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_species, "f").length)];
+        const passport = new Passport(name, region, declaredSpecie, stamp);
         return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
     }
     const activeRules = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1].getActiveRules();
@@ -194,6 +202,13 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
     if (property === "sello") {
         declaredSpecie = "humano";
         stamp = "negro";
+    }
+    // desde el dia 4, ningun Yokai reconoce su especie real - declara cualquier otra cosa del
+    // array (puede ser "humano", otra especie de Yokai, o directamente una tonteria), sin
+    // importar que regla lo genero. La unica forma de descubrirlo es mirar sus rasgos reales.
+    if (__classPrivateFieldGet(this, _Game_dayNumber, "f") >= 4 && property !== "sello") {
+        const opcionesDeMentira = __classPrivateFieldGet(this, _Game_species, "f").filter((especie) => especie !== yokaiType);
+        declaredSpecie = opcionesDeMentira[Math.floor(Math.random() * opcionesDeMentira.length)];
     }
     const passport = new Passport(name, region, declaredSpecie, stamp);
     if (targetRule.getProperty() === "sello") {
