@@ -85,8 +85,7 @@ export class Game{
         const phrase = this.#phrases[Math.floor(Math.random() * this.#phrases.length)];
         const face = this.#parts.rostro[Math.floor(Math.random() * this.#parts.rostro.length)];
         const eyesShape = this.#parts.ojos[Math.floor(Math.random() * this.#parts.ojos.length)];
-        const nose = this.#parts.nariz[Math.floor(Math.random() * this.#parts.nariz.length)];
-        const ear = this.#parts.orejas[Math.floor(Math.random() * this.#parts.orejas.length)];
+        const mouth = this.#parts.boca[Math.floor(Math.random() * this.#parts.boca.length)];
         const horns = this.#parts.cuernos[Math.floor(Math.random() * this.#parts.cuernos.length)];
         const hair = this.#parts.sombrero[Math.floor(Math.random() * this.#parts.sombrero.length)];
 
@@ -96,7 +95,7 @@ export class Game{
             const safeStamps = ["dorado", "rojo"];
             const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)]
             const passport = new Passport(name, region, "humano", stamp);
-            return new Human(name, passport, face, eyesShape, false, nose, ear, horns, false, hair, phrase);
+            return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
 
         }
 
@@ -139,9 +138,9 @@ export class Game{
         const passport = new Passport(name, region, declaredSpecie, stamp);
 
         if (targetRule.getProperty() === "sello" ) {
-        return new Human(name, passport, face, eyesShape, false, nose, ear, horns, false, hair, phrase);
+        return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
         }
-        return new Yokai(name, passport, face, eyesShape, nose, ear, horns, hair, phrase, yokaiType);
+        return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
     }
 
     decide(accept: boolean): void {

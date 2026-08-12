@@ -150,8 +150,7 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
     const phrase = __classPrivateFieldGet(this, _Game_phrases, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_phrases, "f").length)];
     const face = __classPrivateFieldGet(this, _Game_parts, "f").rostro[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").rostro.length)];
     const eyesShape = __classPrivateFieldGet(this, _Game_parts, "f").ojos[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").ojos.length)];
-    const nose = __classPrivateFieldGet(this, _Game_parts, "f").nariz[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").nariz.length)];
-    const ear = __classPrivateFieldGet(this, _Game_parts, "f").orejas[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").orejas.length)];
+    const mouth = __classPrivateFieldGet(this, _Game_parts, "f").boca[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").boca.length)];
     const horns = __classPrivateFieldGet(this, _Game_parts, "f").cuernos[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").cuernos.length)];
     const hair = __classPrivateFieldGet(this, _Game_parts, "f").sombrero[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").sombrero.length)];
     if (!isProblematic) {
@@ -160,7 +159,7 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
         const safeStamps = ["dorado", "rojo"];
         const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)];
         const passport = new Passport(name, region, "humano", stamp);
-        return new Human(name, passport, face, eyesShape, false, nose, ear, horns, false, hair, phrase);
+        return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
     }
     const activeRules = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1].getActiveRules();
     const targetRule = activeRules[Math.floor(Math.random() * activeRules.length)];
@@ -198,8 +197,8 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
     }
     const passport = new Passport(name, region, declaredSpecie, stamp);
     if (targetRule.getProperty() === "sello") {
-        return new Human(name, passport, face, eyesShape, false, nose, ear, horns, false, hair, phrase);
+        return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
     }
-    return new Yokai(name, passport, face, eyesShape, nose, ear, horns, hair, phrase, yokaiType);
+    return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
 };
 //# sourceMappingURL=Game.js.map
