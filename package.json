@@ -1,9 +1,9 @@
 {
   "name": "yokai-inspector",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Entregable 3 de Xarxatec Activa",
+  "description": "Yokai Inspector - juego web de POO basica inspirado en Papers Please",
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch"

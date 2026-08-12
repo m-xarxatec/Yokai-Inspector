@@ -13,7 +13,7 @@ Tono: humor.
 ***Mecánicas:***
 
 - Cada día llegan 6 visitantes.
-- Cada visitante tiene un pasaporte (nombre, región, especie declarada, color de sello) y un rostro compuesto por capas visuales (rostro, ojos, nariz, orejas, cuernos, sombrero — placeholders CSS hasta tener arte real).
+- Cada visitante tiene un pasaporte (nombre, región, especie declarada, color de sello) y un rostro compuesto por capas visuales (rostro con torso y cabello incluidos, ojos, boca, cuernos, sombrero — placeholders CSS hasta tener arte real, que hará Mike).
 - El jugador decide: aceptar o rechazar.
 - Cada día se activa una regla nueva; las reglas de días anteriores se mantienen activas (ver `public/data/reglas.json`).
 - Acertar suma dinero (+10); fallar resta dinero (-5) y suma 1 error. El dinero es solo puntaje visual, no afecta la derrota.
