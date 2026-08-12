@@ -1,1 +1,129 @@
- 
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background-color: #1b1024;
+  color: #f5f0ff;
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+section {
+  width: 100%;
+  max-width: 480px;
+}
+
+.hidden {
+  display: none;
+}
+
+button {
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background-color: #7c3aed;
+  color: #ffffff;
+}
+
+button:disabled {
+  background-color: #4b4b4b;
+  cursor: not-allowed;
+}
+
+/* --- Menu screen --- */
+
+#menu-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#history-table tr td {
+  border: 1px solid #4b3868;
+  padding: 6px 8px;
+}
+
+/* --- HUD --- */
+
+#hud {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+/* --- Passport --- */
+
+#passport-view {
+  border: 2px solid #f5f0ff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+#passport-view p {
+  margin: 4px 0;
+}
+
+/* --- Character portrait (capas apiladas, placeholders CSS) --- */
+
+#character-portrait {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 12px;
+  background-color: #2e1f42;
+  border-radius: 8px;
+}
+
+#character-portrait .part {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* --- Dialogue --- */
+
+#dialogue-bubble {
+  background-color: #2e1f42;
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 40px;
+  font-style: italic;
+}
+
+/* --- Decision buttons --- */
+
+#decision-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+#accept-btn {
+  background-color: #16a34a;
+}
+
+#reject-btn {
+  background-color: #dc2626;
+}
+
+/* --- Day result / final screens --- */
+
+#day-result-screen,
+#final-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

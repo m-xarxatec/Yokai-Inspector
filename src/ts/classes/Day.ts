@@ -1,5 +1,5 @@
-import { Character } from "./Character";
-import { Rule } from "./Rule";
+import { Character } from "./Character.js";
+import { Rule } from "./Rule.js";
 
 export class Day {
   #number: number;
