@@ -83,8 +83,18 @@ function renderVisitor(): void {
 
   if (nombreEl !== null) nombreEl.textContent = pasaporte.obtainName;
   if (regionEl !== null) regionEl.textContent = pasaporte.obtainRegion;
-  if (especieEl !== null) especieEl.textContent = pasaporte.obtainDeclaredSpecie;
   if (selloEl !== null) selloEl.textContent = pasaporte.obtainStamp;
+
+  // la especie declarada recien se revela a partir del dia 4 (ver mensajeIntro de ese dia)
+  if (especieEl !== null) {
+    const especieHtmlEl = especieEl as HTMLElement;
+    if (game.dayNumber >= 4) {
+      especieHtmlEl.style.display = "";
+      especieEl.textContent = pasaporte.obtainDeclaredSpecie;
+    } else {
+      especieHtmlEl.style.display = "none";
+    }
+  }
 
   const dialogoEl = document.querySelector("#dialogue-bubble");
   if (dialogoEl !== null) {
@@ -93,15 +103,16 @@ function renderVisitor(): void {
 
   const faceEl = document.querySelector(".part-face");
   const eyesEl = document.querySelector(".part-eyes");
-  const noseEl = document.querySelector(".part-nose");
-  const earEl = document.querySelector(".part-ear");
+  const mouthEl = document.querySelector(".part-mouth");
   const hairEl = document.querySelector(".part-hair");
   const hornsEl = document.querySelector(".part-horns") as HTMLElement | null;
 
   if (faceEl !== null) faceEl.className = "part part-face " + visitante.obtainFace;
-  if (eyesEl !== null) eyesEl.className = "part part-eyes " + visitante.obtainEyes;
-  if (noseEl !== null) noseEl.className = "part part-nose " + visitante.obtainNose;
-  if (earEl !== null) earEl.className = "part part-ear " + visitante.obtainEar;
+  if (eyesEl !== null) {
+    const eyesVariant = visitante.obtainYellowEyes ? "yellowEyes" : visitante.obtainEyes;
+    eyesEl.className = "part part-eyes " + eyesVariant;
+  }
+  if (mouthEl !== null) mouthEl.className = "part part-mouth " + visitante.obtainMouth;
   if (hairEl !== null) hairEl.className = "part part-hair " + visitante.obtainHair;
 
   if (hornsEl !== null) {
@@ -208,7 +219,30 @@ document.querySelector("#back-to-menu-btn")?.addEventListener("click", () => {
   updateContinueButton();
 });
 
+// --- Precarga de imagenes (evita el parpadeo al cambiar de visitante) ---
+
+function preloadImages(urls: string[]): void {
+  urls.forEach(url => {
+    const img = new Image();
+    img.src = url;
+  });
+}
+
+function preloadCharacterImages(): void {
+  fetch("data/partes.json")
+    .then(r => r.json())
+    .then(partes => {
+      const rostroUrls = partes.rostro.map((nombre: string) => "img/baseCharacters/" + nombre + ".png");
+      const ojosUrls = partes.ojos.map((nombre: string) => "img/eyes/" + nombre + ".png");
+      preloadImages(rostroUrls);
+      preloadImages(ojosUrls);
+      preloadImages(["img/eyes/" + partes.ojosAmarillos + ".png"]);
+    })
+    .catch(error => console.log("no se pudieron precargar las imagenes", error));
+}
+
 // --- Estado inicial al cargar la página ---
 
 updateContinueButton();
 renderHistoryTable();
+preloadCharacterImages();
