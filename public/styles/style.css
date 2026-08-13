@@ -43,17 +43,61 @@ button:disabled {
 
 /* ---------- menu ---------- */
 
+#paused-status {
+  background: #4a3a1e;
+  color: #f2d9a5;
+  border-radius: 6px;
+  padding: 0.5rem 0.8rem;
+  margin: 0.4rem 0 0.8rem;
+  font-weight: bold;
+}
+
 #history-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 0.4rem;
   margin-top: 1rem;
 }
 
-#history-table th,
-#history-table td {
-  border: 1px solid #4a4658;
-  padding: 0.4rem;
+#history-table th {
   text-align: center;
+  padding: 0.3rem;
+  color: #a89fc2;
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+
+#history-table td {
+  background: #2a2640;
+  padding: 0.6rem 0.4rem;
+  text-align: center;
+}
+
+#history-table td:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+#history-table td:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+#history-table td.resultado-victoria {
+  color: #7ee08a;
+  font-weight: bold;
+}
+
+#history-table td.resultado-derrota {
+  color: #e0837e;
+  font-weight: bold;
+}
+
+/* ---------- pantalla de historia ---------- */
+
+#story-screen p {
+  line-height: 1.5;
+  background: #2a2640;
+  border-radius: 6px;
+  padding: 1rem;
 }
 
 /* ---------- HUD y pasaporte ---------- */
@@ -61,10 +105,48 @@ button:disabled {
 #hud {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
   background: #2a2640;
   padding: 0.6rem 1rem;
   border-radius: 6px;
+  margin-bottom: 0.6rem;
+}
+
+#error-counter.danger {
+  color: #e0837e;
+  font-weight: bold;
+}
+
+/* ---------- barra de tiempo por visitante ---------- */
+
+#time-bar-track {
+  background: #2a2640;
+  border-radius: 6px;
+  height: 0.5rem;
   margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+#time-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: #6b4fa0;
+  transform-origin: left;
+}
+
+#time-bar-fill.corriendo {
+  animation: shrink-time-bar linear forwards;
+  /* la duracion la fija main.ts en el estilo inline (animation-duration) segun el dia */
+}
+
+#time-bar-fill.alerta {
+  background: #c0524a;
+}
+
+@keyframes shrink-time-bar {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 
 #passport-view {
@@ -144,9 +226,19 @@ button:disabled {
   position: absolute;
   z-index: 2;
   left: 34.8%;
-  top: 17%;
+  top: 24%;
   width: 30.4%;
   height: 73.6%;
+  /* la duracion tiene que coincidir con PORTRAIT_ANIM_MS en main.ts */
+  transition: left 0.45s ease;
+  animation: idle-bob 2.6s ease-in-out infinite;
+}
+
+/* meneo idle, lento y constante, independiente del "left" (entrada/salida) de arriba */
+@keyframes idle-bob {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-2%); }
+  100% { transform: translateY(0); }
 }
 
 .part {
