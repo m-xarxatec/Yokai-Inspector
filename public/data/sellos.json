@@ -1,5 +1,6 @@
 [
   { "color": "dorado", "significado": "Sello oficial normal. Sin efecto en ninguna regla.", "provocaRechazoDesdeDia": null },
   { "color": "rojo", "significado": "Sello decorativo. Sin efecto en ninguna regla.", "provocaRechazoDesdeDia": null },
-  { "color": "negro", "significado": "Documento falsificado en el inframundo.", "provocaRechazoDesdeDia": 5 }
+  { "color": "negro", "significado": "Documento falsificado en el inframundo.", "provocaRechazoDesdeDia": 5 },
+  { "color": "plateado", "significado": "Falsificación de una aduana rival.", "provocaRechazoDesdeDia": 7 }
 ]

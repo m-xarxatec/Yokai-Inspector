@@ -28,5 +28,11 @@
     "descripcion": "Rechazar a cualquier visitante con sello negro en el pasaporte: la agencia descubrió que es el sello de los documentos falsificados en el inframundo. Aplica a todos por igual, sin importar la especie ni si ya habían pasado antes con ese sello.",
     "propiedad": "sello",
     "valorProhibido": "negro"
+  },
+  {
+    "dia": 6,
+    "descripcion": "Rechazar a cualquier visitante con sello plateado en el pasaporte: es la falsificación de una aduana rival que la agencia acaba de detectar. Las reglas anteriores se mantienen, excepto la de los cuernos (ver mensaje del día 6).",
+    "propiedad": "sello",
+    "valorProhibido": "plateado"
   }
 ]
