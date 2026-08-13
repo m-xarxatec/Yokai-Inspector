@@ -46,8 +46,8 @@ function describeVisitor(character) {
   };
 }
 
-const expectedRuleCounts = [1, 2, 3, 4, 5];
-const expectedProblematicCounts = [2, 3, 4, 5, 5];
+const expectedRuleCounts = [1, 2, 3, 4, 5, 4, 5];
+const expectedProblematicCounts = [2, 3, 4, 5, 5, 7, 7];
 
 // ================= TEST 1: partida "perfecta" (siempre acierta) =================
 console.log("\n========== TEST 1: partida perfecta, hasta victoria ==========");
@@ -102,9 +102,13 @@ dayAudit.forEach((d, i) => {
   console.log(`Dia ${d.day}: reglas activas=${d.rules} [${rulesOk}] | problematicos=${d.problematic}/${d.visitors} [${probOk}]`);
 });
 
-console.log("\n--- Chequeo: todo visitante con region 'rio' nunca tiene cuernos ni ojos amarillos ---");
-const badKappa = visitorLog.filter(v => v.region === "rio" && (v.horns || v.yellowEyes));
-console.log(badKappa.length === 0 ? "OK: ninguna inconsistencia" : `FALLO: ${badKappa.length} casos inconsistentes -> ${JSON.stringify(badKappa)}`);
+// nota: desde que existen "rasgos combinados" (Game#generateVisitor), un visitante puede
+// tener cuernos/ojos amarillos Y ademas region "rio" a la vez (ej: un Oni que tambien viene
+// del rio) - eso ya no es una inconsistencia. Lo que SI se sigue garantizando (constructor
+// de Yokai, sin tocar) es que cuernos y ojos amarillos nunca coexisten en el mismo visitante.
+console.log("\n--- Chequeo: ningun visitante tiene cuernos Y ojos amarillos a la vez ---");
+const cuernosYOjos = visitorLog.filter(v => v.horns && v.yellowEyes);
+console.log(cuernosYOjos.length === 0 ? "OK: ninguna inconsistencia" : `FALLO: ${cuernosYOjos.length} casos inconsistentes -> ${JSON.stringify(cuernosYOjos)}`);
 
 // ================= TEST 2: partida "siempre falla" (hasta derrota) =================
 console.log("\n========== TEST 2: partida con errores forzados, hasta derrota ==========");
@@ -118,7 +122,7 @@ while (!gameB.isWon() && !gameB.isLost()) {
   gameB.decide(!shouldAccept); // siempre la respuesta incorrecta a proposito
   decisionesB++;
 }
-console.log("Resultado final:", gameB.isWon() ? "VICTORIA (inesperado)" : "DERROTA", "| errores:", gameB.errors, "(esperado 5)", "| decisiones tomadas:", decisionesB, "(esperado 5)");
+console.log("Resultado final:", gameB.isWon() ? "VICTORIA (inesperado)" : "DERROTA", "| errores:", gameB.errors, "(esperado 4)", "| decisiones tomadas:", decisionesB, "(esperado 4)");
 
 // ================= TEST 3: guardar y cargar progreso a mitad de partida =================
 console.log("\n========== TEST 3: guardar progreso al terminar el dia 1, y cargarlo en una partida nueva ==========");
@@ -176,20 +180,20 @@ console.log("errores reales:", gameE.errors, "| errores esperados:", erroresEspe
 console.log("dia tras 6 visitantes (con mezcla de aciertos/errores):", gameE.dayNumber, gameE.dayNumber === 2 ? "[OK]" : "[FALLO]");
 
 // ================= TEST 6: derrota justo en el ultimo visitante del dia (caso limite) =================
-console.log("\n========== TEST 6: el 5to error coincide con el 6to visitante del dia ==========");
+console.log("\n========== TEST 6: el 4to error coincide con el 6to visitante del dia ==========");
 resetMocks();
 const gameF = new Game();
 await loadDataAsync(gameF);
 gameF.startNewGame();
-// visitantes 1-4 del dia 1: responder mal (4 errores). visitante 5: responder bien. visitante 6: responder mal (5to error, y ultimo del dia)
-const patronF = [false, false, false, false, true, false];
+// visitantes 1-3 del dia 1: responder mal (3 errores). visitantes 4 y 5: responder bien. visitante 6: responder mal (4to error, y ultimo del dia)
+const patronF = [false, false, false, true, true, false];
 patronF.forEach((responderCorrecto) => {
   if (gameF.isLost() || gameF.isWon()) return;
   const violation = gameF.currentDay.evaluateCharacter(gameF.currentVisitor);
   const shouldAccept = violation === null;
   gameF.decide(responderCorrecto ? shouldAccept : !shouldAccept);
 });
-console.log("errores:", gameF.errors, "(esperado 5)", "| isLost():", gameF.isLost(), "(esperado true)");
+console.log("errores:", gameF.errors, "(esperado 4)", "| isLost():", gameF.isLost(), "(esperado true)");
 console.log("dia quedo en:", gameF.dayNumber, "(esperado 1, NO deberia haber avanzado a dia 2)");
 const historialF = getHistory();
 console.log("entrada guardada en historial:", JSON.stringify(historialF[0]));
@@ -210,10 +214,12 @@ while (!gameG.isWon() && !gameG.isLost()) {
   // solo para un Yokai tiene sentido comparar especie declarada vs especie aparente.
   let esperado = false;
   if (visitor instanceof Yokai) {
+    // mismo orden que Yokai.specieLiar(): region primero, cuernos/ojos amarillos al final
+    // (para que el rasgo que define el tipo real gane si hay rasgos combinados).
     let especieAparente = "humano";
+    if (p.obtainRegion === "rio") especieAparente = "kappa";
     if (visitor.obtainHaveHorns) especieAparente = "oni";
     if (visitor.obtainYellowEyes) especieAparente = "kitsune";
-    if (p.obtainRegion === "rio") especieAparente = "kappa";
     esperado = p.obtainDeclaredSpecie !== especieAparente;
   }
   const real = visitor.specieLiar();
