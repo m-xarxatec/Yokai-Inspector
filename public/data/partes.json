@@ -11,7 +11,11 @@
     "eyes-14", "eyes-15", "eyes-16", "eyes-17"
   ],
   "ojosAmarillos": "yellowEyes",
-  "boca": ["variante-1", "variante-2", "variante-3"],
+  "boca": [
+    "mouth-1", "mouth-2", "mouth-3", "mouth-4", "mouth-5", "mouth-6",
+    "mouth-7", "mouth-8", "mouth-9", "mouth-10", "mouth-11", "mouth-12",
+    "mouth-13", "mouth-14", "mouth-15", "mouth-16", "mouth-17", "mouth-18"
+  ],
   "cuernos": ["variante-1", "variante-2", "variante-3"],
   "sombrero": ["variante-1", "variante-2", "variante-3"]
 }

@@ -12,6 +12,8 @@
     <h1>Yokai Inspector</h1>
     <button id="new-game-btn">Iniciar nuevo juego</button>
     <button id="continue-btn">Continuar partida</button>
+    <button id="timer-toggle-btn">Desactivar temporizador</button>
+    <p id="paused-status" class="hidden"></p>
 
     <h2>Últimas partidas</h2>
     <table id="history-table">
@@ -27,11 +29,22 @@
     </table>
   </section>
 
+  <section id="story-screen" class="hidden">
+    <h2>Reikai Customs</h2>
+    <p>Eres un nuevo oficial de la Agencia de Aduana Espiritual, contratado el mismo día en que empieza tu turno (Día 1), sin inducción ni manual de bienvenida. Tu trabajo es revisar los pasaportes de quienes cruzan hacia el mundo humano y decidir si los dejas pasar, según las reglas que la agencia va confirmando día a día sobre los Yokai.</p>
+    <button id="story-next-btn">Siguiente</button>
+  </section>
+
   <section id="game-screen" class="hidden">
     <div id="hud">
       <span id="day-counter">Día: -</span>
       <span id="error-counter">Errores: -</span>
       <span id="money-counter">Dinero: -</span>
+      <span id="streak-counter">Racha: 0</span>
+    </div>
+
+    <div id="time-bar-track">
+      <div id="time-bar-fill"></div>
     </div>
 
     <div id="passport-view">
@@ -41,12 +54,17 @@
       <p id="passport-stamp">Sello: -</p>
     </div>
 
-    <div id="character-portrait">
-      <div class="part part-face"></div>
-      <div class="part part-eyes"></div>
-      <div class="part part-mouth"></div>
-      <div class="part part-horns"></div>
-      <div class="part part-hair"></div>
+    <div id="character-scene">
+      <div id="scene-background"></div>
+      <div id="character-portrait">
+        <div class="part part-face"></div>
+        <div class="part part-eyes"></div>
+        <div class="part part-mouth"></div>
+        <div class="part part-horns"></div>
+        <div class="part part-hair"></div>
+      </div>
+      <div id="scene-window"></div>
+      <div id="scene-desktop"></div>
     </div>
 
     <p id="dialogue-bubble"></p>

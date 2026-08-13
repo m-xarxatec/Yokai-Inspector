@@ -28,5 +28,17 @@
     "objetivoVisitantes": 6,
     "reglasActivas": [1, 2, 3, 4, 5],
     "mensajeIntro": "La agencia ha descubierto que el sello negro en el pasaporte es el sello de los documentos falsificados en el inframundo. Desde hoy, no se puede permitir la entrada a nadie con ese sello, aunque ya haya pasado antes."
+  },
+  {
+    "dia": 6,
+    "objetivoVisitantes": 8,
+    "reglasActivas": [2, 3, 4, 5],
+    "mensajeIntro": "La agencia revisó sus propios archivos y encontró algo incómodo: los cuernos se pueden disimular con cascos rituales. A partir de hoy ya no son prueba por sí solos — pero la declaración de especie sigue sin fallar, así que ojo con eso. Hoy además llegan más visitantes."
+  },
+  {
+    "dia": 7,
+    "objetivoVisitantes": 8,
+    "reglasActivas": [2, 3, 4, 5, 6],
+    "mensajeIntro": "Nuevo memo de la agencia: apareció un sello plateado, falsificación de una aduana rival. Se suma a la lista de sellos prohibidos. El resto de las reglas se mantiene igual."
   }
 ]

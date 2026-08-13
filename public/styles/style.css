@@ -19,6 +19,12 @@ section {
   margin: 0 auto;
 }
 
+/* un poco mas grande que el resto de pantallas, para que se distingan mejor
+   detalles chicos del personaje (ojos amarillos, etc.) sin agrandar todo el juego */
+#game-screen {
+  max-width: 560px;
+}
+
 button {
   padding: 0.6rem 1.2rem;
   margin: 0.4rem 0.4rem 0.4rem 0;
@@ -37,17 +43,61 @@ button:disabled {
 
 /* ---------- menu ---------- */
 
+#paused-status {
+  background: #4a3a1e;
+  color: #f2d9a5;
+  border-radius: 6px;
+  padding: 0.5rem 0.8rem;
+  margin: 0.4rem 0 0.8rem;
+  font-weight: bold;
+}
+
 #history-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 0.4rem;
   margin-top: 1rem;
 }
 
-#history-table th,
-#history-table td {
-  border: 1px solid #4a4658;
-  padding: 0.4rem;
+#history-table th {
   text-align: center;
+  padding: 0.3rem;
+  color: #a89fc2;
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+
+#history-table td {
+  background: #2a2640;
+  padding: 0.6rem 0.4rem;
+  text-align: center;
+}
+
+#history-table td:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+#history-table td:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+#history-table td.resultado-victoria {
+  color: #7ee08a;
+  font-weight: bold;
+}
+
+#history-table td.resultado-derrota {
+  color: #e0837e;
+  font-weight: bold;
+}
+
+/* ---------- pantalla de historia ---------- */
+
+#story-screen p {
+  line-height: 1.5;
+  background: #2a2640;
+  border-radius: 6px;
+  padding: 1rem;
 }
 
 /* ---------- HUD y pasaporte ---------- */
@@ -55,10 +105,48 @@ button:disabled {
 #hud {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
   background: #2a2640;
   padding: 0.6rem 1rem;
   border-radius: 6px;
+  margin-bottom: 0.6rem;
+}
+
+#error-counter.danger {
+  color: #e0837e;
+  font-weight: bold;
+}
+
+/* ---------- barra de tiempo por visitante ---------- */
+
+#time-bar-track {
+  background: #2a2640;
+  border-radius: 6px;
+  height: 0.5rem;
   margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+#time-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: #6b4fa0;
+  transform-origin: left;
+}
+
+#time-bar-fill.corriendo {
+  animation: shrink-time-bar linear forwards;
+  /* la duracion la fija main.ts en el estilo inline (animation-duration) segun el dia */
+}
+
+#time-bar-fill.alerta {
+  background: #c0524a;
+}
+
+@keyframes shrink-time-bar {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 
 #passport-view {
@@ -81,17 +169,76 @@ button:disabled {
   min-height: 1.2rem;
 }
 
-/* ---------- retrato con arte real (baseCharacters) ---------- */
+/* ---------- escena completa: fondo + personaje + ventanilla + escritorio ---------- */
 
-/* El contenedor respeta la proporcion real de las imagenes (1820x2934) */
-#character-portrait {
+/*
+  Las 3 imagenes de fondo (general_background, window, desktop) comparten el mismo
+  canvas (3670x2446), asi que #character-scene mantiene esa proporcion y las 3 capas
+  se superponen exactas al 100%/100%, sin reposicionar nada entre ellas.
+
+  Orden de montaje (de atras hacia adelante), tal cual se definio:
+  fondo general -> personaje -> ventanilla -> escritorio.
+*/
+#character-scene {
   position: relative;
-  width: 260px;
-  height: 420px;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 3670 / 2446;
   margin: 1rem auto;
-  background: #2a2640;
   border-radius: 8px;
   overflow: hidden;
+  background: #2a2640;
+}
+
+#scene-background,
+#scene-window,
+#scene-desktop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+#scene-background {
+  background-image: url("../img/backgrounds/general_background.png");
+  z-index: 1;
+}
+
+#scene-window {
+  background-image: url("../img/backgrounds/window.png");
+  z-index: 3;
+}
+
+#scene-desktop {
+  background-image: url("../img/backgrounds/desktop.png");
+  z-index: 4;
+}
+
+/*
+  el personaje se ubica dentro de la apertura de la ventanilla (medida a pixel sobre
+  window.png, canvas 3670x2446): arranca debajo del arco, y su parte de abajo queda
+  tapada por el escritorio (que se monta encima, z-index 4).
+*/
+#character-portrait {
+  position: absolute;
+  z-index: 2;
+  left: 34.8%;
+  top: 24%;
+  width: 30.4%;
+  height: 73.6%;
+  /* la duracion tiene que coincidir con PORTRAIT_ANIM_MS en main.ts */
+  transition: left 0.45s ease;
+  animation: idle-bob 2.6s ease-in-out infinite;
+}
+
+/* meneo idle, lento y constante, independiente del "left" (entrada/salida) de arriba */
+@keyframes idle-bob {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-2%); }
+  100% { transform: translateY(0); }
 }
 
 .part {
@@ -169,20 +316,33 @@ button:disabled {
 .part-eyes.yellowEyes { background-image: url("../img/eyes/yellowEyes.png"); }
 
 /*
-  boca: por ahora sigue siendo un recuadro chico placeholder (aun no hay arte real
-  de bocas) - misma logica de posicion en % que antes, ajustar cuando haya imagenes.
+  boca: igual que rostro/ojos, son imagenes de canvas completo (boca + nariz ya
+  dibujadas juntas en la posicion correcta), por eso ocupan el 100% del retrato.
 */
 .part-mouth {
-  width: 19%;
-  height: 2.5%;
-  left: 40%;
-  top: 32%;
-  background: #a5573f;
-  border-radius: 0 0 8px 8px;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
 }
-.part-mouth.variante-1 { background-image: url("../img/test/mouth-test.svg"); background-color: transparent; }
-.part-mouth.variante-2 { background: #8a4530; }
-.part-mouth.variante-3 { background: #c06a4a; }
+.part-mouth.mouth-1 { background-image: url("../img/mouth/mouth-1.png"); }
+.part-mouth.mouth-2 { background-image: url("../img/mouth/mouth-2.png"); }
+.part-mouth.mouth-3 { background-image: url("../img/mouth/mouth-3.png"); }
+.part-mouth.mouth-4 { background-image: url("../img/mouth/mouth-4.png"); }
+.part-mouth.mouth-5 { background-image: url("../img/mouth/mouth-5.png"); }
+.part-mouth.mouth-6 { background-image: url("../img/mouth/mouth-6.png"); }
+.part-mouth.mouth-7 { background-image: url("../img/mouth/mouth-7.png"); }
+.part-mouth.mouth-8 { background-image: url("../img/mouth/mouth-8.png"); }
+.part-mouth.mouth-9 { background-image: url("../img/mouth/mouth-9.png"); }
+.part-mouth.mouth-10 { background-image: url("../img/mouth/mouth-10.png"); }
+.part-mouth.mouth-11 { background-image: url("../img/mouth/mouth-11.png"); }
+.part-mouth.mouth-12 { background-image: url("../img/mouth/mouth-12.png"); }
+.part-mouth.mouth-13 { background-image: url("../img/mouth/mouth-13.png"); }
+.part-mouth.mouth-14 { background-image: url("../img/mouth/mouth-14.png"); }
+.part-mouth.mouth-15 { background-image: url("../img/mouth/mouth-15.png"); }
+.part-mouth.mouth-16 { background-image: url("../img/mouth/mouth-16.png"); }
+.part-mouth.mouth-17 { background-image: url("../img/mouth/mouth-17.png"); }
+.part-mouth.mouth-18 { background-image: url("../img/mouth/mouth-18.png"); }
 
 /* cuernos: posicion estimada arriba de la cabeza - revisar a mano, no se midio con script */
 .part-horns {
