@@ -9,38 +9,101 @@
 <body>
 
   <section id="menu-screen">
-    <h1>Yokai Inspector</h1>
-    <button id="new-game-btn">Iniciar nuevo juego</button>
-    <button id="continue-btn">Continuar partida</button>
-    <button id="timer-toggle-btn">Desactivar temporizador</button>
-    <p id="paused-status" class="hidden"></p>
+    <div id="menu-layout">
+      <!-- fondoInicio2.png no trae titulo ni botones dibujados (a diferencia del
+           arte anterior), asi que ahora el titulo y los 5 botones son HTML real
+           encima de la imagen, no botones invisibles medidos a pixel. -->
+      <div id="menu-stage">
+        <img src="img/backgrounds/fondoInicio2.png" alt="Yokai Inspector — verifica, decide, protege el equilibrio" id="menu-bg-img">
 
-    <h2>Últimas partidas</h2>
-    <table id="history-table">
-      <thead>
-        <tr>
-          <th>Día</th>
-          <th>Errores</th>
-          <th>Dinero</th>
-          <th>Resultado</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+        <div id="menu-buttons">
+          <h1>Yokai Inspector</h1>
+          <button id="new-game-btn" class="menu-real-btn">Nueva partida</button>
+          <button id="continue-btn" class="menu-real-btn">Continuar</button>
+          <button id="options-btn" class="menu-real-btn">Opciones</button>
+          <button id="credits-btn" class="menu-real-btn">Créditos</button>
+          <button id="exit-btn" class="menu-real-btn">Salir</button>
+        </div>
+      </div>
+
+      <aside id="menu-sidebar">
+        <form id="player-name-form">
+          <label for="player-name-input">Nombre del inspector</label>
+          <div id="player-name-row">
+            <input type="text" id="player-name-input" placeholder="Escribe tu nombre" maxlength="24">
+            <button type="submit">Guardar</button>
+          </div>
+        </form>
+        <p id="player-name-display"></p>
+
+        <p id="paused-status" class="hidden"></p>
+
+        <div id="history-panel">
+          <h2>Últimas partidas</h2>
+          <div class="table-scroll">
+            <table id="history-table">
+              <thead>
+                <tr>
+                  <th>Jugador</th>
+                  <th>Día</th>
+                  <th>Errores</th>
+                  <th>Dinero</th>
+                  <th>Resultado</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="options-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Opciones</h2>
+      <button id="timer-toggle-btn">Desactivar temporizador</button>
+      <button id="back-to-menu-from-options-btn" class="back-link">Volver al menú</button>
+    </div>
+  </section>
+
+  <section id="credits-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Créditos acumulados</h2>
+      <p class="screen-subtitle">Dinero total ganado por cada inspector a lo largo de sus partidas.</p>
+      <ul id="credits-list"></ul>
+      <button id="back-to-menu-from-credits-btn" class="back-link">Volver al menú</button>
+    </div>
+  </section>
+
+  <section id="exit-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Hasta pronto</h2>
+      <p class="screen-subtitle">Gracias por proteger el equilibrio entre humanos y yokais.</p>
+      <button id="back-to-menu-from-exit-btn" class="back-link">Volver al menú</button>
+    </div>
   </section>
 
   <section id="story-screen" class="hidden">
     <h2>Reikai Customs</h2>
     <p>Eres un nuevo oficial de la Agencia de Aduana Espiritual, contratado el mismo día en que empieza tu turno (Día 1), sin inducción ni manual de bienvenida. Tu trabajo es revisar los pasaportes de quienes cruzan hacia el mundo humano y decidir si los dejas pasar, según las reglas que la agencia va confirmando día a día sobre los Yokai.</p>
     <button id="story-next-btn">Siguiente</button>
+    <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
 
   <section id="game-screen" class="hidden">
     <div id="hud">
       <span id="day-counter">Día: -</span>
       <span id="error-counter">Errores: -</span>
-      <span id="money-counter">Dinero: -</span>
       <span id="streak-counter">Racha: 0</span>
+      <button class="exit-to-menu-btn">⏸ Menú</button>
+    </div>
+
+    <!-- separado de la barra del HUD a proposito: antes vivia adentro de #money-counter
+         y renderVisitor() lo borraba cada vez que actualizaba el texto del dinero -->
+    <div id="coin-widget">
+      <div id="coin-spin" class="moneda-1"></div>
+      <span id="money-counter">Dinero: -</span>
     </div>
 
     <div id="time-bar-track">
@@ -76,12 +139,18 @@
   </section>
 
   <section id="day-result-screen" class="hidden">
+    <div id="jefa-scene">
+      <div id="jefa-background"></div>
+      <div id="jefa-portrait"></div>
+    </div>
     <p id="day-result-summary"></p>
     <p id="next-day-message"></p>
     <button id="continue-day-btn">Continuar</button>
+    <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
 
   <section id="final-screen" class="hidden">
+    <div id="final-scene" class="hidden"></div>
     <p id="final-message"></p>
     <button id="back-to-menu-btn">Volver al menú</button>
   </section>

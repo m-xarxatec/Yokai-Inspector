@@ -1,5 +1,5 @@
 import { Game } from "./classes/Game.js";
-import { loadCurrentGame, getHistory } from "./Storage.js";
+import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits } from "./Storage.js";
 
 let game: Game | null = null;
 let currentState: string = "menu";
@@ -16,6 +16,14 @@ const ALERT_MODE_ERROR_STREAK = 2;
 let racha: number = 0;
 let erroresSeguidos: number = 0;
 let timerEnabled: boolean = true;
+
+// variantes del retrato de la Jefa cuando explica las reglas entre dias; se elige
+// una al azar cada vez, para que no sea siempre la misma pose
+const JEFA_EXPLICA_VARIANTS = ["jefaExplica-1", "jefaExplica-2", "jefaExplica-3", "jefaExplica-4", "jefaExplica-5"];
+
+// cuadros de la moneda que gira junto al dinero, en orden de ida y vuelta para
+// que el giro se vea continuo (sin salto entre el ultimo cuadro y el primero)
+const COIN_SPIN_FRAMES = ["moneda-1", "moneda-2", "moneda-3", "moneda-4", "moneda-3", "moneda-2"];
 
 function changeState(newState: string): void {
   currentState = newState;
@@ -65,6 +73,85 @@ document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
   updateTimerToggleButton();
 });
 
+function updatePlayerNameDisplay(): void {
+  const displayEl = document.querySelector("#player-name-display");
+  if (displayEl === null) {
+    return;
+  }
+  const nombre = loadPlayerName();
+  displayEl.textContent = nombre === "" ? "" : "Inspector: " + nombre;
+}
+
+document.querySelector("#player-name-form")?.addEventListener("submit", (evento) => {
+  evento.preventDefault();
+  const input = document.querySelector("#player-name-input") as HTMLInputElement | null;
+  if (input === null) {
+    return;
+  }
+  savePlayerName(input.value.trim());
+  input.value = "";
+  updatePlayerNameDisplay();
+});
+
+document.querySelectorAll(".back-link").forEach(boton => {
+  boton.addEventListener("click", () => {
+    changeState("menu");
+  });
+});
+
+// disponible desde historia/juego/resultado del dia: vuelve al menu sin terminar
+// el dia actual, tal como quedaria si se recargara la pagina a mitad de partida
+// (la partida guardada solo se actualiza al empezar cada dia, asi que sigue
+// disponible para "Continuar partida" desde donde arranco el dia).
+document.querySelectorAll(".exit-to-menu-btn").forEach(boton => {
+  boton.addEventListener("click", () => {
+    clearVisitorTimer();
+    if (dialogueIntervalId !== null) {
+      clearInterval(dialogueIntervalId);
+      dialogueIntervalId = null;
+    }
+    changeState("menu");
+    renderHistoryTable();
+    updateContinueButton();
+  });
+});
+
+document.querySelector("#options-btn")?.addEventListener("click", () => {
+  changeState("options");
+});
+
+document.querySelector("#exit-btn")?.addEventListener("click", () => {
+  changeState("exit");
+});
+
+document.querySelector("#credits-btn")?.addEventListener("click", () => {
+  renderCreditsScreen();
+  changeState("credits");
+});
+
+function renderCreditsScreen(): void {
+  const listaEl = document.querySelector("#credits-list");
+  if (listaEl === null) {
+    return;
+  }
+  listaEl.innerHTML = "";
+  const creditos = getAllCredits();
+  const entradas = Object.entries(creditos).sort((a, b) => b[1] - a[1]);
+
+  if (entradas.length === 0) {
+    const item = document.createElement("li");
+    item.textContent = "Todavía no hay créditos acumulados. ¡Terminá una partida para sumar!";
+    listaEl.appendChild(item);
+    return;
+  }
+
+  entradas.forEach(([nombre, total]) => {
+    const item = document.createElement("li");
+    item.textContent = nombre + " — " + total + " créditos";
+    listaEl.appendChild(item);
+  });
+}
+
 function renderHistoryTable(): void {
   const tabla = document.querySelector("#history-table tbody");
   if (tabla === null) {
@@ -76,6 +163,10 @@ function renderHistoryTable(): void {
 
   historial.forEach(resultado => {
     const fila = document.createElement("tr");
+
+    const nombreCelda = document.createElement("td");
+    nombreCelda.textContent = resultado.name ?? "—";
+    fila.appendChild(nombreCelda);
 
     const diaCelda = document.createElement("td");
     diaCelda.textContent = "Día " + resultado.day + " / 7";
@@ -105,7 +196,7 @@ function renderHistoryTable(): void {
 }
 
 document.querySelector("#new-game-btn")?.addEventListener("click", () => {
-  game = new Game();
+  game = new Game(loadPlayerName());
   racha = 0;
   erroresSeguidos = 0;
   game.loadData(() => {
@@ -123,7 +214,7 @@ document.querySelector("#story-next-btn")?.addEventListener("click", () => {
 });
 
 document.querySelector("#continue-btn")?.addEventListener("click", () => {
-  game = new Game();
+  game = new Game(loadPlayerName());
   racha = 0;
   erroresSeguidos = 0;
   game.loadData(() => {
@@ -142,8 +233,8 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
 
 let dialogueIntervalId: number | null = null;
 
-function typeDialogue(texto: string): void {
-  const dialogoEl = document.querySelector("#dialogue-bubble");
+function typeDialogue(texto: string, selectorDestino: string): void {
+  const dialogoEl = document.querySelector(selectorDestino);
   if (dialogoEl === null) {
     return;
   }
@@ -290,7 +381,7 @@ function renderVisitor(): void {
     }
   }
 
-  typeDialogue(visitante.dialogueLine());
+  typeDialogue(visitante.dialogueLine(), "#dialogue-bubble");
 
   const faceEl = document.querySelector(".part-face");
   const eyesEl = document.querySelector(".part-eyes");
@@ -410,8 +501,14 @@ function renderDayResultScreen(mostrarResumen: boolean = true): void {
       resumenHtmlEl.classList.add("hidden");
     }
   }
+  const jefaEl = document.querySelector("#jefa-portrait");
+  if (jefaEl !== null) {
+    const variante = JEFA_EXPLICA_VARIANTS[Math.floor(Math.random() * JEFA_EXPLICA_VARIANTS.length)];
+    jefaEl.className = variante;
+  }
+
   if (mensajeEl !== null) {
-    mensajeEl.textContent = game.currentDay.getIntroMessage();
+    typeDialogue(game.currentDay.getIntroMessage(), "#next-day-message");
   }
 }
 
@@ -427,15 +524,26 @@ function renderFinalScreen(): void {
     return;
   }
 
-  const mensajeEl = document.querySelector("#final-message");
-  if (mensajeEl === null) {
-    return;
+  const gano = game.isWon();
+
+  const escenaEl = document.querySelector("#final-scene");
+  if (escenaEl !== null) {
+    const escenaHtmlEl = escenaEl as HTMLElement;
+    escenaHtmlEl.classList.remove("derrota");
+    if (gano) {
+      // todavia no hay arte para la victoria - se oculta el cuadro en vez de mostrarlo vacio
+      escenaHtmlEl.classList.add("hidden");
+    } else {
+      escenaHtmlEl.classList.remove("hidden");
+      escenaHtmlEl.classList.add("derrota");
+    }
   }
 
-  if (game.isWon()) {
-    mensajeEl.textContent = "¡Salvaste el mundo! Como agradecimiento, la agencia te asciende a Jefe de Sección (con oficina nueva, aunque sin ventana) y además te regalan un unicornio de peluche gigante que insiste en llamarse \"Su Majestad\".";
-  } else if (game.isLost()) {
-    mensajeEl.textContent = "Te despiden en el acto y el apocalipsis Yokai se desata sobre la Tierra — nadie más tenía la vista tan fina como la tuya para este trabajo.";
+  if (gano) {
+    typeDialogue("¡Salvaste el mundo! Como agradecimiento, la agencia te asciende a Jefe de Sección (con oficina nueva, aunque sin ventana) y además te regalan un unicornio de peluche gigante que insiste en llamarse \"Su Majestad\".", "#final-message");
+  }
+  if (game.isLost()) {
+    typeDialogue("Te despiden en el acto y el apocalipsis Yokai se desata sobre la Tierra — nadie más tenía la vista tan fina como la tuya para este trabajo.", "#final-message");
   }
 }
 
@@ -469,9 +577,27 @@ function preloadCharacterImages(): void {
     .catch(error => console.log("no se pudieron precargar las imagenes", error));
 }
 
+// --- Moneda girando junto al dinero (solo se ve mientras #game-screen esta visible,
+// pero el intervalo arranca una sola vez y queda corriendo, mas simple que prenderlo
+// y apagarlo en cada cambio de pantalla) ---
+
+function startCoinSpin(): void {
+  const monedaEl = document.querySelector("#coin-spin");
+  if (monedaEl === null) {
+    return;
+  }
+  let indice = 0;
+  window.setInterval(() => {
+    indice = (indice + 1) % COIN_SPIN_FRAMES.length;
+    monedaEl.className = COIN_SPIN_FRAMES[indice];
+  }, 120);
+}
+
 // --- Estado inicial al cargar la página ---
 
 updateContinueButton();
 updateTimerToggleButton();
+updatePlayerNameDisplay();
 renderHistoryTable();
 preloadCharacterImages();
+startCoinSpin();
