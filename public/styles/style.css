@@ -172,14 +172,10 @@ button:disabled {
   padding: 0.55rem 0.9rem;
 }
 
-#player-name-display {
-  margin: 0;
-  font-weight: bold;
-  color: #d8b56b;
-}
+/* ---------- pantalla para poner el nombre (al empezar partida nueva) ---------- */
 
-#player-name-display:empty {
-  display: none;
+#name-entry-screen #player-name-form {
+  margin-top: 1rem;
 }
 
 .table-scroll {
@@ -299,11 +295,26 @@ button:disabled {
 
 /* ---------- pantalla de historia ---------- */
 
-#story-screen p {
+/* proporcion real de protaFeliz.png ya recortada a su contenido (703x900) */
+#story-portrait {
+  width: 60%;
+  max-width: 280px;
+  aspect-ratio: 703 / 900;
+  margin: 0 auto 1rem;
+  background-image: url("../img/protagonista/protaFeliz.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+}
+
+/* mismo estilo que el resto de los dialogos - se "habla" con typeDialogue() */
+#story-text {
   line-height: 1.5;
+  font-style: italic;
   background: #2a2640;
   border-radius: 6px;
   padding: 1rem;
+  min-height: 1.2rem;
 }
 
 /* ---------- pantalla de resultado del dia: la Jefa explica ---------- */
@@ -497,18 +508,6 @@ button:disabled {
   to { transform: scaleX(0); }
 }
 
-#passport-view {
-  background: #f2ede3;
-  color: #1e1b2e;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-#passport-view p {
-  margin: 0.3rem 0;
-}
-
 #dialogue-bubble {
   font-style: italic;
   background: #2a2640;
@@ -563,6 +562,155 @@ button:disabled {
 #scene-desktop {
   background-image: url("../img/backgrounds/desktop.png");
   z-index: 4;
+}
+
+/*
+  el pasaporte real, apoyado sobre el escritorio (z-index 5 por defecto, aunque
+  animatePassportAlongArc() en main.ts lo baja por debajo de la ventanilla/el
+  escritorio mientras viaja - ver PASSPORT_BEHIND_Z_INDEX). Ya NO se desliza
+  junto con el personaje: llega solo, en un arco parabolico via JS (left/top/
+  height puestos cuadro a cuadro, ver PASSPORT_ARC_* y animatePassportAlongArc()
+  en main.ts) desde la base del personaje, a traves de la ventanilla, cayendo
+  aqui - recien cuando el personaje ya llego y esta en su animacion idle, dando
+  la sensacion de que lo entrega al llegar, no de que viaja con el.
+  Arranca (y descansa en el escritorio) cerrado y chico; recien crece al tamaño
+  "abierto" cuando el jugador hace click sobre el (no es automatico, ver
+  .entregado mas abajo) - esta transicion "en el sitio" (abrir/cerrar, sin
+  moverse) si es la de esta clase base (left/top/height con transition normal).
+  Al decidir, se cierra en el sitio y despues se devuelve con el mismo arco
+  pero al reves (ver resolveDecision()), terminando escondido (display:none)
+  antes de que el personaje salga por separado.
+*/
+#passport-object {
+  position: absolute;
+  z-index: 5;
+  left: 60%;
+  transform: translateX(-50%);
+  transition: left 0.4s ease, top 0.4s ease, height 0.4s ease;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+#passport-object.cerrado {
+  aspect-ratio: 646 / 700;
+  background-image: url("../img/documentos/pasaporte.png");
+  top: 76%;
+  height: 13%;
+}
+
+#passport-object.abierto {
+  aspect-ratio: 989 / 700;
+  background-image: url("../img/documentos/pasaporteAbierto.png");
+  top: 68%;
+  height: 27%;
+}
+
+/* una vez entregado (ya termino de deslizarse y sigue cerrado), invita al click
+   con un pulso suave y el cursor de mano; deja de aplicar en cuanto se abre */
+#passport-object.cerrado.entregado {
+  cursor: pointer;
+  animation: passport-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes passport-pulse {
+  0% { filter: drop-shadow(0 0 0 rgba(242, 237, 227, 0)); }
+  50% { filter: drop-shadow(0 0 0.4rem rgba(242, 237, 227, 0.85)); }
+  100% { filter: drop-shadow(0 0 0 rgba(242, 237, 227, 0)); }
+}
+
+/* el texto solo tiene sentido (y solo se ve bien encuadrado) con el pasaporte abierto */
+#passport-page-left {
+  display: none;
+}
+
+#passport-object.abierto #passport-page-left {
+  display: block;
+  position: absolute;
+  left: 12%;
+  top: 17%;
+  width: 24%;
+  height: 46%;
+  overflow: hidden;
+  color: #2a2a1a;
+  font-size: 0.55rem;
+  line-height: 1.3;
+}
+
+#passport-page-left p {
+  margin: 0 0 0.3rem;
+}
+
+#passport-stamp {
+  display: none;
+}
+
+#passport-object.abierto #passport-stamp {
+  display: block;
+  position: absolute;
+  left: 58%;
+  top: 18%;
+  width: 26%;
+  aspect-ratio: 1 / 1;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.9;
+}
+
+#passport-stamp.dorado { background-image: url("../img/documentos/selloDorado.png"); }
+#passport-stamp.rojo { background-image: url("../img/documentos/selloRojo.png"); }
+#passport-stamp.negro { background-image: url("../img/documentos/selloNegro.png"); }
+#passport-stamp.plateado { background-image: url("../img/documentos/selloPlata.png"); }
+
+/* sello de aceptado/rechazado: placeholder de texto, todavia no hay arte para esto */
+#decision-stamp {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  padding: 0.3rem 0.8rem;
+  border: 0.25rem solid;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  background: rgba(242, 237, 227, 0.15);
+}
+
+#decision-stamp.mostrar {
+  display: block;
+}
+
+#decision-stamp.aprobado {
+  color: #4a9d5f;
+  border-color: #4a9d5f;
+}
+
+#decision-stamp.rechazado {
+  color: #c0524a;
+  border-color: #c0524a;
+}
+
+/* aceptar/rechazar ahora viven sobre el escritorio, del lado izquierdo (el
+   pasaporte quedo del lado derecho, ver #passport-object) */
+#decision-buttons {
+  position: absolute;
+  z-index: 6;
+  left: 4%;
+  top: 74%;
+  width: 26%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#decision-buttons button {
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  width: 100%;
 }
 
 /*

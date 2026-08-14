@@ -5,6 +5,45 @@ let currentState = "menu";
 // la duracion tiene que coincidir con la transicion de "left" de #character-portrait en style.css
 const PORTRAIT_ANIM_MS = 450;
 const PORTRAIT_REST_LEFT = "34.8%";
+// duracion de la transicion "en el sitio" (abrir/cerrar sobre el escritorio,
+// sin moverse) - tiene que coincidir con la transicion de top/height de
+// #passport-object en style.css
+const PASSPORT_ANIM_MS = 400;
+// duracion del arco (lanzado/devuelto) - ver animatePassportAlongArc() mas abajo
+const PASSPORT_ARC_MS = 700;
+// puntos del arco parabolico (izquierda/arriba en %, mas la altura del pasaporte
+// en cada punta): sale de la base del personaje, chico, pasa por un punto alto
+// (a la altura de la ventanilla, dandole la curva) y cae sobre el escritorio, un
+// poco mas grande. La vuelta (al decidir) es la misma curva al reves.
+const PASSPORT_ARC_BASE = { left: 50, top: 88, height: 3 };
+const PASSPORT_ARC_CONTROL = { left: 55, top: -35 };
+const PASSPORT_ARC_DESK = { left: 60, top: 76, height: 13 };
+// el z-index no puede depender solo de la altura del arco: la base del personaje
+// (88%) y el escritorio (76%) estan demasiado cerca en top como para distinguirlos
+// asi. Se distingue por direccion, y cada direccion necesita su propia señal:
+//
+// - devolucion: al frente solo en el primer tramo del recorrido (recien cerrado
+//   sobre el escritorio), detras el resto - un umbral de tiempo alcanza.
+// - entrega: sale detras (se pierde detras de la ventanilla al subir), y pasa al
+//   frente en cuanto cruza el punto mas alto del arco y empieza a caer - de ahi
+//   en adelante se queda al frente hasta aterrizar (ver yaPasoElPico en
+//   animatePassportAlongArc). No alcanza un umbral fijo de tiempo/altura porque
+//   el arco es asimetrico (el pico no cae a la mitad del recorrido).
+const PASSPORT_ARC_FRONT_THRESHOLD = 0.7;
+const PASSPORT_BEHIND_Z_INDEX = "2";
+// cubic-bezier con un poco de overshoot (el 4to valor pasa de 1, pero apenas)
+// para un rebote suave al caer sobre el escritorio - se aplica igual a la vuelta
+const PASSPORT_BOUNCE_EASING = createCubicBezierEasing(0.3, 0.98, 0.4, 1.06);
+// pausa despues de que el personaje termina de llegar (y ya esta con la animacion
+// idle) antes de que aparezca el pasaporte - da la sensacion de que lo entrega al
+// llegar, no de que lo trae consigo mientras se desliza
+const PASSPORT_DELIVERY_DELAY_MS = 500;
+// una vez que el jugador hace click sobre el pasaporte cerrado, espera un poco
+// antes de abrirlo (para que se sienta como que se abre, no que cambia de golpe)
+const PASSPORT_OPEN_DELAY_MS = 150;
+// cuanto se ve el sello de aceptado/rechazado sobre el pasaporte todavia abierto
+// antes de que empiece a cerrarse
+const DECISION_STAMP_FLASH_MS = 400;
 // tiempo para decidir por visitante: baja con cada dia, y se divide a la mitad en modo alerta
 const TIME_PER_VISITOR_BASE_MS = 16000;
 const TIME_PER_VISITOR_STEP_MS = 1500;
@@ -60,23 +99,24 @@ document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
     timerEnabled = !timerEnabled;
     updateTimerToggleButton();
 });
-function updatePlayerNameDisplay() {
-    const displayEl = document.querySelector("#player-name-display");
-    if (displayEl === null) {
-        return;
-    }
-    const nombre = loadPlayerName();
-    displayEl.textContent = nombre === "" ? "" : "Inspector: " + nombre;
-}
+// al confirmar el nombre arranca la partida nueva (esto reemplaza lo que antes
+// hacia el click de "Nueva partida" directamente)
 document.querySelector("#player-name-form")?.addEventListener("submit", (evento) => {
     evento.preventDefault();
     const input = document.querySelector("#player-name-input");
-    if (input === null) {
-        return;
-    }
-    savePlayerName(input.value.trim());
-    input.value = "";
-    updatePlayerNameDisplay();
+    const nombre = input?.value.trim() ?? "";
+    savePlayerName(nombre);
+    game = new Game(nombre);
+    racha = 0;
+    erroresSeguidos = 0;
+    game.loadData(() => {
+        if (game === null) {
+            return;
+        }
+        game.startNewGame();
+        renderStoryScreen();
+        changeState("story");
+    });
 });
 document.querySelectorAll(".back-link").forEach(boton => {
     boton.addEventListener("click", () => {
@@ -164,17 +204,15 @@ function renderHistoryTable() {
     });
 }
 document.querySelector("#new-game-btn")?.addEventListener("click", () => {
-    game = new Game(loadPlayerName());
-    racha = 0;
-    erroresSeguidos = 0;
-    game.loadData(() => {
-        if (game === null) {
-            return;
-        }
-        game.startNewGame();
-        changeState("story");
-    });
+    changeState("name-entry");
 });
+function renderStoryScreen() {
+    if (game === null) {
+        return;
+    }
+    const texto = "Bienvenido, detective " + game.playerName + ". Eres un nuevo oficial de la Agencia de Aduana Espiritual, contratado el mismo día en que empieza tu turno (Día 1), sin inducción ni manual de bienvenida. Tu trabajo es revisar los pasaportes de quienes cruzan hacia el mundo humano y decidir si los dejas pasar, según las reglas que la agencia va confirmando día a día sobre los Yokai.";
+    typeDialogue(texto, "#story-text");
+}
 document.querySelector("#story-next-btn")?.addEventListener("click", () => {
     renderDayResultScreen(false);
     changeState("day-result");
@@ -217,35 +255,133 @@ function typeDialogue(texto, selectorDestino) {
         }
     }, 160);
 }
-// --- entrada/salida del personaje (desliza en vez de aparecer de la nada) ---
-function resetPortraitOffscreen() {
-    const portrait = document.querySelector("#character-portrait");
-    if (portrait === null) {
+const CHARACTER_ELEMENT = { selector: "#character-portrait", restLeft: PORTRAIT_REST_LEFT };
+const SLIDING_ELEMENTS = [CHARACTER_ELEMENT];
+function resetElementOffscreen(elemento) {
+    const el = document.querySelector(elemento.selector);
+    if (el === null) {
         return;
     }
-    portrait.style.transition = "none";
-    portrait.style.left = "130%";
-    void portrait.offsetWidth; // fuerza el reflow para que el salto instantaneo se registre antes de reactivar la transicion
-    portrait.style.transition = "";
-    portrait.style.left = PORTRAIT_REST_LEFT;
+    el.style.transition = "none";
+    el.style.left = "130%";
+    void el.offsetWidth; // fuerza el reflow para que el salto instantaneo se registre antes de reactivar la transicion
+    el.style.transition = "";
+    el.style.left = elemento.restLeft;
 }
-function slideOutPortrait(direccion, alTerminar) {
-    const portrait = document.querySelector("#character-portrait");
+function slideOutSlidingElements(direccion, alTerminar) {
     const acceptBtn = document.querySelector("#accept-btn");
     const rejectBtn = document.querySelector("#reject-btn");
     if (acceptBtn !== null)
         acceptBtn.disabled = true;
     if (rejectBtn !== null)
         rejectBtn.disabled = true;
-    if (portrait !== null) {
+    SLIDING_ELEMENTS.forEach(({ selector }) => {
+        const el = document.querySelector(selector);
+        if (el === null) {
+            return;
+        }
         if (direccion === "izquierda") {
-            portrait.style.left = "-70%";
+            el.style.left = "-70%";
         }
         if (direccion === "derecha") {
-            portrait.style.left = "130%";
+            el.style.left = "130%";
+        }
+    });
+    window.setTimeout(alTerminar, PORTRAIT_ANIM_MS);
+}
+// --- arco parabolico del pasaporte (lanzado/devuelto a traves de la ventanilla) ---
+// evaluador de una curva cubic-bezier(x1,y1,x2,y2), igual a la que usa CSS en
+// animation-timing-function - con y2 > 1 (ver PASSPORT_BOUNCE_EASING) el
+// resultado pasa de 1 antes de asentarse, dando el efecto de rebote/overshoot
+function createCubicBezierEasing(x1, y1, x2, y2) {
+    function enEje(a1, a2, t) {
+        const unMenosT = 1 - t;
+        return 3 * unMenosT * unMenosT * t * a1 + 3 * unMenosT * t * t * a2 + t * t * t;
+    }
+    function derivadaEnEje(a1, a2, t) {
+        const unMenosT = 1 - t;
+        return 3 * unMenosT * unMenosT * a1 + 6 * unMenosT * t * (a2 - a1) + 3 * t * t * (1 - a2);
+    }
+    return function facilitador(x) {
+        let t = x;
+        for (let i = 0; i < 8; i += 1) {
+            const pendiente = derivadaEnEje(x1, x2, t);
+            if (Math.abs(pendiente) > 0.000001) {
+                t = t - (enEje(x1, x2, t) - x) / pendiente;
+            }
+        }
+        return enEje(y1, y2, t);
+    };
+}
+// mueve #passport-object en una curva de bezier cuadratica (desde -> control ->
+// hasta), con el tamaño interpolado con el mismo facilitador para que el rebote
+// tambien se sienta en el "crecimiento" - queda con estilos inline al terminar,
+// asi que alTerminar() es responsable de limpiarlos si hace falta.
+//
+// terminaEnElEscritorio indica la direccion (true = entrega, false = devolucion):
+// el pasaporte solo va "al frente" (encima de la ventanilla/el escritorio) en el
+// tramo del recorrido mas cercano al escritorio - el resto del arco (saliendo o
+// volviendo hacia el personaje, y el pico) queda detras, ver PASSPORT_ARC_FRONT_THRESHOLD
+function animatePassportAlongArc(desde, control, hasta, duracionMs, facilitador, terminaEnElEscritorio, alTerminar) {
+    const passportEl = document.querySelector("#passport-object");
+    if (passportEl === null) {
+        alTerminar();
+        return;
+    }
+    const el = passportEl;
+    el.style.transition = "none";
+    // fija el z-index inicial ya (sincronico, antes del primer frame) en vez de
+    // confiar en lo que haya quedado de una animacion anterior - si no, en la
+    // primera entrega de la sesion (sin devolucion previa que lo deje "detras")
+    // el z-index por defecto del CSS (5, al frente) queda aplicado hasta que
+    // corre el primer requestAnimationFrame, y ese instante ya alcanza para que
+    // se vea el pasaporte pasando por delante de la ventanilla al arrancar.
+    el.style.zIndex = terminaEnElEscritorio ? PASSPORT_BEHIND_Z_INDEX : "";
+    const inicio = performance.now();
+    // para la entrega: en cuanto el "top" deja de subir (deja de acercarse a 0,
+    // es decir ya curso el punto mas alto del arco) el pasaporte esta cayendo -
+    // de ahi en mas siempre al frente, sin importar que tan alto este todavia
+    // (ver comentario junto a PASSPORT_ARC_FRONT_THRESHOLD mas arriba)
+    let topMinimoVisto = desde.top;
+    let yaPasoElPico = false;
+    function paso(ahora) {
+        const progreso = Math.min((ahora - inicio) / duracionMs, 1);
+        const t = facilitador(progreso);
+        const unMenosT = 1 - t;
+        const left = unMenosT * unMenosT * desde.left + 2 * unMenosT * t * control.left + t * t * hasta.left;
+        const top = unMenosT * unMenosT * desde.top + 2 * unMenosT * t * control.top + t * t * hasta.top;
+        const height = desde.height + (hasta.height - desde.height) * t;
+        el.style.left = left + "%";
+        el.style.top = top + "%";
+        el.style.height = height + "%";
+        let enFrente;
+        if (terminaEnElEscritorio) {
+            if (top > topMinimoVisto) {
+                yaPasoElPico = true;
+            }
+            else {
+                topMinimoVisto = top;
+            }
+            enFrente = yaPasoElPico;
+        }
+        else {
+            const acercandoseAlEscritorio = 1 - progreso;
+            enFrente = acercandoseAlEscritorio >= PASSPORT_ARC_FRONT_THRESHOLD;
+        }
+        if (enFrente) {
+            el.style.zIndex = "";
+        }
+        else {
+            el.style.zIndex = PASSPORT_BEHIND_Z_INDEX;
+        }
+        if (progreso < 1) {
+            window.requestAnimationFrame(paso);
+        }
+        else {
+            alTerminar();
         }
     }
-    window.setTimeout(alTerminar, PORTRAIT_ANIM_MS);
+    window.requestAnimationFrame(paso);
 }
 // --- tiempo limite por visitante ---
 let visitorTimeoutId = null;
@@ -295,15 +431,49 @@ function renderVisitor() {
     if (game === null || game.currentVisitor === null) {
         return;
     }
-    resetPortraitOffscreen();
+    resetElementOffscreen(CHARACTER_ELEMENT);
+    // se mantienen deshabilitados hasta que el jugador abra el pasaporte (ver el
+    // listener de click de #passport-object) - no se puede decidir a ciegas
     const acceptBtn = document.querySelector("#accept-btn");
     const rejectBtn = document.querySelector("#reject-btn");
     if (acceptBtn !== null)
-        acceptBtn.disabled = false;
+        acceptBtn.disabled = true;
     if (rejectBtn !== null)
-        rejectBtn.disabled = false;
+        rejectBtn.disabled = true;
     const visitante = game.currentVisitor;
     const pasaporte = visitante.obtainPassport;
+    const passportEl = document.querySelector("#passport-object");
+    const decisionStampEl = document.querySelector("#decision-stamp");
+    if (decisionStampEl !== null) {
+        decisionStampEl.classList.remove("mostrar", "aprobado", "rechazado");
+    }
+    if (passportEl !== null) {
+        // se esconde del todo (todavia no lo "lanzo") - nada de dejarlo chiquito
+        // pero visible: eso es lo que se quedaba pegado en la ventanilla despues
+        // de devolverse
+        passportEl.style.display = "none";
+        passportEl.classList.remove("abierto", "entregado");
+        passportEl.classList.add("cerrado");
+    }
+    window.setTimeout(() => {
+        if (passportEl !== null) {
+            // se lanza: arco parabolico desde la base del personaje, a traves de la
+            // ventanilla (el punto de control tira la curva bien arriba), cayendo
+            // sobre el escritorio con rebote
+            passportEl.style.display = "";
+            passportEl.style.left = PASSPORT_ARC_BASE.left + "%";
+            passportEl.style.top = PASSPORT_ARC_BASE.top + "%";
+            passportEl.style.height = PASSPORT_ARC_BASE.height + "%";
+            animatePassportAlongArc(PASSPORT_ARC_BASE, PASSPORT_ARC_CONTROL, PASSPORT_ARC_DESK, PASSPORT_ARC_MS, PASSPORT_BOUNCE_EASING, true, () => {
+                // "aterrizo": limpia los estilos inline, vuelve a los valores de la
+                // clase .cerrado (deberian coincidir con PASSPORT_ARC_DESK)
+                passportEl.style.left = "";
+                passportEl.style.top = "";
+                passportEl.style.height = "";
+                passportEl.classList.add("entregado");
+            });
+        }
+    }, PORTRAIT_ANIM_MS + PASSPORT_DELIVERY_DELAY_MS);
     const nombreEl = document.querySelector("#passport-name");
     const regionEl = document.querySelector("#passport-region");
     const especieEl = document.querySelector("#passport-species");
@@ -313,7 +483,7 @@ function renderVisitor() {
     if (regionEl !== null)
         regionEl.textContent = pasaporte.obtainRegion;
     if (selloEl !== null)
-        selloEl.textContent = pasaporte.obtainStamp;
+        selloEl.className = pasaporte.obtainStamp;
     // la especie declarada recien se revela a partir del dia 4 (ver mensajeIntro de ese dia)
     if (especieEl !== null) {
         const especieHtmlEl = especieEl;
@@ -395,27 +565,87 @@ function resolveDecision(accept) {
     const diaAntes = game.dayNumber;
     const erroresAntes = game.errors;
     const direccion = accept ? "izquierda" : "derecha";
-    slideOutPortrait(direccion, () => {
-        if (game === null) {
-            return;
+    const acceptBtn = document.querySelector("#accept-btn");
+    const rejectBtn = document.querySelector("#reject-btn");
+    if (acceptBtn !== null)
+        acceptBtn.disabled = true;
+    if (rejectBtn !== null)
+        rejectBtn.disabled = true;
+    // placeholder: todavia no hay arte para los sellos de aceptado/rechazado
+    const decisionStampEl = document.querySelector("#decision-stamp");
+    if (decisionStampEl !== null) {
+        decisionStampEl.textContent = accept ? "APROBADO" : "RECHAZADO";
+        decisionStampEl.className = "mostrar " + (accept ? "aprobado" : "rechazado");
+    }
+    const passportEl = document.querySelector("#passport-object");
+    // se ve el sello un instante sobre el pasaporte todavia abierto; despues se
+    // cierra en el sitio (el sello placeholder desaparece con el), y recien
+    // ahi se devuelve - mismo arco de la entrega pero al reves, terminando
+    // escondido del todo (no se queda pegado, chico, en la ventanilla). El
+    // personaje sale por separado, con el mecanismo de siempre.
+    window.setTimeout(() => {
+        if (decisionStampEl !== null) {
+            decisionStampEl.classList.remove("mostrar", "aprobado", "rechazado");
         }
-        game.decide(accept);
-        if (game.errors > erroresAntes) {
-            racha = 0;
-            erroresSeguidos += 1;
+        if (passportEl !== null) {
+            passportEl.classList.remove("abierto", "entregado");
+            passportEl.classList.add("cerrado");
         }
-        else {
-            racha += 1;
-            erroresSeguidos = 0;
-        }
-        afterDecision(diaAntes);
-    });
+        window.setTimeout(() => {
+            animatePassportAlongArc(PASSPORT_ARC_DESK, PASSPORT_ARC_CONTROL, PASSPORT_ARC_BASE, PASSPORT_ARC_MS, PASSPORT_BOUNCE_EASING, false, () => {
+                if (passportEl !== null) {
+                    passportEl.style.left = "";
+                    passportEl.style.top = "";
+                    passportEl.style.height = "";
+                    passportEl.style.display = "none";
+                }
+                slideOutSlidingElements(direccion, () => {
+                    if (game === null) {
+                        return;
+                    }
+                    game.decide(accept);
+                    if (game.errors > erroresAntes) {
+                        racha = 0;
+                        erroresSeguidos += 1;
+                    }
+                    else {
+                        racha += 1;
+                        erroresSeguidos = 0;
+                    }
+                    afterDecision(diaAntes);
+                });
+            });
+        }, PASSPORT_ANIM_MS);
+    }, DECISION_STAMP_FLASH_MS);
 }
 document.querySelector("#accept-btn")?.addEventListener("click", () => {
     resolveDecision(true);
 });
 document.querySelector("#reject-btn")?.addEventListener("click", () => {
     resolveDecision(false);
+});
+// el pasaporte no se abre solo: el jugador tiene que clickearlo una vez que el
+// personaje ya se lo entrego (clase "entregado", ver renderVisitor()); recien
+// ahi se habilitan aceptar/rechazar - no se puede decidir sin haberlo abierto
+document.querySelector("#passport-object")?.addEventListener("click", () => {
+    const passportEl = document.querySelector("#passport-object");
+    if (passportEl === null) {
+        return;
+    }
+    if (!passportEl.classList.contains("cerrado") || !passportEl.classList.contains("entregado")) {
+        return;
+    }
+    passportEl.classList.remove("entregado");
+    window.setTimeout(() => {
+        passportEl.classList.remove("cerrado");
+        passportEl.classList.add("abierto");
+        const acceptBtn = document.querySelector("#accept-btn");
+        const rejectBtn = document.querySelector("#reject-btn");
+        if (acceptBtn !== null)
+            acceptBtn.disabled = false;
+        if (rejectBtn !== null)
+            rejectBtn.disabled = false;
+    }, PASSPORT_OPEN_DELAY_MS);
 });
 // --- Day result screen ---
 function renderDayResultScreen(mostrarResumen = true) {
@@ -516,7 +746,6 @@ function startCoinSpin() {
 // --- Estado inicial al cargar la página ---
 updateContinueButton();
 updateTimerToggleButton();
-updatePlayerNameDisplay();
 renderHistoryTable();
 preloadCharacterImages();
 startCoinSpin();

@@ -27,15 +27,6 @@
       </div>
 
       <aside id="menu-sidebar">
-        <form id="player-name-form">
-          <label for="player-name-input">Nombre del inspector</label>
-          <div id="player-name-row">
-            <input type="text" id="player-name-input" placeholder="Escribe tu nombre" maxlength="24">
-            <button type="submit">Guardar</button>
-          </div>
-        </form>
-        <p id="player-name-display"></p>
-
         <p id="paused-status" class="hidden"></p>
 
         <div id="history-panel">
@@ -84,9 +75,20 @@
     </div>
   </section>
 
+  <section id="name-entry-screen" class="hidden">
+    <h2>Introduce tu nombre, detective</h2>
+    <form id="player-name-form">
+      <div id="player-name-row">
+        <input type="text" id="player-name-input" placeholder="Tu nombre" maxlength="24">
+        <button type="submit">Continuar</button>
+      </div>
+    </form>
+    <button class="exit-to-menu-btn">Volver al menú</button>
+  </section>
+
   <section id="story-screen" class="hidden">
-    <h2>Reikai Customs</h2>
-    <p>Eres un nuevo oficial de la Agencia de Aduana Espiritual, contratado el mismo día en que empieza tu turno (Día 1), sin inducción ni manual de bienvenida. Tu trabajo es revisar los pasaportes de quienes cruzan hacia el mundo humano y decidir si los dejas pasar, según las reglas que la agencia va confirmando día a día sobre los Yokai.</p>
+    <div id="story-portrait"></div>
+    <p id="story-text"></p>
     <button id="story-next-btn">Siguiente</button>
     <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
@@ -110,13 +112,6 @@
       <div id="time-bar-fill"></div>
     </div>
 
-    <div id="passport-view">
-      <p id="passport-name">Nombre: -</p>
-      <p id="passport-region">Región: -</p>
-      <p id="passport-species">Especie declarada: -</p>
-      <p id="passport-stamp">Sello: -</p>
-    </div>
-
     <div id="character-scene">
       <div id="scene-background"></div>
       <div id="character-portrait">
@@ -128,14 +123,30 @@
       </div>
       <div id="scene-window"></div>
       <div id="scene-desktop"></div>
+
+      <!-- el pasaporte ya NO se desliza junto con el personaje: aparece recien
+           cuando el personaje llego y esta con la animacion idle (ver renderVisitor()
+           en main.ts), como si lo entregara al llegar. Arranca cerrado y se abre
+           con un click del jugador sobre el (no automatico). -->
+      <div id="passport-object" class="cerrado">
+        <div id="passport-page-left">
+          <p id="passport-name">Nombre: -</p>
+          <p id="passport-region">Región: -</p>
+          <p id="passport-species">Especie declarada: -</p>
+        </div>
+        <div id="passport-stamp"></div>
+        <div id="decision-stamp"></div>
+      </div>
+
+      <!-- ubicados sobre el escritorio, del lado izquierdo (el pasaporte quedo del
+           lado derecho) -->
+      <div id="decision-buttons">
+        <button id="accept-btn">Aceptar</button>
+        <button id="reject-btn">Rechazar</button>
+      </div>
     </div>
 
     <p id="dialogue-bubble"></p>
-
-    <div id="decision-buttons">
-      <button id="accept-btn">Aceptar</button>
-      <button id="reject-btn">Rechazar</button>
-    </div>
   </section>
 
   <section id="day-result-screen" class="hidden">
