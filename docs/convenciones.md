@@ -8,7 +8,7 @@ Encapsulamiento: campos siempre privados con `#`, nunca `public` directo.
 
 Estilo de acceso a los campos:
 - `Character`, `Human`, `Yokai`, `Passport`: los getters simples son `get` accessors (se llaman sin paréntesis, ej. `personaje.obtainName`).
-- `Rule`, `Day`, `Game`: los getters son métodos normales con paréntesis (ej. `regla.getDay()`), salvo los campos simples de `Game` (`dayNumber`, `errors`, `money`, `currentVisitor`, `currentDay`), que sí son `get` accessors.
+- `Rule`, `Day`, `Game`: los getters son métodos normales con paréntesis (ej. `regla.getDay()`), salvo los campos simples de `Game` (`dayNumber`, `errors`, `money`, `currentVisitor`, `currentDay`, `playerName`), que sí son `get` accessors.
 
 Evitar `switch` — preferencia mencionada en clase por el profesor, usar cadenas de `if`/`else if` en su lugar. (Excepción: `Rule.isViolated()` quedó con `switch`, a cargo de Iralys si el profesor lo señala.)
 

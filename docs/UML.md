@@ -45,10 +45,10 @@
 
 *Game*
 
- - #dayNumber, #errors, #money, #maxErrors, #totalDays, #days (Day[]), #currentVisitor, #visitorsSeenToday, #todayProblematicSlots, #parts, #names, #phrases, #stamps
+ - #dayNumber, #errors, #money, #maxErrors, #totalDays, #days (Day[]), #currentVisitor, #visitorsSeenToday, #todayProblematicSlots, #parts, #names, #phrases, #stamps, #species, #suspiciousPhrases, #playerName
  + loadData(onComplete): void
  + startNewGame(): void
- + get dayNumber, errors, money, currentVisitor, currentDay
+ + get dayNumber, errors, money, currentVisitor, currentDay, playerName
  + decide(accept): void
  + isLost(): boolean
  + isWon(): boolean
@@ -60,6 +60,8 @@
 
  + saveCurrentGame(data), loadCurrentGame(), deleteCurrentGame()
  + saveToHistory(result), getHistory()
+ + savePlayerName(name), loadPlayerName()
+ + addCredits(name, amount), getAllCredits()
 
 --------------------------
 
@@ -69,7 +71,7 @@ Character <|-- Human
 Character <|-- Yokai
 Character o-- Passport        (composición: cada Character tiene su propio Passport)
 Day o-- Rule[]                 (agregación: Day referencia reglas ya construidas)
-Game o-- Day[]                 (Game arma los 5 días al cargar datos)
+Game o-- Day[]                 (Game arma los 7 días al cargar datos)
 Game --> Character             (asociación: visitante actual)
 Game ..> Human, Yokai          (dependencia: Game decide cuál instanciar)
 Game ..> Storage                (dependencia: Game llama funciones, no las posee)
