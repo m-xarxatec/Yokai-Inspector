@@ -172,3 +172,39 @@ Dos ideas propuestas por Iralys, todavía sin implementar:
 También subió `Fondopersonaje.png`, una imagen de referencia (no un asset para integrar directo) de cómo podría verse toda la pantalla de juego rediseñada — HUD con iconos, sidebar, pasaporte abierto con texto visible. Mike ya la tiene y la va a usar como guía para trabajar la jugabilidad, no hace falta traerla al repo de nuevo.
 
 Se revisó su rama (`actualIralys`, esta vez basada en nuestro propio `03bb71b`, no en una arquitectura rival) y se trajo a `objetosMike` lo que ya estaba listo para usar sin conflictos: el fondo nuevo del menú (`backgroundEnd.png`, con el título ya dibujado adentro, reemplaza a `fondoInicio2.png`) y la tipografía que eligió (Jost para el cuerpo, Marcellus para títulos) — pero autoalojada en `public/fonts/` en vez de por Google Fonts, para que el juego siga sin depender de internet. Su rama también tenía otra fuente pixel-art (Press Start 2P/Pixelify Sans) pensada solo para el placeholder de texto del sello de aceptado/rechazado — como ese placeholder ya se había reemplazado por el arte real de los sellos (`selloAceptado.png`/`selloRechazado.png`) del lado de Mike, esa fuente no se trajo, y el sello real quedó como estaba, sin tocar.
+
+*(Nota: la elección de Jost/Marcellus de este párrafo se revirtió más abajo — quedó documentado igual porque fue la decisión real de ese momento, con el motivo por el que después cambió.)*
+
+---
+
+2026-08-15 (parte 1) — pasaporte sobre la mesa y sellos reales:
+
+Mike subió arte nuevo: 3 variantes de "pasaporte apoyado sobre la mesa" (`pasaporte1/2/3.png`) y el arte real de los sellos de aceptado/rechazado (`selloAceptado.png`/`selloRechazado.png`, hasta ahora un placeholder de texto con borde). Se integraron:
+
+- Al aterrizar la entrega (cuando el arco termina de caer), el pasaporte cambia de la imagen "en tránsito" (`pasaporte.png`) a una de las 3 nuevas, elegida al azar, dando la sensación de que quedó posado sobre el escritorio. La devolución no usa estas variantes: antes de arrancar el arco de vuelta se sacan de nuevo, así que siempre se devuelve mostrando `pasaporte.png`, igual que al principio.
+- `#decision-stamp` dejó de ser texto con borde: ahora es el arte real, sin la rotación que tenía el placeholder (el arte ya viene inclinado de por sí).
+
+Ajustes posteriores, todos pedidos por Mike jugándolo:
+
+- Se le sacó el rebote al arco: la curva `cubic-bezier` con overshoot se cambió por una de desaceleración simple, sin "pasarse" al final.
+- El pasaporte abierto quedó más grande, más abajo, y más centrado (antes compartía el `left` del cerrado; ahora tiene el suyo propio, dejando lugar a la derecha para futuros elementos), con una inclinación tipo púlpito de conferencias (`perspective` + `rotateX`, con el "gozne" en la base).
+- La imagen de "sobre la mesa" también se agrandó y se bajó un poco (con el punto de llegada del arco, `PASSPORT_ARC_DESK`, sincronizado al mismo valor para que no haya salto al aterrizar).
+- **Bug real**: la función del arco (`animatePassportAlongArc`) apaga la transición CSS del pasaporte mientras anima (`transition: none`) pero nunca la volvía a prender — así que, desde la primera entrega en adelante, abrir/cerrar el pasaporte con el click quedaba "cortado" en vez de animarse suave. Se corrigió reactivando la transición al terminar cada arco (tanto en la entrega como en la devolución).
+
+---
+
+2026-08-15 (parte 2) — la tipografía pixel-art, esta vez sí definitiva:
+
+Mike pidió traer de nuevo la rama de Iralys para revisar cambios. En la rama en sí (`actualIralys`/`objetosIralys`, que además consolidó y renombró un poco) no había nada nuevo — pero apareció algo más relevante: **`origin/objetosMike` (la rama remota propia) tenía un commit sin bajar** (`e84ea1e`), donde Iralys ya había empujado directo ahí la tipografía pixel-art completa (Press Start 2P para títulos/acentos cortos, Pixelify Sans para todo el texto funcional — párrafos, botones, tablas). Esto reemplaza la elección de Jost/Marcellus de la sesión anterior. Se aplicó tal cual la pensó Iralys, pero alojada localmente igual que antes (`public/fonts/`, no por Google Fonts), incluidos los ajustes de tamaño (`clamp()`) que ella ya había afinado para que la fuente nueva (de métrica distinta) no quedara apretada en subtítulos, tabla de historial, botones de decisión, etc.
+
+---
+
+2026-08-15 (parte 3) — el menú de Iralys, unificado y adaptado a cualquier pantalla:
+
+Con las fuentes resueltas, tocaba traer el resto del menú nuevo de Iralys (fondo `backgroundEnd.png`, botones con blur, barra lateral). Mike lo probó parándose en ambas ramas (`git checkout` a `actualIralys` y de vuelta) y notó que en la rama de Iralys el menú "se veía desconfigurado".
+
+**El diagnóstico**: su CSS pone `#menu-stage` a pantalla completa (`100vw`/`100vh`) y usa `object-fit: contain` en la imagen para no recortarla — pero los botones y la barra lateral se posicionan como porcentaje de esa caja de PANTALLA COMPLETA, no del espacio real que ocupa la imagen dentro de ella. En cualquier proporción de pantalla distinta a la de la imagen (1536×1024), la imagen queda más chica que el contenedor (aparecen franjas vacías) y los botones se calculan sobre un área más grande que la real, saliéndose del fondo. Probablemente coincidía en la laptop de Iralys por casualidad de resolución, no por diseño.
+
+**La solución**: en vez de que el contenedor sea "pantalla completa a lo bruto", mantiene la proporción real de la imagen (`aspect-ratio: 1536/1024`) y se ajusta al máximo posible sin pasarse de la ventana — los botones y la barra, posicionados como porcentaje de ESE contenedor (no de la ventana), quedan siempre alineados con la imagen real, sea cual sea la pantalla. Mike además pidió que la imagen no ocupe el 100% de la pantalla (se sentía "muy bestia" en su monitor de 27", comparado con la laptop de 14" de Iralys) — se limitó a un máximo de 94% del ancho / 90% del alto, una diferencia chica que casi no se nota en pantallas ya ajustadas pero da un margen visible en monitores grandes. De paso se trajo también la tabla de historial rediseñada (compacta, solo 3 filas, sin scroll), parte de la misma barra lateral.
+
+**Bug real, mismo patrón que ya había pasado con `#final-screen`**: al armar el nuevo `#menu-screen` como overlay de pantalla completa, se le puso `display: flex` directo por ID para centrar el contenido — eso le gana en especificidad a `.hidden` (`display: none`), así que `changeState()` dejaba de poder ocultar el menú de verdad: quedaba fijo tapando todo, "Nueva partida" no parecía hacer nada y "Continuar" mostraba el juego superpuesto al menú. Se corrigió sacando el `display` del selector por ID (otra vez) y centrando `#menu-layout` con `position: absolute` + `transform` en su lugar, que no depende de que el padre sea flex. Quedó un comentario de advertencia en el CSS para que este error puntual no se repita una tercera vez.
