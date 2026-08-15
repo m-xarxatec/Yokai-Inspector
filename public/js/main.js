@@ -17,9 +17,15 @@ const PASSPORT_ARC_MS = 700;
 // poco mas grande. La vuelta (al decidir) es la misma curva al reves.
 const PASSPORT_ARC_BASE = { left: 50, top: 88, height: 3 };
 const PASSPORT_ARC_CONTROL = { left: 55, top: -35 };
-const PASSPORT_ARC_DESK = { left: 60, top: 76, height: 13 };
+const PASSPORT_ARC_DESK = { left: 60, top: 83, height: 16 };
+// variantes de "apoyado sobre la mesa" (pasaporte1/2/3.png) que reemplazan a
+// pasaporte.png una vez que la entrega termina de caer - ver el final de
+// renderVisitor(). La devolucion no las usa: antes de arrancar el arco de
+// vuelta se sacan de nuevo, asi que el personaje siempre se lo lleva mostrando
+// pasaporte.png, como si el cambio de imagen fuera solo "una vez posado".
+const PASSPORT_DESK_LOOK_VARIANTS = ["mesa1", "mesa2", "mesa3"];
 // el z-index no puede depender solo de la altura del arco: la base del personaje
-// (88%) y el escritorio (76%) estan demasiado cerca en top como para distinguirlos
+// (88%) y el escritorio (80%) estan demasiado cerca en top como para distinguirlos
 // asi. Se distingue por direccion, y cada direccion necesita su propia señal:
 //
 // - devolucion: al frente solo en el primer tramo del recorrido (recien cerrado
@@ -31,9 +37,9 @@ const PASSPORT_ARC_DESK = { left: 60, top: 76, height: 13 };
 //   el arco es asimetrico (el pico no cae a la mitad del recorrido).
 const PASSPORT_ARC_FRONT_THRESHOLD = 0.7;
 const PASSPORT_BEHIND_Z_INDEX = "2";
-// cubic-bezier con un poco de overshoot (el 4to valor pasa de 1, pero apenas)
-// para un rebote suave al caer sobre el escritorio - se aplica igual a la vuelta
-const PASSPORT_BOUNCE_EASING = createCubicBezierEasing(0.3, 0.98, 0.4, 1.06);
+// cubic-bezier de desaceleracion sin overshoot (el 4to valor no pasa de 1): sin
+// rebote al llegar, frena suave - se aplica igual en la entrega y la vuelta
+const PASSPORT_ARC_EASING = createCubicBezierEasing(0.33, 1, 0.68, 1);
 // pausa despues de que el personaje termina de llegar (y ya esta con la animacion
 // idle) antes de que aparezca el pasaporte - da la sensacion de que lo entrega al
 // llegar, no de que lo trae consigo mientras se desliza
@@ -291,8 +297,9 @@ function slideOutSlidingElements(direccion, alTerminar) {
 }
 // --- arco parabolico del pasaporte (lanzado/devuelto a traves de la ventanilla) ---
 // evaluador de una curva cubic-bezier(x1,y1,x2,y2), igual a la que usa CSS en
-// animation-timing-function - con y2 > 1 (ver PASSPORT_BOUNCE_EASING) el
-// resultado pasa de 1 antes de asentarse, dando el efecto de rebote/overshoot
+// animation-timing-function - si y2 > 1 el resultado pasa de 1 antes de
+// asentarse (efecto de rebote/overshoot); PASSPORT_ARC_EASING no lo usa (y2
+// no pasa de 1), es solo una desaceleracion suave, sin rebote
 function createCubicBezierEasing(x1, y1, x2, y2) {
     function enEje(a1, a2, t) {
         const unMenosT = 1 - t;
@@ -452,25 +459,33 @@ function renderVisitor() {
         // pero visible: eso es lo que se quedaba pegado en la ventanilla despues
         // de devolverse
         passportEl.style.display = "none";
-        passportEl.classList.remove("abierto", "entregado");
+        passportEl.classList.remove("abierto", "entregado", ...PASSPORT_DESK_LOOK_VARIANTS);
         passportEl.classList.add("cerrado");
     }
     window.setTimeout(() => {
         if (passportEl !== null) {
             // se lanza: arco parabolico desde la base del personaje, a traves de la
             // ventanilla (el punto de control tira la curva bien arriba), cayendo
-            // sobre el escritorio con rebote
+            // sobre el escritorio
             passportEl.style.display = "";
             passportEl.style.left = PASSPORT_ARC_BASE.left + "%";
             passportEl.style.top = PASSPORT_ARC_BASE.top + "%";
             passportEl.style.height = PASSPORT_ARC_BASE.height + "%";
-            animatePassportAlongArc(PASSPORT_ARC_BASE, PASSPORT_ARC_CONTROL, PASSPORT_ARC_DESK, PASSPORT_ARC_MS, PASSPORT_BOUNCE_EASING, true, () => {
-                // "aterrizo": limpia los estilos inline, vuelve a los valores de la
-                // clase .cerrado (deberian coincidir con PASSPORT_ARC_DESK)
+            animatePassportAlongArc(PASSPORT_ARC_BASE, PASSPORT_ARC_CONTROL, PASSPORT_ARC_DESK, PASSPORT_ARC_MS, PASSPORT_ARC_EASING, true, () => {
+                // "aterrizo": limpia los estilos inline (los valores de la clase
+                // .cerrado ya coinciden con PASSPORT_ARC_DESK, asi que no se mueve
+                // nada) y cambia a una de las 3 variantes "apoyado en la mesa" al azar
+                // - todo esto TODAVIA con la transicion apagada (animatePassportAlongArc
+                // la dejo en "none"), asi que el cambio de imagen es directo, sin
+                // animar. Recien despues se reactiva la transicion, para que abrir con
+                // el click (mas abajo) sí se sienta suave.
                 passportEl.style.left = "";
                 passportEl.style.top = "";
                 passportEl.style.height = "";
+                const variante = PASSPORT_DESK_LOOK_VARIANTS[Math.floor(Math.random() * PASSPORT_DESK_LOOK_VARIANTS.length)];
+                passportEl.classList.add(variante);
                 passportEl.classList.add("entregado");
+                passportEl.style.transition = "";
             });
         }
     }, PORTRAIT_ANIM_MS + PASSPORT_DELIVERY_DELAY_MS);
@@ -571,10 +586,8 @@ function resolveDecision(accept) {
         acceptBtn.disabled = true;
     if (rejectBtn !== null)
         rejectBtn.disabled = true;
-    // placeholder: todavia no hay arte para los sellos de aceptado/rechazado
     const decisionStampEl = document.querySelector("#decision-stamp");
     if (decisionStampEl !== null) {
-        decisionStampEl.textContent = accept ? "APROBADO" : "RECHAZADO";
         decisionStampEl.className = "mostrar " + (accept ? "aprobado" : "rechazado");
     }
     const passportEl = document.querySelector("#passport-object");
@@ -588,16 +601,22 @@ function resolveDecision(accept) {
             decisionStampEl.classList.remove("mostrar", "aprobado", "rechazado");
         }
         if (passportEl !== null) {
-            passportEl.classList.remove("abierto", "entregado");
+            // vuelve a pasaporte.png (saca la variante "en la mesa" si tenia una):
+            // se devuelve mostrando el mismo aspecto con el que se entrego
+            passportEl.classList.remove("abierto", "entregado", ...PASSPORT_DESK_LOOK_VARIANTS);
             passportEl.classList.add("cerrado");
         }
         window.setTimeout(() => {
-            animatePassportAlongArc(PASSPORT_ARC_DESK, PASSPORT_ARC_CONTROL, PASSPORT_ARC_BASE, PASSPORT_ARC_MS, PASSPORT_BOUNCE_EASING, false, () => {
+            animatePassportAlongArc(PASSPORT_ARC_DESK, PASSPORT_ARC_CONTROL, PASSPORT_ARC_BASE, PASSPORT_ARC_MS, PASSPORT_ARC_EASING, false, () => {
                 if (passportEl !== null) {
                     passportEl.style.left = "";
                     passportEl.style.top = "";
                     passportEl.style.height = "";
                     passportEl.style.display = "none";
+                    // reactiva la transicion (animatePassportAlongArc la deja en "none")
+                    // para que el proximo visitante abra/cierre el pasaporte con la
+                    // animacion "en el sitio" normal, no de golpe
+                    passportEl.style.transition = "";
                 }
                 slideOutSlidingElements(direccion, () => {
                     if (game === null) {
