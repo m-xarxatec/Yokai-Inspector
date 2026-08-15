@@ -1,13 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;700&display=swap");
+
 :root {
   /* ancho de la pantalla de juego - una sola variable para que el widget de la
      moneda (fijo, fuera de la columna) sepa donde termina la columna y se
      acomode pegado a ella en vez de quedar perdido en el borde de la ventana */
   --game-max-width: 760px;
+
+  /* dos familias: pixel-art gruesa para titulos/acentos cortos (coincide con
+     el arte de referencia) y una version legible de pixel-art para todo el
+     texto funcional, que en frases largas o chicas se lee mejor */
+  --font-display: "Press Start 2P", "Pixelify Sans", system-ui, sans-serif;
+  --font-body: "Pixelify Sans", system-ui, sans-serif;
 }
 
 * {
   box-sizing: border-box;
-  font-family: sans-serif;
+  font-family: var(--font-body);
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
 }
 
 body {
@@ -147,7 +160,7 @@ button:disabled {
 }
 
 #player-name-form label {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #a89fc2;
 }
 
@@ -222,7 +235,8 @@ button:disabled {
 }
 
 .screen-subtitle {
-  font-size: 0.85rem;
+  font-size: clamp(0.85rem, 2.2vw, 0.95rem);
+  line-height: 1.5;
   opacity: 0.85;
   margin: 0;
 }
@@ -265,7 +279,7 @@ button:disabled {
   text-align: center;
   padding: 0.3rem;
   color: #a89fc2;
-  font-size: 0.85rem;
+  font-size: clamp(0.8rem, 2.2vw, 0.9rem);
   font-weight: normal;
 }
 
@@ -273,6 +287,7 @@ button:disabled {
   background: #2a2640;
   padding: 0.6rem 0.4rem;
   text-align: center;
+  font-size: clamp(0.8rem, 2.2vw, 0.9rem);
 }
 
 #history-table td:first-child {
@@ -510,6 +525,7 @@ button:disabled {
 
 #dialogue-bubble {
   font-style: italic;
+  line-height: 1.5;
   background: #2a2640;
   border-radius: 6px;
   padding: 0.6rem 1rem;
@@ -673,9 +689,9 @@ button:disabled {
   padding: 0.3rem 0.8rem;
   border: 0.25rem solid;
   border-radius: 6px;
-  font-weight: bold;
-  font-size: 0.9rem;
-  letter-spacing: 0.05em;
+  font-family: var(--font-display);
+  font-size: clamp(0.5rem, 1.6vw, 0.65rem);
+  letter-spacing: 0.02em;
   background: rgba(242, 237, 227, 0.15);
 }
 
@@ -709,7 +725,7 @@ button:disabled {
 #decision-buttons button {
   margin: 0;
   padding: 0.4rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: clamp(0.75rem, 2vw, 0.85rem);
   width: 100%;
 }
 
