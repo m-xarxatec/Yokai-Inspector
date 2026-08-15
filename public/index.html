@@ -9,49 +9,108 @@
 <body>
 
   <section id="menu-screen">
-    <h1>Yokai Inspector</h1>
-    <button id="new-game-btn">Iniciar nuevo juego</button>
-    <button id="continue-btn">Continuar partida</button>
-    <button id="timer-toggle-btn">Desactivar temporizador</button>
-    <p id="paused-status" class="hidden"></p>
+    <div id="menu-layout">
+      <!-- backgroundEnd.png (arte de Iralys) ya trae el titulo dibujado adentro,
+           asi que el <h1> queda vacio (se mantiene el tag por si hace falta
+           accesibilidad/SEO despues) - los 5 botones siguen siendo HTML real
+           encima de la imagen, no hotspots invisibles medidos a pixel. -->
+      <div id="menu-stage">
+        <img src="img/backgrounds/backgroundEnd.png" alt="Yokai Inspector — verifica, decide, protege el equilibrio" id="menu-bg-img">
 
-    <h2>Últimas partidas</h2>
-    <table id="history-table">
-      <thead>
-        <tr>
-          <th>Día</th>
-          <th>Errores</th>
-          <th>Dinero</th>
-          <th>Resultado</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+        <div id="menu-buttons">
+          <h1></h1>
+          <button id="new-game-btn" class="menu-real-btn">Nueva partida</button>
+          <button id="continue-btn" class="menu-real-btn">Continuar</button>
+          <button id="options-btn" class="menu-real-btn">Opciones</button>
+          <button id="credits-btn" class="menu-real-btn">Créditos</button>
+          <button id="exit-btn" class="menu-real-btn">Salir</button>
+        </div>
+      </div>
+
+      <aside id="menu-sidebar">
+        <p id="paused-status" class="hidden"></p>
+
+        <div id="history-panel">
+          <h2>Últimas partidas</h2>
+          <div class="table-scroll">
+            <table id="history-table">
+              <thead>
+                <tr>
+                  <th>Jugador</th>
+                  <th>Día</th>
+                  <th>Errores</th>
+                  <th>Dinero</th>
+                  <th>Resultado</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="options-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Opciones</h2>
+      <button id="timer-toggle-btn">Desactivar temporizador</button>
+      <button id="back-to-menu-from-options-btn" class="back-link">Volver al menú</button>
+    </div>
+  </section>
+
+  <section id="credits-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Créditos acumulados</h2>
+      <p class="screen-subtitle">Dinero total ganado por cada inspector a lo largo de sus partidas.</p>
+      <ul id="credits-list"></ul>
+      <button id="back-to-menu-from-credits-btn" class="back-link">Volver al menú</button>
+    </div>
+  </section>
+
+  <section id="exit-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Hasta pronto</h2>
+      <p class="screen-subtitle">Gracias por proteger el equilibrio entre humanos y yokais.</p>
+      <button id="back-to-menu-from-exit-btn" class="back-link">Volver al menú</button>
+    </div>
+  </section>
+
+  <section id="name-entry-screen" class="hidden">
+    <h2>Introduce tu nombre, detective</h2>
+    <form id="player-name-form">
+      <div id="player-name-row">
+        <input type="text" id="player-name-input" placeholder="Tu nombre" maxlength="24">
+        <button type="submit">Continuar</button>
+      </div>
+    </form>
+    <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
 
   <section id="story-screen" class="hidden">
-    <h2>Reikai Customs</h2>
-    <p>Eres un nuevo oficial de la Agencia de Aduana Espiritual, contratado el mismo día en que empieza tu turno (Día 1), sin inducción ni manual de bienvenida. Tu trabajo es revisar los pasaportes de quienes cruzan hacia el mundo humano y decidir si los dejas pasar, según las reglas que la agencia va confirmando día a día sobre los Yokai.</p>
+    <div id="story-portrait"></div>
+    <p id="story-text"></p>
     <button id="story-next-btn">Siguiente</button>
+    <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
 
   <section id="game-screen" class="hidden">
     <div id="hud">
       <span id="day-counter">Día: -</span>
       <span id="error-counter">Errores: -</span>
-      <span id="money-counter">Dinero: -</span>
       <span id="streak-counter">Racha: 0</span>
+      <button class="exit-to-menu-btn">⏸ Menú</button>
+    </div>
+
+    <!-- separado de la barra del HUD a proposito: antes vivia adentro de #money-counter
+         y renderVisitor() lo borraba cada vez que actualizaba el texto del dinero -->
+    <div id="coin-widget">
+      <div id="coin-spin" class="moneda-1"></div>
+      <span id="money-counter">Dinero: -</span>
     </div>
 
     <div id="time-bar-track">
       <div id="time-bar-fill"></div>
-    </div>
-
-    <div id="passport-view">
-      <p id="passport-name">Nombre: -</p>
-      <p id="passport-region">Región: -</p>
-      <p id="passport-species">Especie declarada: -</p>
-      <p id="passport-stamp">Sello: -</p>
     </div>
 
     <div id="character-scene">
@@ -65,23 +124,45 @@
       </div>
       <div id="scene-window"></div>
       <div id="scene-desktop"></div>
+
+      <!-- el pasaporte ya NO se desliza junto con el personaje: aparece recien
+           cuando el personaje llego y esta con la animacion idle (ver renderVisitor()
+           en main.ts), como si lo entregara al llegar. Arranca cerrado y se abre
+           con un click del jugador sobre el (no automatico). -->
+      <div id="passport-object" class="cerrado">
+        <div id="passport-page-left">
+          <p id="passport-name">Nombre: -</p>
+          <p id="passport-region">Región: -</p>
+          <p id="passport-species">Especie declarada: -</p>
+        </div>
+        <div id="passport-stamp"></div>
+        <div id="decision-stamp"></div>
+      </div>
+
+      <!-- ubicados sobre el escritorio, del lado izquierdo (el pasaporte quedo del
+           lado derecho) -->
+      <div id="decision-buttons">
+        <button id="accept-btn">Aceptar</button>
+        <button id="reject-btn">Rechazar</button>
+      </div>
     </div>
 
     <p id="dialogue-bubble"></p>
-
-    <div id="decision-buttons">
-      <button id="accept-btn">Aceptar</button>
-      <button id="reject-btn">Rechazar</button>
-    </div>
   </section>
 
   <section id="day-result-screen" class="hidden">
+    <div id="jefa-scene">
+      <div id="jefa-background"></div>
+      <div id="jefa-portrait"></div>
+    </div>
     <p id="day-result-summary"></p>
     <p id="next-day-message"></p>
     <button id="continue-day-btn">Continuar</button>
+    <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
 
   <section id="final-screen" class="hidden">
+    <div id="final-scene" class="hidden"></div>
     <p id="final-message"></p>
     <button id="back-to-menu-btn">Volver al menú</button>
   </section>

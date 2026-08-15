@@ -1,6 +1,44 @@
+/* Press Start 2P y Pixelify Sans (idea de Iralys, ver e84ea1e) alojadas en el
+   propio repo (public/fonts/), no via Google Fonts - el juego no depende de
+   internet para verse bien. Pixelify Sans es variable (un solo archivo cubre
+   400-700); Press Start 2P solo existe en un peso. */
+@font-face {
+  font-family: "Pixelify Sans";
+  src: url("../fonts/pixelify-sans-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("../fonts/press-start-2p-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ancho de la pantalla de juego - una sola variable para que el widget de la
+     moneda (fijo, fuera de la columna) sepa donde termina la columna y se
+     acomode pegado a ella en vez de quedar perdido en el borde de la ventana */
+  --game-max-width: 760px;
+
+  /* dos familias: pixel-art gruesa para titulos/acentos cortos (su ancho fijo
+     por caracter no compromete la lectura ahi) y una version pixel-art mas
+     legible para todo el texto funcional (parrafos, botones, tablas) */
+  --font-display: "Press Start 2P", "Pixelify Sans", system-ui, sans-serif;
+  --font-body: "Pixelify Sans", system-ui, sans-serif;
+}
+
 * {
   box-sizing: border-box;
-  font-family: sans-serif;
+  font-family: var(--font-body);
+}
+
+h1, h2, #menu-buttons h1, .screen-panel h2 {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
 }
 
 body {
@@ -19,10 +57,10 @@ section {
   margin: 0 auto;
 }
 
-/* un poco mas grande que el resto de pantallas, para que se distingan mejor
-   detalles chicos del personaje (ojos amarillos, etc.) sin agrandar todo el juego */
+/* mas grande que el resto de pantallas: hay lugar para detalles chicos del
+   personaje (ojos amarillos, etc.) y para el pasaporte que va sobre el escritorio */
 #game-screen {
-  max-width: 560px;
+  max-width: var(--game-max-width);
 }
 
 button {
@@ -41,7 +79,244 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* ---------- menu ---------- */
+/* ---------- menu: backgroundEnd.png a pantalla completa, sin scroll ---------- */
+
+/*
+  ojo con este selector: NUNCA declararle un "display" directo por ID (ni
+  aca ni en ningun otro #x-screen) - le ganaria en especificidad a ".hidden"
+  (display:none) y changeState() dejaria de poder ocultarlo de verdad, el
+  mismo bug real que ya paso una vez con #final-screen (ver diario.md). El
+  centrado de #menu-layout se resuelve aparte, con position+transform, sin
+  que #menu-screen necesite ser flex.
+*/
+#menu-screen {
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: #1e1b2e; /* se ve en el margen alrededor de la imagen */
+}
+
+/*
+  el contenedor mantiene siempre la proporcion real de backgroundEnd.png
+  (1536/1024) y ocupa el maximo posible sin pasarse de 94% del ancho ni 90%
+  del alto de la ventana - a proposito no llega a pantalla completa (en un
+  monitor grande se siente demasiado invasivo), pero la diferencia es chica
+  para no perder espacio en pantallas ya ajustadas (laptop, tablet, movil).
+  Los botones y la barra lateral se posicionan como porcentaje de ESTA caja
+  (no de la ventana), asi que quedan siempre alineados con la imagen real,
+  sea cual sea la pantalla. Se centra con position+transform (no con flex
+  en el padre) justo por la razon de arriba.
+*/
+#menu-layout {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 1536 / 1024;
+  width: min(94vw, calc(90vh * 1536 / 1024));
+}
+
+#menu-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+#menu-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* titulo (vacio, backgroundEnd.png ya lo trae dibujado) + botones reales,
+   posicionados sobre la imagen - bajados (top: 62%) para dejar libre el
+   titulo/kanji de la parte superior */
+#menu-buttons {
+  position: absolute;
+  left: 5%;
+  top: 62%;
+  transform: translateY(-50%);
+  width: min(58%, 300px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  z-index: 2;
+}
+
+#menu-buttons h1 {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.3rem, 3.6vw, 2.2rem);
+  color: #f2ede3;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+}
+
+.menu-real-btn {
+  margin: 0;
+  text-align: left;
+  padding: 0.65rem 1rem;
+  background: rgba(15, 12, 24, 0.55);
+  border: 1px solid rgba(216, 181, 107, 0.6);
+  color: #f2ede3;
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.menu-real-btn:hover {
+  background: rgba(74, 70, 88, 0.65);
+  border-color: #f2ede3;
+}
+
+.menu-real-btn:disabled {
+  background: rgba(20, 16, 31, 0.35);
+  border-color: rgba(74, 70, 88, 0.5);
+  color: #8a8598;
+}
+
+@media (max-width: 599px) {
+  #menu-buttons {
+    top: 66%;
+    width: min(72%, 280px);
+  }
+
+  .menu-real-btn {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.85rem;
+  }
+}
+
+/*
+  panel de "ultimas partidas": chico, sin scroll (overflow: hidden, no auto),
+  apoyado abajo a la derecha de la imagen. La altura no se limita con
+  max-height + scroll: se limita el CONTENIDO (solo 3 filas, ver
+  #history-table tbody tr mas abajo), asi el panel nunca necesita scrollear.
+*/
+#menu-sidebar {
+  position: absolute;
+  right: 3%;
+  bottom: 4%;
+  width: min(50%, 560px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(20, 16, 31, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 0.8rem 1.1rem;
+  z-index: 2;
+}
+
+@media (max-width: 899px) {
+  #menu-sidebar {
+    display: none; /* en tablet/movil no entra sin tapar la imagen */
+  }
+}
+
+#history-panel h2 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: #f2ede3;
+}
+
+#player-name-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+#player-name-form label {
+  font-size: 0.85rem;
+  color: #a89fc2;
+}
+
+#player-name-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+#player-name-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #4a4658;
+  background: #2a2640;
+  color: #f2ede3;
+  font-size: 1rem;
+}
+
+#player-name-row button {
+  margin: 0;
+  padding: 0.55rem 0.9rem;
+}
+
+/* ---------- pantalla para poner el nombre (al empezar partida nueva) ---------- */
+
+#name-entry-screen #player-name-form {
+  margin-top: 1rem;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow: hidden; /* sin scroll horizontal tampoco, en la pantalla de menu */
+}
+
+/* ---------- opciones / creditos / salir ---------- */
+
+.screen-panel {
+  max-width: 420px;
+  margin: 2rem auto;
+  background: #2a2640;
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.screen-panel h2 {
+  margin: 0;
+}
+
+.screen-subtitle {
+  font-size: clamp(0.85rem, 2.2vw, 0.95rem);
+  line-height: 1.5;
+  opacity: 0.85;
+  margin: 0;
+}
+
+#credits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+#credits-list li {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #4a4658;
+}
+
+.back-link {
+  background: #4a4658;
+}
 
 #paused-status {
   background: #4a3a1e;
@@ -52,52 +327,166 @@ button:disabled {
   font-weight: bold;
 }
 
+/*
+  tabla de "ultimas partidas": compacta, sin bordes clasicos, solo una linea
+  sutil semitransparente entre filas. Limitada a 3 filas visibles (ver la
+  regla de tbody tr mas abajo) para que nunca necesite scroll.
+*/
 #history-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 0.4rem;
-  margin-top: 1rem;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.72rem;
+  margin-top: 0;
 }
 
 #history-table th {
-  text-align: center;
-  padding: 0.3rem;
-  color: #a89fc2;
-  font-size: 0.85rem;
-  font-weight: normal;
+  text-align: left;
+  padding: 0.3rem 0.8rem 0.3rem 0.25rem;
+  color: rgba(242, 237, 227, 0.55);
+  font-weight: 400;
+  font-size: 0.62rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(242, 237, 227, 0.15);
+  white-space: nowrap;
 }
 
 #history-table td {
-  background: #2a2640;
-  padding: 0.6rem 0.4rem;
-  text-align: center;
+  background: transparent;
+  padding: 0.35rem 0.8rem 0.35rem 0.25rem;
+  text-align: left;
+  font-size: 0.72rem;
+  border-bottom: 1px solid rgba(242, 237, 227, 0.08);
+  white-space: nowrap;
 }
 
-#history-table td:first-child {
-  border-radius: 6px 0 0 6px;
+#history-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-#history-table td:last-child {
-  border-radius: 0 6px 6px 0;
+/* solo se muestran las primeras 3 filas del historial - el resto queda oculto,
+   asi el panel jamas crece mas alla de lo que entra sin scroll */
+#history-table tbody tr:nth-child(n + 4) {
+  display: none;
 }
 
 #history-table td.resultado-victoria {
-  color: #7ee08a;
-  font-weight: bold;
+  color: #9be8a8;
+  font-weight: 500;
 }
 
 #history-table td.resultado-derrota {
-  color: #e0837e;
-  font-weight: bold;
+  color: #e59b96;
+  font-weight: 500;
 }
 
 /* ---------- pantalla de historia ---------- */
 
-#story-screen p {
+/* proporcion real de protaFeliz.png ya recortada a su contenido (703x900) */
+#story-portrait {
+  width: 60%;
+  max-width: 280px;
+  aspect-ratio: 703 / 900;
+  margin: 0 auto 1rem;
+  background-image: url("../img/protagonista/protaFeliz.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+}
+
+/* mismo estilo que el resto de los dialogos - se "habla" con typeDialogue() */
+#story-text {
   line-height: 1.5;
+  font-style: italic;
   background: #2a2640;
   border-radius: 6px;
   padding: 1rem;
+  min-height: 1.2rem;
+}
+
+/* ---------- pantalla de resultado del dia: la Jefa explica ---------- */
+
+/* mismo canvas que #character-scene (3670x2446) para el fondo, mas grande que
+   la del personaje porque la Jefa es la protagonista de esta pantalla */
+#jefa-scene {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 3670 / 2446;
+  margin: 1rem auto;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #2a2640;
+}
+
+#jefa-background {
+  position: absolute;
+  inset: 0;
+  background-image: url("../img/backgrounds/general_background.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  filter: blur(6px) brightness(0.6);
+  transform: scale(1.05); /* tapa el borde que el blur deja transparente */
+}
+
+/*
+  las imagenes de jefaExplica-N ya vienen recortadas a su contenido real (sin
+  margen transparente), asi que "bottom: 0" deja su base exactamente alineada
+  con la base de #jefa-background (mismo contenedor, mismo borde inferior).
+*/
+#jefa-portrait {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 70%;
+  height: 98%;
+  transform: translateX(-50%);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+}
+
+#jefa-portrait.jefaExplica-1 { background-image: url("../img/jefa/jefaExplica-1.png"); }
+#jefa-portrait.jefaExplica-2 { background-image: url("../img/jefa/jefaExplica-2.png"); }
+#jefa-portrait.jefaExplica-3 { background-image: url("../img/jefa/jefaExplica-3.png"); }
+#jefa-portrait.jefaExplica-4 { background-image: url("../img/jefa/jefaExplica-4.png"); }
+#jefa-portrait.jefaExplica-5 { background-image: url("../img/jefa/jefaExplica-5.png"); }
+
+/* ---------- pantalla final ---------- */
+
+#final-screen {
+  max-width: 720px;
+}
+
+/*
+  el aspect-ratio coincide exacto con el de fondoPierdes.png (1536x1024), asi que
+  "cover" no recorta nada - se ve la imagen completa. El texto ya NO va encima
+  (antes se superponia y costaba leerlo): va aparte, debajo, como dialogo.
+*/
+#final-scene {
+  width: 100%;
+  aspect-ratio: 1536 / 1024;
+  margin: 0 auto 1rem;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #2a2640;
+  background-size: cover;
+  background-position: center;
+}
+
+#final-scene.derrota {
+  background-image: url("../img/backgrounds/fondoPierdes.png");
+}
+
+/* mismo estilo que el dialogo de los visitantes/la Jefa - se "habla" con typeDialogue() */
+#final-message {
+  font-style: italic;
+  background: #2a2640;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  min-height: 1.2rem;
+  line-height: 1.5;
 }
 
 /* ---------- HUD y pasaporte ---------- */
@@ -116,6 +505,64 @@ button:disabled {
 #error-counter.danger {
   color: #e0837e;
   font-weight: bold;
+}
+
+/* moneda + dinero, fuera de la barra del HUD, flotando al costado de la pantalla.
+   Antes vivia adentro de #money-counter y se borraba cada vez que se actualizaba
+   el texto del dinero - ahora son hermanos, cada uno con su propio contenido. */
+/* pegado al borde de la columna del juego (no al borde de la ventana): la
+   columna esta centrada con "margin: 0 auto", asi que su borde derecho queda
+   en 50% + la mitad de su ancho - desde ahi el widget se acomoda con un margen chico */
+#coin-widget {
+  position: fixed;
+  top: 50%;
+  left: calc(50% + (var(--game-max-width) / 2) + 0.8rem);
+  transform: translateY(-50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  background: #2a2640;
+  border: 1px solid #4a4658;
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+}
+
+/* si no entra al costado de la columna, se acomoda arriba del HUD */
+@media (max-width: 900px) {
+  #coin-widget {
+    position: static;
+    flex-direction: row;
+    transform: none;
+    width: fit-content;
+    margin: 0 auto 0.6rem;
+  }
+}
+
+/* main.ts va cambiando la clase entre los 4 cuadros (moneda-1..4), cada uno con
+   su propio ancho (elipse cerrandose), para que se vea girar */
+#coin-spin {
+  width: 2.6rem;
+  height: 2.9rem;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+#coin-spin.moneda-1 { background-image: url("../img/animaciones/moneda-1.png"); }
+#coin-spin.moneda-2 { background-image: url("../img/animaciones/moneda-2.png"); }
+#coin-spin.moneda-3 { background-image: url("../img/animaciones/moneda-3.png"); }
+#coin-spin.moneda-4 { background-image: url("../img/animaciones/moneda-4.png"); }
+
+.exit-to-menu-btn {
+  background: #4a4658;
+}
+
+#hud .exit-to-menu-btn {
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
 }
 
 /* ---------- barra de tiempo por visitante ---------- */
@@ -149,20 +596,9 @@ button:disabled {
   to { transform: scaleX(0); }
 }
 
-#passport-view {
-  background: #f2ede3;
-  color: #1e1b2e;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-#passport-view p {
-  margin: 0.3rem 0;
-}
-
 #dialogue-bubble {
   font-style: italic;
+  line-height: 1.5;
   background: #2a2640;
   border-radius: 6px;
   padding: 0.6rem 1rem;
@@ -182,7 +618,7 @@ button:disabled {
 #character-scene {
   position: relative;
   width: 100%;
-  max-width: 640px;
+  max-width: var(--game-max-width);
   aspect-ratio: 3670 / 2446;
   margin: 1rem auto;
   border-radius: 8px;
@@ -215,6 +651,182 @@ button:disabled {
 #scene-desktop {
   background-image: url("../img/backgrounds/desktop.png");
   z-index: 4;
+}
+
+/*
+  el pasaporte real, apoyado sobre el escritorio (z-index 5 por defecto, aunque
+  animatePassportAlongArc() en main.ts lo baja por debajo de la ventanilla/el
+  escritorio mientras viaja - ver PASSPORT_BEHIND_Z_INDEX). Ya NO se desliza
+  junto con el personaje: llega solo, en un arco parabolico via JS (left/top/
+  height puestos cuadro a cuadro, ver PASSPORT_ARC_* y animatePassportAlongArc()
+  en main.ts) desde la base del personaje, a traves de la ventanilla, cayendo
+  aqui - recien cuando el personaje ya llego y esta en su animacion idle, dando
+  la sensacion de que lo entrega al llegar, no de que viaja con el.
+  Arranca (y descansa en el escritorio) cerrado y chico; recien crece al tamaño
+  "abierto" cuando el jugador hace click sobre el (no es automatico, ver
+  .entregado mas abajo) - esta transicion "en el sitio" (abrir/cerrar, sin
+  moverse) si es la de esta clase base (left/top/height con transition normal).
+  Al decidir, se cierra en el sitio y despues se devuelve con el mismo arco
+  pero al reves (ver resolveDecision()), terminando escondido (display:none)
+  antes de que el personaje salga por separado.
+*/
+#passport-object {
+  position: absolute;
+  z-index: 5;
+  left: 60%;
+  transform: translateX(-50%);
+  transition: left 0.4s ease, top 0.4s ease, height 0.4s ease;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+#passport-object.cerrado {
+  aspect-ratio: 646 / 700;
+  background-image: url("../img/documentos/pasaporte.png");
+  top: 83%;
+  height: 16%;
+}
+
+/* una vez que la entrega termina de caer, se cambia a una de estas 3 variantes
+   (elegida al azar en renderVisitor(), ver PASSPORT_DESK_LOOK_VARIANTS en
+   main.ts) - dan la sensacion de que quedo apoyado sobre la mesa, en vez del
+   "de pie" que usa pasaporte.png en transito. Se sacan antes de la devolucion
+   (vuelve a pasaporte.png), asi que la devolucion no cambia en nada. */
+#passport-object.cerrado.mesa1 {
+  aspect-ratio: 833 / 700;
+  background-image: url("../img/documentos/pasaporte1.png");
+}
+#passport-object.cerrado.mesa2 {
+  aspect-ratio: 732 / 700;
+  background-image: url("../img/documentos/pasaporte2.png");
+}
+#passport-object.cerrado.mesa3 {
+  aspect-ratio: 706 / 700;
+  background-image: url("../img/documentos/pasaporte3.png");
+}
+
+/*
+  al abrirse: mas grande, un poco mas abajo, y mas centrado (left propio, no el
+  60% de la clase base) porque los sellos/botones de aceptar-rechazar quedan
+  del lado derecho. La inclinacion (perspective + rotateX, con el "gozne" en
+  la base) da el efecto de pulpito de conferencias: la parte de arriba de las
+  paginas se aleja del jugador en vez de quedar de frente, plano.
+*/
+#passport-object.abierto {
+  aspect-ratio: 989 / 700;
+  background-image: url("../img/documentos/pasaporteAbierto.png");
+  top: 71%;
+  height: 30%;
+  left: 52%;
+  transform: translateX(-50%) perspective(900px) rotateX(20deg);
+  transform-origin: center bottom;
+}
+
+/* una vez entregado (ya termino de deslizarse y sigue cerrado), invita al click
+   con un pulso suave y el cursor de mano; deja de aplicar en cuanto se abre */
+#passport-object.cerrado.entregado {
+  cursor: pointer;
+  animation: passport-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes passport-pulse {
+  0% { filter: drop-shadow(0 0 0 rgba(242, 237, 227, 0)); }
+  50% { filter: drop-shadow(0 0 0.4rem rgba(242, 237, 227, 0.85)); }
+  100% { filter: drop-shadow(0 0 0 rgba(242, 237, 227, 0)); }
+}
+
+/* el texto solo tiene sentido (y solo se ve bien encuadrado) con el pasaporte abierto */
+#passport-page-left {
+  display: none;
+}
+
+#passport-object.abierto #passport-page-left {
+  display: block;
+  position: absolute;
+  left: 12%;
+  top: 17%;
+  width: 24%;
+  height: 46%;
+  overflow: hidden;
+  color: #2a2a1a;
+  font-size: 0.55rem;
+  line-height: 1.3;
+}
+
+#passport-page-left p {
+  margin: 0 0 0.3rem;
+}
+
+#passport-stamp {
+  display: none;
+}
+
+#passport-object.abierto #passport-stamp {
+  display: block;
+  position: absolute;
+  left: 58%;
+  top: 18%;
+  width: 26%;
+  aspect-ratio: 1 / 1;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.9;
+}
+
+#passport-stamp.dorado { background-image: url("../img/documentos/selloDorado.png"); }
+#passport-stamp.rojo { background-image: url("../img/documentos/selloRojo.png"); }
+#passport-stamp.negro { background-image: url("../img/documentos/selloNegro.png"); }
+#passport-stamp.plateado { background-image: url("../img/documentos/selloPlata.png"); }
+
+/* sello de aceptado/rechazado: arte real (ya viene con su propia inclinacion
+   dibujada, por eso no se le suma rotacion por CSS) */
+#decision-stamp {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 34%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.92;
+}
+
+#decision-stamp.mostrar {
+  display: block;
+}
+
+#decision-stamp.aprobado {
+  aspect-ratio: 738 / 700;
+  background-image: url("../img/documentos/selloAceptado.png");
+}
+
+#decision-stamp.rechazado {
+  aspect-ratio: 736 / 700;
+  background-image: url("../img/documentos/selloRechazado.png");
+}
+
+/* aceptar/rechazar ahora viven sobre el escritorio, del lado izquierdo (el
+   pasaporte quedo del lado derecho, ver #passport-object) */
+#decision-buttons {
+  position: absolute;
+  z-index: 6;
+  left: 4%;
+  top: 74%;
+  width: 26%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#decision-buttons button {
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: clamp(0.75rem, 2vw, 0.85rem);
+  width: 100%;
 }
 
 /*

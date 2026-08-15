@@ -103,3 +103,108 @@ Ya jugándolo, Mike encontró dos cosas para ajustar:
 - Algunos Yokai aparecían con demasiadas señales a la vez (cuernos + región río + sello, los tres juntos), lo que los hacía obvios en vez de generar duda. La causa era que el sorteo de "rasgo extra" tiraba dos monedas independientes (una para región, otra para sello) que podían salir las dos a la vez. Se corrigió para que se elija como máximo un rasgo extra, nunca dos.
 
 Por último, `frases_sospechosas.json` se amplió de 8 a 50 frases, reescritas con el mismo formato de humor negro ("cómo morí") que las 65 de `frases.json`, para que no se note la diferencia de tono entre unas y otras.
+
+---
+
+Iralys avisó que había subido trabajo nuevo a su rama (`objetosIralys`) por su cuenta: un menú con arte real (imagen de fondo con botones invisibles superpuestos, medidos a píxel), campo de nombre del inspector, un sistema de "créditos" (dinero total acumulado por nombre) y pantallas de opciones/créditos/salir. Se revisó su rama sin fusionarla (venía de antes de toda la segunda tanda de dificultad, y sobre una arquitectura de páginas separadas en vez de la de una sola página que ya tenemos armada) para ver qué convenía traer.
+
+Se decidió con Mike: mantener la arquitectura de una sola página (todo lo que se construyó — intro, animaciones, temporizador, escena por capas — depende de eso), pero sí adoptar el menú que hizo Iralys y el sistema de nombre/créditos, adaptado a la base actual (7 días, 4 errores, todo lo demás sin tocar). Se integró:
+
+- La imagen de fondo del menú (con el título y los 5 botones ya dibujados) y los botones invisibles posicionados en las mismas coordenadas que ella midió.
+- El campo de nombre del inspector y el panel de historial, movidos a una barra lateral responsiva.
+- Tres pantallas nuevas dentro del mismo sistema de `changeState()`: Opciones (donde se mudó el botón de desactivar el temporizador), Créditos (ranking de dinero total por nombre) y Salir.
+- `Storage.ts`: `savePlayerName`/`loadPlayerName`/`addCredits`/`getAllCredits`, agregado sin tocar nada existente.
+- `Game.ts`: cambio chico y acotado — el constructor ahora acepta un nombre de jugador (por defecto "Jugador"), y las dos veces que ya se guardaba el resultado en el historial ahora también guardan el nombre y suman créditos. Ni los días, ni el máximo de errores, ni el generador de visitantes se tocaron.
+
+Jugándolo aparecieron 3 cosas para ajustar, pedidas por Mike:
+
+- El botón "Continuar" quedaba tapado por un fondo sólido cuando estaba deshabilitado (sin partida guardada), en vez de solo verse atenuado — la regla `button:disabled` del proyecto tenía más especificidad que la clase de los botones invisibles del menú y le pintaba un color encima, ocultando el arte dibujado. Se corrigió fijando el fondo transparente también en el estado deshabilitado.
+- El campo de nombre no tenía botón para confirmar. Se convirtió en un formulario (input + botón "Guardar", también funciona con Enter): al confirmar guarda el nombre, limpia el campo, y lo deja visible aparte como "Inspector: nombre".
+- Se agregó un botón "Volver al menú" disponible desde la historia, el juego (dentro del HUD) y el resultado del día — no hizo falta tocar `Game.ts` para esto: como la partida guardada solo se actualiza al empezar cada día, salir a mitad de un día deja el mismo estado que si se recargara la página, y "Continuar partida" retoma desde el inicio de ese día. Sí hubo que limpiar a mano el temporizador y el intervalo del diálogo animado al salir, para que no sigan corriendo de fondo en el menú.
+
+---
+
+Mike sumó una tanda grande de arte nuevo: dos fondos (uno nuevo para el menú, otro para la pantalla de derrota), 4 cuadros de una moneda girando, y "la Jefa" — un personaje nuevo que va a explicar las reglas entre días — con 5 variantes de la pose "explicando" (más otras de enojo/susto/decepción que quedan guardadas para más adelante). El protagonista y los documentos (pasaporte, promesa, volante especial) también se subieron pero se dejaron sin integrar todavía.
+
+Como el fondo nuevo del menú (`fondoInicio2.png`) no trae el título ni los botones dibujados —a diferencia del arte de Iralys—, el menú pasó a usar botones HTML reales encima de la imagen en vez de los hotspots invisibles medidos a píxel. Se integró también: la moneda girando (recortada y reducida, ciclo de ida y vuelta con `setInterval` para que no se vea el salto entre el último cuadro y el primero), y la pantalla de resultado del día rediseñada con el fondo de la oficina desenfocado y la Jefa encima (una de las 5 variantes, al azar); para esto se generalizó `typeDialogue()` (antes fija a la burbuja del visitante) para que reciba a qué elemento apuntar.
+
+Jugándolo aparecieron varios bugs y ajustes, todos probados en el navegador antes de darlos por buenos:
+
+- **Bug real, no solo estético**: `#final-screen` tenía `display: flex` puesto directo por ID, que le ganaba en especificidad a la clase `.hidden` — la pantalla final nunca se ocultaba de verdad, así que su mensaje (vacío la mayoría del tiempo) y su botón "Volver al menú" quedaban flotando debajo de cualquier pantalla, incluido el menú principal. Se confirmó con el navegador antes de tocar nada. Se corrigió agregando `#final-screen.hidden { display: none }`, que sí le gana en especificidad.
+- La pantalla de derrota se rediseñó: la imagen ahora vive en su propio cuadro (`#final-scene`) con el mismo `aspect-ratio` que el arte, así se ve completa sin recortar; el texto se movió abajo (antes se superponía a la imagen) y ahora también se "habla" con `typeDialogue()`, igual que el resto de los diálogos.
+- La moneda "no se veía nunca": el motivo real era que vivía adentro de `#money-counter`, y cada vez que `renderVisitor()` actualizaba el texto del dinero (`textContent = ...`) borraba a la moneda con él. Se sacó a un widget aparte (`#coin-widget`, moneda arriba, dinero abajo), separado de la barra del HUD.
+- La Jefa se agrandó y sus 5 imágenes se reprocesaron recortadas a su contenido real (antes tenían margen transparente disparejo entre variantes), para que la base coincida exacto con la base del fondo desenfocado.
+- La pantalla de juego se agrandó (`#game-screen` y `#character-scene` ahora comparten una variable CSS, `--game-max-width`, subida de 560/640px a 760px) para dejar lugar al pasaporte que se va a montar sobre el escritorio. El widget de la moneda, que antes quedaba pegado al borde de la ventana en pantallas anchas, ahora se calcula pegado al borde de esa misma columna.
+- Se conversó si convenía agregar una opción de tamaño de pantalla configurable (como en juegos clásicos) — se decidió no hacerlo todavía: el layout ya es por porcentaje/`aspect-ratio`, así que agregarlo después sale barato: mejor subir el tamaño fijo primero y ver cómo queda con el resto del arte puesto.
+
+---
+
+Con la escena ya más grande, se rehizo el arranque de una partida nueva. Antes el nombre del inspector se pedía en un campo suelto del menú; ahora "Nueva partida" lleva primero a una pantalla propia (`#name-entry-screen`, con su propio formulario) y, al confirmar el nombre, a una pantalla de bienvenida personalizada (`#story-screen`) que usa el arte del protagonista (`protaFeliz.png`) y "habla" con `typeDialogue()` igual que el resto de los diálogos, saludando al jugador por su nombre antes de entrar al día 1. "Continuar partida" sigue saltándose todo esto, como ya hacía con la intro vieja.
+
+---
+
+Empezó la parte más larga de esta tanda: reemplazar la barra de texto que hacía de pasaporte (Nombre/Región/Especie declarada/Sello en texto plano, arriba de la pantalla) por el pasaporte real que Mike dibujó — cerrado y abierto, más los 4 sellos de autenticidad (dorado, rojo, negro, plateado; los de aceptado/rechazado quedaron con un placeholder de texto, todavía sin arte). Se armó `#passport-object` dentro de `#character-scene`, apoyado sobre el escritorio, con dos estados (`.cerrado`/`.abierto`) que cambian de imagen, tamaño y aspect-ratio, y el sello correcto elegido por clase a partir de `obtainStamp()` (con el cuidado de que el dato dice `"plateado"` pero el archivo se llama `selloPlata.png`, no son el mismo string). El texto del pasaporte (nombre/región/especie) se pintó en la hoja izquierda del pasaporte abierto, en el marco que el arte ya traía pensado para eso; la regla de ocultar la especie declarada hasta el día 4 no se tocó, solo se movió de lugar.
+
+De ahí en más, cada vez que Mike lo probaba en el navegador salía un pedido de ajuste, y cada uno cambió el mecanismo un poco más que el anterior — vale la pena dejarlos todos anotados porque el resultado final es bastante distinto de la primera versión:
+
+1. **Primera versión**: el pasaporte se deslizaba junto con el personaje (mismo mecanismo de `left`, sincronizado), cerrado, y se abría solo con un pequeño delay al llegar.
+2. **Se separó de la entrada del personaje**: no daba la sensación de "entrega" si aparecía deslizándose al mismo tiempo que el personaje. Se cambió a que el personaje llegue solo y termine de asentarse (ya con la animación idle arriba/abajo) antes de que el pasaporte aparezca — con una pausa a propósito en el medio para que se sienta como que lo entrega, no que lo trae consigo.
+3. **Apertura por click, no automática**: a propuesta de Mike, se evaluó si convenía que el pasaporte no se abra solo, y que el jugador tenga que clickearlo — encaja con el espíritu de "inspeccionar" del género (como Papers, Please) y es más simple de implementar que un timer. Se sumó también el gateo real: Aceptar/Rechazar quedan deshabilitados hasta que el pasaporte esté abierto, así que ya no se puede decidir a ciegas sin leerlo.
+4. **La devolución no desaparecía de verdad**: al principio, al decidir, el pasaporte solo se achicaba y quedaba quieto en un punto fijo — visible, pequeño, pegado ahí — en vez de desaparecer. Se corrigió ocultándolo del todo (`display: none`) mientras no está en tránsito.
+5. **La animación final, en arco**: el pedido terminó de definirse como que el personaje "lanza" el pasaporte desde su base, a través de la ventanilla, y cae con rebote sobre el escritorio — y exactamente lo mismo al revés al decidir. Esto ya no se podía resolver con un simple `transition` de CSS (hace falta una trayectoria curva, no en línea recta), así que se escribió a mano una curva de Bézier cuadrática en JS (`animatePassportAlongArc()`), con el tamaño del pasaporte interpolado en el mismo recorrido (chico en tránsito, más grande al llegar). El rebote al aterrizar se logró con una curva `cubic-bezier` (igual a las que usa CSS en `animation-timing-function`) evaluada a mano con el método de Newton-Raphson, porque hacía falta el valor exacto en cada cuadro para mover el elemento, no solo una transición pasiva.
+6. **Ajustes de sensación, ya sobre el arco terminado**: el rebote se suavizó (los valores de `cubic-bezier` que Mike había propuesto daban un golpe muy brusco), el arco se hizo más alto (subiendo el punto de control bien por encima de la escena), y se corrigió que se lo siguiera viendo por encima del escritorio y la ventanilla durante el vuelo — para esto, `animatePassportAlongArc()` calcula en cada cuadro si el pasaporte debe pasar a un `z-index` más bajo que la ventanilla/el escritorio (dando la sensación de que cruza detrás), con una señal distinta según la dirección: tiempo transcurrido para la devolución, y "¿ya pasó el punto más alto del arco?" para la entrega (un umbral de tiempo fijo no alcanzaba, porque el arco es asimétrico).
+
+Con todo el mecanismo ya estable, se hizo una revisión completa del código agregado contra `docs/convenciones.md` — se encontraron y corrigieron dos cosas chicas: dos funciones nuevas (`animatePassportAlongArc`, `createCubicBezierEasing`) habían quedado con nombre en español, rompiendo el único patrón 100% consistente de todo `main.ts` (nombres de función siempre en inglés); y un comentario de `style.css` sobre `#passport-object` todavía citaba una constante (`PASSPORT_DELIVERY_*`) eliminada en la reescritura del arco. Se corrigieron ambas. El resto del código nuevo ya cumplía la convención sin excepciones — con la salvedad, ya existente en el resto del proyecto, de que `X | null` se usa en todos lados porque es la única forma de expresar "esto puede no existir" con el chequeo estricto de nulos de TypeScript activado, no un modelado del dominio con tipos unión (eso sigue resuelto con herencia real, `Character`/`Human`/`Yokai`).
+
+---
+
+2026-08-14 (Iralys, rama `actualIralys`):
+
+Sesión centrada en la pantalla de inicio, con varias correcciones e ideas propuestas por Iralys.
+
+Iralys se encargó de rediseñar por completo la pantalla de inicio, tomando como base la estructura que ya tenía el juego (mismo sistema de `changeState()`, misma imagen de fondo con botones reales encima) pero corrigiendo scroll donde no debería. Iralys ajustó el CSS para que la imagen se vea entera sin recortes, sin activar scroll en ningún dispositivo (PC, tablet o portátil), y para que el panel de historial quede acomodado debajo del personaje sin invadir el resto de la escena.
+
+Dos ideas propuestas por Iralys, todavía sin implementar:
+
+- Agregar un pequeño tutorial visual sobre la barra de tiempo. Como la mecánica es nueva para cualquiera que juegue por primera vez, la idea es dejar claro qué significa que la barra se achique y qué pasa si llega a cero, en vez de que el jugador lo descubra recién perdiendo por primera vez sin entender bien por qué.
+- Agrandar el pasaporte un poco más de lo que está ahora, y en vez de que los datos mostrados sean siempre consistentes con la realidad del visitante, mezclar información simulada — algunos datos correctos y otros deliberadamente falsos o contradictorios entre sí — para que inspeccionar el pasaporte se sienta más parecido a un desafío real de detective y menos a un simple trámite de "leer y decidir". Queda anotada para implementarse más adelante, sin tocar todavía la lógica de `Rule.ts` ni `Game.ts`.
+
+También subió `Fondopersonaje.png`, una imagen de referencia (no un asset para integrar directo) de cómo podría verse toda la pantalla de juego rediseñada — HUD con iconos, sidebar, pasaporte abierto con texto visible. Mike ya la tiene y la va a usar como guía para trabajar la jugabilidad, no hace falta traerla al repo de nuevo.
+
+Se revisó su rama (`actualIralys`, esta vez basada en nuestro propio `03bb71b`, no en una arquitectura rival) y se trajo a `objetosMike` lo que ya estaba listo para usar sin conflictos: el fondo nuevo del menú (`backgroundEnd.png`, con el título ya dibujado adentro, reemplaza a `fondoInicio2.png`) y la tipografía que eligió (Jost para el cuerpo, Marcellus para títulos) — pero autoalojada en `public/fonts/` en vez de por Google Fonts, para que el juego siga sin depender de internet. Su rama también tenía otra fuente pixel-art (Press Start 2P/Pixelify Sans) pensada solo para el placeholder de texto del sello de aceptado/rechazado — como ese placeholder ya se había reemplazado por el arte real de los sellos (`selloAceptado.png`/`selloRechazado.png`) del lado de Mike, esa fuente no se trajo, y el sello real quedó como estaba, sin tocar.
+
+*(Nota: la elección de Jost/Marcellus de este párrafo se revirtió más abajo — quedó documentado igual porque fue la decisión real de ese momento, con el motivo por el que después cambió.)*
+
+---
+
+2026-08-15 (parte 1) — pasaporte sobre la mesa y sellos reales:
+
+Mike subió arte nuevo: 3 variantes de "pasaporte apoyado sobre la mesa" (`pasaporte1/2/3.png`) y el arte real de los sellos de aceptado/rechazado (`selloAceptado.png`/`selloRechazado.png`, hasta ahora un placeholder de texto con borde). Se integraron:
+
+- Al aterrizar la entrega (cuando el arco termina de caer), el pasaporte cambia de la imagen "en tránsito" (`pasaporte.png`) a una de las 3 nuevas, elegida al azar, dando la sensación de que quedó posado sobre el escritorio. La devolución no usa estas variantes: antes de arrancar el arco de vuelta se sacan de nuevo, así que siempre se devuelve mostrando `pasaporte.png`, igual que al principio.
+- `#decision-stamp` dejó de ser texto con borde: ahora es el arte real, sin la rotación que tenía el placeholder (el arte ya viene inclinado de por sí).
+
+Ajustes posteriores, todos pedidos por Mike jugándolo:
+
+- Se le sacó el rebote al arco: la curva `cubic-bezier` con overshoot se cambió por una de desaceleración simple, sin "pasarse" al final.
+- El pasaporte abierto quedó más grande, más abajo, y más centrado (antes compartía el `left` del cerrado; ahora tiene el suyo propio, dejando lugar a la derecha para futuros elementos), con una inclinación tipo púlpito de conferencias (`perspective` + `rotateX`, con el "gozne" en la base).
+- La imagen de "sobre la mesa" también se agrandó y se bajó un poco (con el punto de llegada del arco, `PASSPORT_ARC_DESK`, sincronizado al mismo valor para que no haya salto al aterrizar).
+- **Bug real**: la función del arco (`animatePassportAlongArc`) apaga la transición CSS del pasaporte mientras anima (`transition: none`) pero nunca la volvía a prender — así que, desde la primera entrega en adelante, abrir/cerrar el pasaporte con el click quedaba "cortado" en vez de animarse suave. Se corrigió reactivando la transición al terminar cada arco (tanto en la entrega como en la devolución).
+
+---
+
+2026-08-15 (parte 2) — la tipografía pixel-art, esta vez sí definitiva:
+
+Mike pidió traer de nuevo la rama de Iralys para revisar cambios. En la rama en sí (`actualIralys`/`objetosIralys`, que además consolidó y renombró un poco) no había nada nuevo — pero apareció algo más relevante: **`origin/objetosMike` (la rama remota propia) tenía un commit sin bajar** (`e84ea1e`), donde Iralys ya había empujado directo ahí la tipografía pixel-art completa (Press Start 2P para títulos/acentos cortos, Pixelify Sans para todo el texto funcional — párrafos, botones, tablas). Esto reemplaza la elección de Jost/Marcellus de la sesión anterior. Se aplicó tal cual la pensó Iralys, pero alojada localmente igual que antes (`public/fonts/`, no por Google Fonts), incluidos los ajustes de tamaño (`clamp()`) que ella ya había afinado para que la fuente nueva (de métrica distinta) no quedara apretada en subtítulos, tabla de historial, botones de decisión, etc.
+
+---
+
+2026-08-15 (parte 3) — el menú de Iralys, unificado y adaptado a cualquier pantalla:
+
+Con las fuentes resueltas, tocaba traer el resto del menú nuevo de Iralys (fondo `backgroundEnd.png`, botones con blur, barra lateral). Mike lo probó parándose en ambas ramas (`git checkout` a `actualIralys` y de vuelta) y notó que en la rama de Iralys el menú "se veía desconfigurado".
+
+**El diagnóstico**: su CSS pone `#menu-stage` a pantalla completa (`100vw`/`100vh`) y usa `object-fit: contain` en la imagen para no recortarla — pero los botones y la barra lateral se posicionan como porcentaje de esa caja de PANTALLA COMPLETA, no del espacio real que ocupa la imagen dentro de ella. En cualquier proporción de pantalla distinta a la de la imagen (1536×1024), la imagen queda más chica que el contenedor (aparecen franjas vacías) y los botones se calculan sobre un área más grande que la real, saliéndose del fondo. Probablemente coincidía en la laptop de Iralys por casualidad de resolución, no por diseño.
+
+**La solución**: en vez de que el contenedor sea "pantalla completa a lo bruto", mantiene la proporción real de la imagen (`aspect-ratio: 1536/1024`) y se ajusta al máximo posible sin pasarse de la ventana — los botones y la barra, posicionados como porcentaje de ESE contenedor (no de la ventana), quedan siempre alineados con la imagen real, sea cual sea la pantalla. Mike además pidió que la imagen no ocupe el 100% de la pantalla (se sentía "muy bestia" en su monitor de 27", comparado con la laptop de 14" de Iralys) — se limitó a un máximo de 94% del ancho / 90% del alto, una diferencia chica que casi no se nota en pantallas ya ajustadas pero da un margen visible en monitores grandes. De paso se trajo también la tabla de historial rediseñada (compacta, solo 3 filas, sin scroll), parte de la misma barra lateral.
+
+**Bug real, mismo patrón que ya había pasado con `#final-screen`**: al armar el nuevo `#menu-screen` como overlay de pantalla completa, se le puso `display: flex` directo por ID para centrar el contenido — eso le gana en especificidad a `.hidden` (`display: none`), así que `changeState()` dejaba de poder ocultar el menú de verdad: quedaba fijo tapando todo, "Nueva partida" no parecía hacer nada y "Continuar" mostraba el juego superpuesto al menú. Se corrigió sacando el `display` del selector por ID (otra vez) y centrando `#menu-layout` con `position: absolute` + `transform` en su lugar, que no depende de que el padre sea flex. Quedó un comentario de advertencia en el CSS para que este error puntual no se repita una tercera vez.

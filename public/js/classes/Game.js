@@ -9,15 +9,15 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_todayProblematicSlots, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_suspiciousPhrases, _Game_startDay, _Game_generateVisitor, _Game_pickPhrase;
-import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory } from "../Storage.js";
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_todayProblematicSlots, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_suspiciousPhrases, _Game_playerName, _Game_startDay, _Game_generateVisitor, _Game_pickPhrase;
+import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, addCredits } from "../Storage.js";
 import { Passport } from "./Passport.js";
 import { Human } from "./Human.js";
 import { Yokai } from "./Yokai.js";
 import { Rule } from "./Rule.js";
 import { Day } from "./Day.js";
 export class Game {
-    constructor() {
+    constructor(playerName = "Jugador") {
         _Game_instances.add(this);
         _Game_dayNumber.set(this, void 0);
         _Game_errors.set(this, void 0);
@@ -34,6 +34,8 @@ export class Game {
         _Game_stamps.set(this, void 0);
         _Game_species.set(this, void 0);
         _Game_suspiciousPhrases.set(this, void 0);
+        _Game_playerName.set(this, void 0);
+        __classPrivateFieldSet(this, _Game_playerName, playerName.trim() !== "" ? playerName : "Jugador", "f");
         __classPrivateFieldSet(this, _Game_dayNumber, 1, "f");
         __classPrivateFieldSet(this, _Game_errors, 0, "f");
         __classPrivateFieldSet(this, _Game_money, 10, "f");
@@ -95,14 +97,16 @@ export class Game {
         }
         __classPrivateFieldSet(this, _Game_visitorsSeenToday, __classPrivateFieldGet(this, _Game_visitorsSeenToday, "f") + 1, "f");
         if (this.isLost()) {
-            saveToHistory({ day: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "derrota" });
+            saveToHistory({ day: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "derrota", name: __classPrivateFieldGet(this, _Game_playerName, "f") });
+            addCredits(__classPrivateFieldGet(this, _Game_playerName, "f"), __classPrivateFieldGet(this, _Game_money, "f"));
             deleteCurrentGame();
             return;
         }
         if (__classPrivateFieldGet(this, _Game_visitorsSeenToday, "f") >= currentDay.getVisitorGoal()) {
             __classPrivateFieldSet(this, _Game_dayNumber, __classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, "f");
             if (this.isWon()) {
-                saveToHistory({ day: __classPrivateFieldGet(this, _Game_totalDays, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "victoria" });
+                saveToHistory({ day: __classPrivateFieldGet(this, _Game_totalDays, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "victoria", name: __classPrivateFieldGet(this, _Game_playerName, "f") });
+                addCredits(__classPrivateFieldGet(this, _Game_playerName, "f"), __classPrivateFieldGet(this, _Game_money, "f"));
                 deleteCurrentGame();
                 return;
             }
@@ -132,6 +136,9 @@ export class Game {
     get currentDay() {
         return __classPrivateFieldGet(this, _Game_days, "f")[Math.min(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_totalDays, "f")) - 1];
     }
+    get playerName() {
+        return __classPrivateFieldGet(this, _Game_playerName, "f");
+    }
     loadProgress() {
         const saved = loadCurrentGame();
         if (saved === null) {
@@ -144,7 +151,7 @@ export class Game {
         return true;
     }
 }
-_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_todayProblematicSlots = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_suspiciousPhrases = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
+_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_todayProblematicSlots = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_suspiciousPhrases = new WeakMap(), _Game_playerName = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
     __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
     const goal = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1].getVisitorGoal();
     const problematicCount = Math.min(__classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, goal - 1);

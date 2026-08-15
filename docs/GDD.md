@@ -20,6 +20,7 @@ Tono: humor.
 - Al llegar a 4 errores acumulados se pierde la partida, sin importar el día.
 - Cada visitante tiene un tiempo límite para decidir (baja con cada día); si se acaba, cuenta como error automático. Tras 2 errores seguidos se activa un "modo alerta" temporal: el tiempo límite se reduce a la mitad hasta el próximo acierto.
 - Frase aleatoria al llegar cada visitante (`public/data/frases.json`); a veces, con más frecuencia si el visitante es problemático, dice una frase con una pista sutil (`public/data/frases_sospechosas.json`) — no es 100% confiable, un visitante honesto también puede decir una por casualidad.
+- El jugador puede poner un nombre de inspector (persistido, no hace falta escribirlo en cada partida). El historial guarda con qué nombre se jugó cada partida, y el dinero final de cada partida (gane o pierda) se suma a un total acumulado por nombre, visible en la pantalla de Créditos.
 
 ----------------------------------------
 
@@ -32,10 +33,15 @@ Tono: humor.
 
 ***Pantallas:***
 
-- **Menú principal**: "Iniciar nuevo juego" / "Continuar partida" (solo visible si hay una partida sin terminar guardada) + tabla estilo arcade con los últimos 3 resultados guardados.
-- **Pantalla de juego**: día actual, visitante actual (pasaporte + rostro), botones aceptar/rechazar.
-- **Pantalla de resultado del día**: resumen de aciertos/errores del día, texto de introducción del día siguiente.
-- **Pantalla final**: victoria o derrota, según el resultado.
+- **Menú principal** (arte de Mike, `fondoInicio2.png`): imagen de fondo con el título y los 5 botones reales (Nueva partida, Continuar —deshabilitado si no hay partida guardada—, Opciones, Créditos y Salir) superpuestos. Al costado (o abajo en pantallas chicas), una barra con el campo para poner el nombre del inspector y la tabla con los últimos 3 resultados guardados.
+- **Pantalla de opciones**: desactivar/activar el temporizador.
+- **Pantalla de créditos**: ranking del dinero total ganado por cada nombre de inspector a lo largo de todas sus partidas (independiente del dinero de la partida actual).
+- **Pantalla de salir**: mensaje de despedida, con vuelta al menú.
+- **Pantalla de juego**: día actual, visitante actual (pasaporte + rostro), botones aceptar/rechazar, botón para volver al menú en cualquier momento. Al costado, un widget con una moneda animada (gira sola) y el dinero actual.
+- **Pantalla de resultado del día**: la Jefa (una de 5 variantes, al azar) explica las reglas del día hablando en el mismo estilo de subtítulo que los visitantes, con el fondo de la oficina desenfocado detrás.
+- **Pantalla final**: victoria o derrota. En derrota se ve el arte completo del apocalipsis Yokai, con el mensaje final hablado debajo (no hay arte propio para victoria todavía).
+
+Desde la historia, el juego y el resultado del día hay un botón para volver al menú sin terminar la partida — como la partida guardada solo se actualiza al empezar cada día, esto deja el mismo estado que recargar la página a mitad de un día: "Continuar partida" retoma desde el inicio de ese día.
 
 Sin tutorial. Sin pantalla de historial completo (solo el top 3 en el menú).
 
@@ -77,7 +83,7 @@ Especies declaradas (`public/data/species.json`): incluye las 3 especies de Yoka
 
 ***HUD***
 
-Día actual, contador de errores (máx. 4, se pone en rojo con 3 o más), barra de tiempo por visitante (se acorta y cambia de color en "modo alerta"), racha de aciertos, contador de dinero (visual).
+Día actual, contador de errores (máx. 4, se pone en rojo con 3 o más), barra de tiempo por visitante (se acorta y cambia de color en "modo alerta"), racha de aciertos, botón para volver al menú. El dinero (visual) vive aparte, en el widget de la moneda animada al costado de la pantalla.
 
 ----------------------------------------
 

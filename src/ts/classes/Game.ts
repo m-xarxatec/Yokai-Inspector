@@ -1,4 +1,4 @@
-import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, getHistory } from "../Storage.js";
+import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, getHistory, addCredits } from "../Storage.js";
 import { Passport } from "./Passport.js";
 import { Character } from "./Character.js";
 import { Human } from "./Human.js";
@@ -24,8 +24,10 @@ export class Game{
     #stamps: any[];
     #species: string[];
     #suspiciousPhrases: string[];
+    #playerName: string;
 
-    constructor(){
+    constructor(playerName: string = "Jugador"){
+        this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
         this.#dayNumber = 1;
         this.#errors = 0;
         this.#money = 10;
@@ -217,7 +219,8 @@ export class Game{
     this.#visitorsSeenToday += 1;
 
     if (this.isLost()) {
-        saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota" });
+        saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota", name: this.#playerName });
+        addCredits(this.#playerName, this.#money);
         deleteCurrentGame();
         return;
     }
@@ -225,7 +228,8 @@ export class Game{
     if (this.#visitorsSeenToday >= currentDay.getVisitorGoal()) {
         this.#dayNumber += 1;
         if (this.isWon()) {
-        saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria" });
+        saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName });
+        addCredits(this.#playerName, this.#money);
         deleteCurrentGame();
         return;
         }
@@ -256,8 +260,11 @@ export class Game{
     get currentVisitor(): Character | null {
          return this.#currentVisitor; 
         }
-    get currentDay(): Day { 
-        return this.#days[Math.min(this.#dayNumber, this.#totalDays) - 1]; 
+    get currentDay(): Day {
+        return this.#days[Math.min(this.#dayNumber, this.#totalDays) - 1];
+    }
+    get playerName(): string {
+        return this.#playerName;
     }
 
     loadProgress(): boolean {
