@@ -8,7 +8,8 @@ let currentState = "menu";
 let rachasPorDia = [];
 // la duracion tiene que coincidir con la transicion de "left" de #character-portrait en style.css
 const PORTRAIT_ANIM_MS = 450;
-const PORTRAIT_REST_LEFT = "34.8%";
+// tiene que coincidir con el "left" de #character-portrait en style.css
+const PORTRAIT_REST_LEFT = "49%";
 // duracion de la transicion "en el sitio" (abrir/cerrar sobre el escritorio,
 // sin moverse) - tiene que coincidir con la transicion de top/height de
 // #passport-object en style.css
@@ -19,9 +20,29 @@ const PASSPORT_ARC_MS = 700;
 // en cada punta): sale de la base del personaje, chico, pasa por un punto alto
 // (a la altura de la ventanilla, dandole la curva) y cae sobre el escritorio, un
 // poco mas grande. La vuelta (al decidir) es la misma curva al reves.
-const PASSPORT_ARC_BASE = { left: 50, top: 88, height: 3 };
+// BASE.left = centro horizontal real de #character-portrait (left + width/2
+// = 49+18/2 = 58%), no su rostro/centro - para que se vea salir literalmente
+// de su base, no flotando en la mitad del cuerpo.
+// BASE.top: tiene que caer DENTRO de la franja que tapa el escritorio
+// (#scene-desktop va de 53.68% a 86.39% de alto, z-index 4, delante del
+// personaje) para que la devolucion se vea "esconderse detras del
+// escritorio", como pidio Mike - ni tan arriba que quede a la vista (se
+// probo 52%, quedaba a la altura del pecho, no de la base) ni tan abajo que
+// se pase del borde inferior del escritorio hacia la barra de dialogo (se
+// probo 89%, el borde geometrico de la caja del personaje, y se veia
+// "hundirse" de mas, saliendose por debajo del escritorio). 71% es la base
+// REAL del dibujo del personaje dentro de su caja (donde termina el
+// contenido visible de rostro-N.png con "contain", antes del margen vacio
+// que deja la caja mas angosta - ver el mismo calculo en el comentario de
+// .part-horns en style.css), y ademas cae comodo en el medio de la franja
+// del escritorio.
+// DESK.top re-ajustado cuando DesktopNew.png se achico - el escritorio real
+// ahora ocupa solo hasta ~86% de alto (antes desktop.png llegaba al 100%),
+// asi que el pasaporte tiene que aterrizar mas arriba para no pisar la barra
+// de dialogo.
+const PASSPORT_ARC_BASE = { left: 58, top: 71, height: 3 };
 const PASSPORT_ARC_CONTROL = { left: 55, top: -35 };
-const PASSPORT_ARC_DESK = { left: 60, top: 83, height: 16 };
+const PASSPORT_ARC_DESK = { left: 60, top: 68, height: 16 };
 // variantes de "apoyado sobre la mesa" (pasaporte1/2/3.png) que reemplazan a
 // pasaporte.png una vez que la entrega termina de caer - ver el final de
 // renderVisitor(). La devolucion no las usa: antes de arrancar el arco de
@@ -278,13 +299,22 @@ function resetElementOffscreen(elemento) {
     el.style.transition = "";
     el.style.left = elemento.restLeft;
 }
-function slideOutSlidingElements(direccion, alTerminar) {
+// los sellos ya no son <button>: son <div role="button"> arrastrables (ver
+// setupStampDrag() mas abajo), asi que "disabled" no existe como propiedad -
+// se simula con aria-disabled + pointer-events:none (ver .stamp-drag[aria-disabled]
+// en style.css), un solo lugar para los 4 puntos del codigo que antes tocaban
+// acceptBtn.disabled/rejectBtn.disabled directo.
+function setDecisionStampsEnabled(enabled) {
     const acceptBtn = document.querySelector("#accept-btn");
     const rejectBtn = document.querySelector("#reject-btn");
-    if (acceptBtn !== null)
-        acceptBtn.disabled = true;
-    if (rejectBtn !== null)
-        rejectBtn.disabled = true;
+    [acceptBtn, rejectBtn].forEach(el => {
+        if (el !== null) {
+            el.setAttribute("aria-disabled", enabled ? "false" : "true");
+        }
+    });
+}
+function slideOutSlidingElements(direccion, alTerminar) {
+    setDecisionStampsEnabled(false);
     SLIDING_ELEMENTS.forEach(({ selector }) => {
         const el = document.querySelector(selector);
         if (el === null) {
@@ -411,6 +441,75 @@ function clearDayTimer() {
         clearTimeout(dayTimeoutId);
         dayTimeoutId = null;
     }
+    stopDayClock();
+}
+// --- reloj de arena del dia (reemplaza la barra de tiempo por visitante de antes) ---
+//
+// 4 etapas (full/medio/casi/vacio) repartidas en partes iguales del tiempo del
+// dia, cada una alternando entre sus 2 cuadros (mismo criterio que
+// COIN_SPIN_FRAMES) para dar sensacion de movimiento; al quedar <=3s (o
+// vencer) pasa a "roto". Corre en un intervalo aparte (no un solo setTimeout
+// como el dia): a diferencia de la barra vieja (CSS puro, animationDuration)
+// esto necesita re-evaluar la etapa/cuadro/parpadeo a cada rato.
+const CLOCK_FRAME_MS = 450;
+const CLOCK_TICK_MS = 200;
+const CLOCK_BROKEN_THRESHOLD_MS = 3000;
+let dayStartedAt = null;
+let clockIntervalId = null;
+function stopDayClock() {
+    if (clockIntervalId !== null) {
+        window.clearInterval(clockIntervalId);
+        clockIntervalId = null;
+    }
+    dayStartedAt = null;
+}
+function startDayClock() {
+    stopDayClock();
+    dayStartedAt = performance.now();
+    updateDayClock();
+    clockIntervalId = window.setInterval(updateDayClock, CLOCK_TICK_MS);
+}
+function updateDayClock() {
+    const clockEl = document.querySelector("#day-clock");
+    if (clockEl === null || dayStartedAt === null) {
+        return;
+    }
+    const transcurrido = performance.now() - dayStartedAt;
+    const restante = Math.max(DAY_DURATION_MS - transcurrido, 0);
+    const cuartoDelDia = DAY_DURATION_MS / 4;
+    const cuadro = Math.floor(transcurrido / CLOCK_FRAME_MS) % 2 === 0 ? "frame-a" : "frame-b";
+    let etapa;
+    if (restante <= CLOCK_BROKEN_THRESHOLD_MS) {
+        etapa = "roto";
+    }
+    else if (restante <= cuartoDelDia) {
+        etapa = "stage-vacio";
+    }
+    else if (restante <= cuartoDelDia * 2) {
+        etapa = "stage-casi";
+    }
+    else if (restante <= cuartoDelDia * 3) {
+        etapa = "stage-medio";
+    }
+    else {
+        etapa = "stage-full";
+    }
+    clockEl.classList.remove("stage-full", "stage-medio", "stage-casi", "stage-vacio", "roto", "frame-a", "frame-b", "pulso-leve", "pulso-fuerte");
+    clockEl.classList.add(etapa);
+    if (etapa !== "roto") {
+        clockEl.classList.add(cuadro);
+    }
+    // parpadeo leve desde la segunda mitad de "casi" en adelante, fuerte recien
+    // con el reloj roto y una decision todavia en curso (ver resolviendoDecision) -
+    // efecto chico a proposito, no debe interrumpir la pantalla
+    if (etapa === "roto") {
+        if (resolviendoDecision) {
+            clockEl.classList.add("pulso-fuerte");
+        }
+    }
+    else if (etapa === "stage-vacio" || (etapa === "stage-casi" && restante <= cuartoDelDia * 2.5)) {
+        clockEl.classList.add("pulso-leve");
+    }
 }
 // arranca una sola vez por dia (no por visitante, ver los dos lugares donde se
 // llama: el listener de #continue-day-btn y el de #continue-btn) - mientras
@@ -419,26 +518,20 @@ function clearDayTimer() {
 // haya o no un visitante a medio decidir en pantalla.
 function startDayTimer() {
     clearDayTimer();
-    const barraTrackEl = document.querySelector("#time-bar-track");
+    const clockEl = document.querySelector("#day-clock");
     if (!timerEnabled) {
-        if (barraTrackEl !== null) {
-            barraTrackEl.classList.add("hidden");
+        if (clockEl !== null) {
+            clockEl.classList.add("hidden");
         }
         return;
     }
-    if (barraTrackEl !== null) {
-        barraTrackEl.classList.remove("hidden");
+    if (clockEl !== null) {
+        clockEl.classList.remove("hidden");
     }
     if (game === null) {
         return;
     }
-    const barraEl = document.querySelector("#time-bar-fill");
-    if (barraEl !== null) {
-        barraEl.classList.remove("corriendo");
-        void barraEl.offsetWidth; // fuerza el reflow para poder reiniciar la animacion desde cero
-        barraEl.style.animationDuration = DAY_DURATION_MS + "ms";
-        barraEl.classList.add("corriendo");
-    }
+    startDayClock();
     dayTimeoutId = window.setTimeout(() => {
         if (game === null) {
             return;
@@ -459,12 +552,7 @@ function renderVisitor() {
     resetElementOffscreen(CHARACTER_ELEMENT);
     // se mantienen deshabilitados hasta que el jugador abra el pasaporte (ver el
     // listener de click de #passport-object) - no se puede decidir a ciegas
-    const acceptBtn = document.querySelector("#accept-btn");
-    const rejectBtn = document.querySelector("#reject-btn");
-    if (acceptBtn !== null)
-        acceptBtn.disabled = true;
-    if (rejectBtn !== null)
-        rejectBtn.disabled = true;
+    setDecisionStampsEnabled(false);
     const visitante = game.currentVisitor;
     const pasaporte = visitante.obtainPassport;
     const passportEl = document.querySelector("#passport-object");
@@ -553,14 +641,17 @@ function renderVisitor() {
             hornsEl.style.display = "none";
         }
     }
+    // "DÍA"/"ERRORES"/"RACHA" ya estan dibujados dentro de fondoPantallaJuegoT.png
+    // (ver style.css #hud) - aca solo se ponen los valores, no el texto completo
     const diaEl = document.querySelector("#day-counter");
     const erroresEl = document.querySelector("#error-counter");
     const dineroEl = document.querySelector("#money-counter");
     const rachaEl = document.querySelector("#streak-counter");
+    const sceneEl = document.querySelector("#character-scene");
     if (diaEl !== null)
-        diaEl.textContent = "Día " + game.dayNumber + " / 7";
+        diaEl.textContent = game.dayNumber + " / 7";
     if (erroresEl !== null) {
-        erroresEl.textContent = "Errores: " + game.errors + " / 4";
+        erroresEl.textContent = game.errors + " / 4";
         if (game.errors >= 3) {
             erroresEl.classList.add("danger");
         }
@@ -568,10 +659,22 @@ function renderVisitor() {
             erroresEl.classList.remove("danger");
         }
     }
+    // modo alerta: con 3+ errores, el recuadro solido detras de fondoPantallaJuegoT.png
+    // (ver style.css .alerta) empieza a parpadear en rosa, lo que se lee como todo
+    // el borde de la pantalla en alerta - de momento solo visual, ver docs/ideas.md
+    // para un futuro "modo reducir errores"
+    if (sceneEl !== null) {
+        if (game.errors >= 3) {
+            sceneEl.classList.add("alerta");
+        }
+        else {
+            sceneEl.classList.remove("alerta");
+        }
+    }
     if (dineroEl !== null)
         dineroEl.textContent = "Dinero: " + game.money;
     if (rachaEl !== null)
-        rachaEl.textContent = "Racha: " + racha;
+        rachaEl.textContent = String(racha);
 }
 function afterDecision(diaAntes) {
     if (game === null) {
@@ -608,12 +711,7 @@ function resolveDecision(accept) {
     const diaAntes = game.dayNumber;
     const erroresAntes = game.errors;
     const direccion = accept ? "izquierda" : "derecha";
-    const acceptBtn = document.querySelector("#accept-btn");
-    const rejectBtn = document.querySelector("#reject-btn");
-    if (acceptBtn !== null)
-        acceptBtn.disabled = true;
-    if (rejectBtn !== null)
-        rejectBtn.disabled = true;
+    setDecisionStampsEnabled(false);
     const decisionStampEl = document.querySelector("#decision-stamp");
     if (decisionStampEl !== null) {
         decisionStampEl.className = "mostrar " + (accept ? "aprobado" : "rechazado");
@@ -674,12 +772,101 @@ function resolveDecision(accept) {
         }, PASSPORT_ANIM_MS);
     }, DECISION_STAMP_FLASH_MS);
 }
-document.querySelector("#accept-btn")?.addEventListener("click", () => {
-    resolveDecision(true);
-});
-document.querySelector("#reject-btn")?.addEventListener("click", () => {
-    resolveDecision(false);
-});
+// --- sellos: drag and drop real (reemplazan los botones Aceptar/Rechazar) ---
+//
+// 3 imagenes por sello (ver public/img/sellos/): pos1 en reposo sobre el
+// escritorio, pos2 mientras se arrastra, pos3 al acercarse/soltar sobre el
+// pasaporte (esa es la que dispara la decision). Al soltar el mouse en
+// cualquier lado, siempre vuelve solo a pos1 en su posicion inicial - eso lo
+// hace solo la transicion de left/top/height de .stamp-drag en style.css en
+// cuanto se saca la clase .arrastrando (que la apaga durante el arrastre para
+// que siga al mouse sin retraso).
+const STAMP_REST_POSITION = {
+    "reject-btn": { left: 80, top: 78 },
+    "accept-btn": { left: 91, top: 78 },
+};
+// que tan cerca del pasaporte (en px de pantalla, expandiendo su propio
+// rectangulo) cuenta como "acercandolo" - bastante generoso a proposito, el
+// pasaporte es chico y no hace falta puntería quirúrgica
+const STAMP_DROP_MARGIN_PX = 60;
+function esCercaDelPasaporte(clientX, clientY) {
+    const passportEl = document.querySelector("#passport-object");
+    if (passportEl === null || !passportEl.classList.contains("abierto")) {
+        return false;
+    }
+    const rect = passportEl.getBoundingClientRect();
+    return (clientX >= rect.left - STAMP_DROP_MARGIN_PX &&
+        clientX <= rect.right + STAMP_DROP_MARGIN_PX &&
+        clientY >= rect.top - STAMP_DROP_MARGIN_PX &&
+        clientY <= rect.bottom + STAMP_DROP_MARGIN_PX);
+}
+function setupStampDrag(id, accept) {
+    const stampEl = document.querySelector("#" + id);
+    const sceneEl = document.querySelector("#character-scene");
+    const rest = STAMP_REST_POSITION[id];
+    if (stampEl === null || sceneEl === null || rest === undefined) {
+        return;
+    }
+    function volverAlReposo() {
+        if (stampEl === null)
+            return;
+        stampEl.classList.remove("arrastrando", "pos2", "pos3");
+        stampEl.classList.add("pos1");
+        stampEl.style.left = rest.left + "%";
+        stampEl.style.top = rest.top + "%";
+        stampEl.style.height = "";
+    }
+    function mover(clientX, clientY) {
+        if (stampEl === null || sceneEl === null)
+            return;
+        const sceneRect = sceneEl.getBoundingClientRect();
+        const left = ((clientX - sceneRect.left) / sceneRect.width) * 100;
+        const top = ((clientY - sceneRect.top) / sceneRect.height) * 100;
+        stampEl.style.left = Math.min(Math.max(left, 2), 98) + "%";
+        stampEl.style.top = Math.min(Math.max(top, 2), 98) + "%";
+        stampEl.classList.remove("pos2", "pos3");
+        stampEl.classList.add(esCercaDelPasaporte(clientX, clientY) ? "pos3" : "pos2");
+    }
+    stampEl.addEventListener("pointerdown", (evento) => {
+        if (stampEl.getAttribute("aria-disabled") === "true") {
+            return;
+        }
+        stampEl.setPointerCapture(evento.pointerId);
+        stampEl.classList.add("arrastrando");
+        mover(evento.clientX, evento.clientY);
+    });
+    stampEl.addEventListener("pointermove", (evento) => {
+        if (!stampEl.classList.contains("arrastrando")) {
+            return;
+        }
+        mover(evento.clientX, evento.clientY);
+    });
+    stampEl.addEventListener("pointerup", (evento) => {
+        if (!stampEl.classList.contains("arrastrando")) {
+            return;
+        }
+        const soltadoCercaDelPasaporte = esCercaDelPasaporte(evento.clientX, evento.clientY);
+        volverAlReposo();
+        if (soltadoCercaDelPasaporte) {
+            resolveDecision(accept);
+        }
+    });
+    // activar/desactivar aria-disabled ya alcanza para que el mouse no arranque
+    // el arrastre (ver el chequeo al principio de pointerdown), pero el teclado
+    // (Enter/Espacio) no dispara pointerdown - se agrega un atajo directo, sin
+    // arrastre, equivalente al viejo click del <button>
+    stampEl.addEventListener("keydown", (evento) => {
+        if (stampEl.getAttribute("aria-disabled") === "true") {
+            return;
+        }
+        if (evento.key === "Enter" || evento.key === " ") {
+            evento.preventDefault();
+            resolveDecision(accept);
+        }
+    });
+}
+setupStampDrag("reject-btn", false);
+setupStampDrag("accept-btn", true);
 // el pasaporte no se abre solo: el jugador tiene que clickearlo una vez que el
 // personaje ya se lo entrego (clase "entregado", ver renderVisitor()); recien
 // ahi se habilitan aceptar/rechazar - no se puede decidir sin haberlo abierto
@@ -695,12 +882,7 @@ document.querySelector("#passport-object")?.addEventListener("click", () => {
     window.setTimeout(() => {
         passportEl.classList.remove("cerrado");
         passportEl.classList.add("abierto");
-        const acceptBtn = document.querySelector("#accept-btn");
-        const rejectBtn = document.querySelector("#reject-btn");
-        if (acceptBtn !== null)
-            acceptBtn.disabled = false;
-        if (rejectBtn !== null)
-            rejectBtn.disabled = false;
+        setDecisionStampsEnabled(true);
     }, PASSPORT_OPEN_DELAY_MS);
 });
 // --- Day result screen ---

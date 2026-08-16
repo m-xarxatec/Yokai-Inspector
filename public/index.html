@@ -95,26 +95,24 @@
   </section>
 
   <section id="game-screen" class="hidden">
-    <div id="hud">
-      <span id="day-counter">Día: -</span>
-      <span id="error-counter">Errores: -</span>
-      <span id="streak-counter">Racha: 0</span>
-      <button class="exit-to-menu-btn">⏸ Menú</button>
-    </div>
-
-    <!-- separado de la barra del HUD a proposito: antes vivia adentro de #money-counter
-         y renderVisitor() lo borraba cada vez que actualizaba el texto del dinero -->
-    <div id="coin-widget">
-      <div id="coin-spin" class="moneda-1"></div>
-      <span id="money-counter">Dinero: -</span>
-    </div>
-
-    <div id="time-bar-track">
-      <div id="time-bar-fill"></div>
-    </div>
-
+    <!--
+      Todo el juego vive ahora sobre un unico canvas (3670x2446, el mismo que
+      ya usaban general_background/window/desktop) con fondoPantallaJuegoT.png
+      como base - HUD, moneda, reloj de arena y dialogo quedan posicionados
+      encima de el en % (ver style.css), en vez de ser barras HTML aparte con
+      su propio fondo solido. window.png se dio de baja: fondoPantallaJuegoT.png
+      ya trae la escena de la ventanilla dibujada adentro (ver diario.md).
+    -->
     <div id="character-scene">
       <div id="scene-background"></div>
+
+      <div id="hud">
+        <span id="day-counter">-</span>
+        <span id="error-counter">-</span>
+        <span id="streak-counter">0</span>
+        <button class="exit-to-menu-btn">⏸</button>
+      </div>
+
       <div id="character-portrait">
         <div class="part part-face"></div>
         <div class="part part-eyes"></div>
@@ -122,8 +120,21 @@
         <div class="part part-horns"></div>
         <div class="part part-hair"></div>
       </div>
-      <div id="scene-window"></div>
+
+      <div id="scene-sidebar"></div>
+      <div id="scene-dialogue-bar"></div>
       <div id="scene-desktop"></div>
+
+      <!-- separado del HUD a proposito: antes vivia adentro de #money-counter
+           y renderVisitor() lo borraba cada vez que actualizaba el texto del dinero -->
+      <div id="coin-widget">
+        <div id="coin-spin" class="moneda-1"></div>
+        <span id="money-counter">Dinero: -</span>
+      </div>
+
+      <!-- reemplaza la barra de tiempo (#time-bar-track) por el reloj de arena
+           animado - ver startDayClock()/updateDayClock() en main.ts -->
+      <div id="day-clock" class="stage-full frame-a"></div>
 
       <!-- el pasaporte ya NO se desliza junto con el personaje: aparece recien
            cuando el personaje llego y esta con la animacion idle (ver renderVisitor()
@@ -139,15 +150,16 @@
         <div id="decision-stamp"></div>
       </div>
 
-      <!-- ubicados sobre el escritorio, del lado izquierdo (el pasaporte quedo del
-           lado derecho) -->
+      <!-- sellos reales, drag and drop (reemplazan los botones Aceptar/Rechazar) -
+           ver setupStampDrag() en main.ts. Mantienen los ids #accept-btn/#reject-btn
+           para no duplicar toda la logica de habilitado/deshabilitado ya existente. -->
       <div id="decision-buttons">
-        <button id="accept-btn">Aceptar</button>
-        <button id="reject-btn">Rechazar</button>
+        <div id="reject-btn" class="stamp-drag stamp-rojo pos1" role="button" tabindex="0" aria-label="Rechazar" aria-disabled="true"></div>
+        <div id="accept-btn" class="stamp-drag stamp-verde pos1" role="button" tabindex="0" aria-label="Aceptar" aria-disabled="true"></div>
       </div>
-    </div>
 
-    <p id="dialogue-bubble"></p>
+      <p id="dialogue-bubble"></p>
+    </div>
   </section>
 
   <section id="day-result-screen" class="hidden">
