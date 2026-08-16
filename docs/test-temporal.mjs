@@ -46,8 +46,19 @@ function describeVisitor(character) {
   };
 }
 
+// el dia ya no tiene una cantidad fija de visitantes (dura por tiempo, no por
+// conteo - ver Game#endDay()), asi que estos tests simulan "un dia" decidiendo
+// una cantidad grande de visitantes y llamando endDay() a mano, igual que
+// hace main.ts cuando se acaba el temporizador del dia.
+const VISITORS_PER_SIMULATED_DAY = 150;
+
 const expectedRuleCounts = [1, 2, 3, 4, 5, 4, 5];
-const expectedProblematicCounts = [2, 3, 4, 5, 5, 7, 7];
+// antes eran cantidades exactas (el sorteo pre-armaba un array de tamaño fijo);
+// ahora cada visitante se sortea con esta probabilidad de forma independiente
+// (ver Game#generateVisitor()), asi que solo se puede pedir que la PROPORCION
+// observada, sobre una muestra grande, ande cerca del valor esperado.
+const expectedProblematicRatios = [2 / 6, 3 / 6, 4 / 6, 5 / 6, 5 / 6, 7 / 8, 7 / 8];
+const RATIO_TOLERANCE = 0.12;
 
 // ================= TEST 1: partida "perfecta" (siempre acierta) =================
 console.log("\n========== TEST 1: partida perfecta, hasta victoria ==========");
@@ -62,44 +73,37 @@ console.log("visitante generado al cargar:", gameA.currentVisitor ? "SI" : "FALL
 
 const visitorLog = [];
 const dayAudit = [];
-let currentDayTracked = 1;
-let currentDayRuleCount = gameA.currentDay.getActiveRules().length;
-let problematicSeenThisDay = 0;
-let visitorsThisDay = 0;
 
-while (!gameA.isWon() && !gameA.isLost()) {
+for (let dia = 1; dia <= 7 && !gameA.isLost(); dia++) {
   const day = gameA.currentDay;
-  if (day.getNumber() !== currentDayTracked) {
-    dayAudit.push({ day: currentDayTracked, rules: currentDayRuleCount, problematic: problematicSeenThisDay, visitors: visitorsThisDay });
-    currentDayTracked = day.getNumber();
-    currentDayRuleCount = day.getActiveRules().length;
-    problematicSeenThisDay = 0;
-    visitorsThisDay = 0;
+  let problematicosHoy = 0;
+  for (let i = 0; i < VISITORS_PER_SIMULATED_DAY && !gameA.isLost(); i++) {
+    const visitor = gameA.currentVisitor;
+    const violation = day.evaluateCharacter(visitor);
+    const shouldAccept = violation === null;
+    visitorLog.push({ day: dia, ...describeVisitor(visitor), rejected: !shouldAccept });
+    if (!shouldAccept) problematicosHoy++;
+    gameA.decide(shouldAccept);
   }
-  const visitor = gameA.currentVisitor;
-  const violation = day.evaluateCharacter(visitor);
-  const shouldAccept = violation === null;
-
-  visitorLog.push({ day: day.getNumber(), ...describeVisitor(visitor), rejected: !shouldAccept });
-  if (!shouldAccept) problematicSeenThisDay++;
-  visitorsThisDay++;
-
-  gameA.decide(shouldAccept);
+  dayAudit.push({ day: dia, rules: day.getActiveRules().length, problematic: problematicosHoy, visitors: VISITORS_PER_SIMULATED_DAY });
+  if (!gameA.isLost()) {
+    gameA.endDay();
+  }
 }
-dayAudit.push({ day: currentDayTracked, rules: currentDayRuleCount, problematic: problematicSeenThisDay, visitors: visitorsThisDay });
 
 console.log("\nResultado final:", gameA.isWon() ? "VICTORIA" : "DERROTA", "| dinero:", gameA.money, "| errores:", gameA.errors);
 
 console.log("\n--- Muestra de 10 visitantes generados ---");
 visitorLog.slice(0, 10).forEach(v => console.log(JSON.stringify(v)));
 
-console.log("\n--- Auditoria de reglas activas y problematicos por dia ---");
+console.log("\n--- Auditoria de reglas activas y proporcion de problematicos por dia (sobre", VISITORS_PER_SIMULATED_DAY, "visitantes simulados) ---");
 dayAudit.forEach((d, i) => {
   const rulesExpected = expectedRuleCounts[i];
-  const probExpected = expectedProblematicCounts[i];
+  const ratioExpected = expectedProblematicRatios[i];
+  const ratioObservada = d.problematic / d.visitors;
   const rulesOk = d.rules === rulesExpected ? "OK" : `FALLO (esperado ${rulesExpected})`;
-  const probOk = d.problematic === probExpected ? "OK" : `FALLO (esperado ${probExpected})`;
-  console.log(`Dia ${d.day}: reglas activas=${d.rules} [${rulesOk}] | problematicos=${d.problematic}/${d.visitors} [${probOk}]`);
+  const ratioOk = Math.abs(ratioObservada - ratioExpected) <= RATIO_TOLERANCE ? "OK" : `FALLO (esperado ~${ratioExpected.toFixed(2)})`;
+  console.log(`Dia ${d.day}: reglas activas=${d.rules} [${rulesOk}] | problematicos=${d.problematic}/${d.visitors} (${ratioObservada.toFixed(2)}) [${ratioOk}]`);
 });
 
 // nota: desde que existen "rasgos combinados" (Game#generateVisitor), un visitante puede
@@ -125,15 +129,16 @@ while (!gameB.isWon() && !gameB.isLost()) {
 console.log("Resultado final:", gameB.isWon() ? "VICTORIA (inesperado)" : "DERROTA", "| errores:", gameB.errors, "(esperado 4)", "| decisiones tomadas:", decisionesB, "(esperado 4)");
 
 // ================= TEST 3: guardar y cargar progreso a mitad de partida =================
-console.log("\n========== TEST 3: guardar progreso al terminar el dia 1, y cargarlo en una partida nueva ==========");
+console.log("\n========== TEST 3: guardar progreso al terminar el dia 1 (via endDay()), y cargarlo en una partida nueva ==========");
 resetMocks();
 const gameC = new Game();
 await loadDataAsync(gameC);
 gameC.startNewGame();
-for (let i = 0; i < 6; i++) {
+for (let i = 0; i < 5; i++) {
   const violation = gameC.currentDay.evaluateCharacter(gameC.currentVisitor);
   gameC.decide(violation === null);
 }
+gameC.endDay(); // simula que se acabo el temporizador del dia 1
 console.log("gameC despues de terminar el dia 1 -> dia:", gameC.dayNumber, "| dinero:", gameC.money, "| errores:", gameC.errors);
 
 const gameD = new Game();
@@ -160,8 +165,8 @@ const historial = getHistory();
 console.log("cantidad de partidas jugadas: 4 | entradas en historial:", historial.length, "(esperado 3)");
 console.log(JSON.stringify(historial, null, 2));
 
-// ================= TEST 5: mezcla de aciertos y errores dentro de un mismo dia =================
-console.log("\n========== TEST 5: mezcla de aciertos y errores, verificar dinero/errores/avance de dia ==========");
+// ================= TEST 5: mezcla de aciertos y errores (dinero/errores), y que endDay() sea lo unico que avanza el dia =================
+console.log("\n========== TEST 5: mezcla de aciertos y errores (dinero/errores), y que endDay() sea lo unico que avanza el dia ==========");
 resetMocks();
 const gameE = new Game();
 await loadDataAsync(gameE);
@@ -169,23 +174,25 @@ gameE.startNewGame();
 const patronE = [true, false, true, true, false, true]; // true = responder correcto, false = responder incorrecto
 let dineroEsperadoE = 10;
 let erroresEsperadosE = 0;
-patronE.forEach((responderCorrecto, i) => {
+patronE.forEach((responderCorrecto) => {
   const violation = gameE.currentDay.evaluateCharacter(gameE.currentVisitor);
   const shouldAccept = violation === null;
   gameE.decide(responderCorrecto ? shouldAccept : !shouldAccept);
-  if (responderCorrecto) { dineroEsperadoE += 10; } else { dineroEsperadoE -= 5; erroresEsperadosE += 1; }
+  if (responderCorrecto) { dineroEsperadoE += 2; } else { dineroEsperadoE -= 5; erroresEsperadosE += 1; }
 });
 console.log("dinero real:", gameE.money, "| dinero esperado:", dineroEsperadoE, gameE.money === dineroEsperadoE ? "[OK]" : "[FALLO]");
 console.log("errores reales:", gameE.errors, "| errores esperados:", erroresEsperadosE, gameE.errors === erroresEsperadosE ? "[OK]" : "[FALLO]");
-console.log("dia tras 6 visitantes (con mezcla de aciertos/errores):", gameE.dayNumber, gameE.dayNumber === 2 ? "[OK]" : "[FALLO]");
+console.log("dia tras 6 visitantes, ANTES de endDay():", gameE.dayNumber, gameE.dayNumber === 1 ? "[OK: decide() ya no avanza de dia por si solo]" : "[FALLO]");
+gameE.endDay();
+console.log("dia DESPUES de endDay():", gameE.dayNumber, gameE.dayNumber === 2 ? "[OK]" : "[FALLO]");
 
-// ================= TEST 6: derrota justo en el ultimo visitante del dia (caso limite) =================
-console.log("\n========== TEST 6: el 4to error coincide con el 6to visitante del dia ==========");
+// ================= TEST 6: el 4to error corta la partida al toque =================
+console.log("\n========== TEST 6: el 4to error corta la partida al toque, sin esperar a que termine el dia ==========");
 resetMocks();
 const gameF = new Game();
 await loadDataAsync(gameF);
 gameF.startNewGame();
-// visitantes 1-3 del dia 1: responder mal (3 errores). visitantes 4 y 5: responder bien. visitante 6: responder mal (4to error, y ultimo del dia)
+// visitantes 1-3: responder mal (3 errores). visitantes 4 y 5: responder bien. visitante 6: responder mal (4to error)
 const patronF = [false, false, false, true, true, false];
 patronF.forEach((responderCorrecto) => {
   if (gameF.isLost() || gameF.isWon()) return;
@@ -194,7 +201,7 @@ patronF.forEach((responderCorrecto) => {
   gameF.decide(responderCorrecto ? shouldAccept : !shouldAccept);
 });
 console.log("errores:", gameF.errors, "(esperado 4)", "| isLost():", gameF.isLost(), "(esperado true)");
-console.log("dia quedo en:", gameF.dayNumber, "(esperado 1, NO deberia haber avanzado a dia 2)");
+console.log("dia quedo en:", gameF.dayNumber, "(esperado 1 - decide() ya no toca dayNumber en absoluto)");
 const historialF = getHistory();
 console.log("entrada guardada en historial:", JSON.stringify(historialF[0]));
 console.log("resultado 'derrota' con day:1:", (historialF[0].result === "derrota" && historialF[0].day === 1) ? "[OK]" : "[FALLO]");
@@ -207,29 +214,34 @@ await loadDataAsync(gameG);
 gameG.startNewGame();
 let inconsistenciasLiar = 0;
 let totalRevisados = 0;
-while (!gameG.isWon() && !gameG.isLost()) {
-  const visitor = gameG.currentVisitor;
-  const p = visitor.obtainPassport;
-  // un Human siempre da false sin importar lo que declare (specieLiar() esta hardcodeado ahi);
-  // solo para un Yokai tiene sentido comparar especie declarada vs especie aparente.
-  let esperado = false;
-  if (visitor instanceof Yokai) {
-    // mismo orden que Yokai.specieLiar(): region primero, cuernos/ojos amarillos al final
-    // (para que el rasgo que define el tipo real gane si hay rasgos combinados).
-    let especieAparente = "humano";
-    if (p.obtainRegion === "rio") especieAparente = "kappa";
-    if (visitor.obtainHaveHorns) especieAparente = "oni";
-    if (visitor.obtainYellowEyes) especieAparente = "kitsune";
-    esperado = p.obtainDeclaredSpecie !== especieAparente;
+for (let dia = 1; dia <= 7 && !gameG.isLost(); dia++) {
+  for (let i = 0; i < VISITORS_PER_SIMULATED_DAY && !gameG.isLost(); i++) {
+    const visitor = gameG.currentVisitor;
+    const p = visitor.obtainPassport;
+    // un Human siempre da false sin importar lo que declare (specieLiar() esta hardcodeado ahi);
+    // solo para un Yokai tiene sentido comparar especie declarada vs especie aparente.
+    let esperado = false;
+    if (visitor instanceof Yokai) {
+      // mismo orden que Yokai.specieLiar(): region primero, cuernos/ojos amarillos al final
+      // (para que el rasgo que define el tipo real gane si hay rasgos combinados).
+      let especieAparente = "humano";
+      if (p.obtainRegion === "rio") especieAparente = "kappa";
+      if (visitor.obtainHaveHorns) especieAparente = "oni";
+      if (visitor.obtainYellowEyes) especieAparente = "kitsune";
+      esperado = p.obtainDeclaredSpecie !== especieAparente;
+    }
+    const real = visitor.specieLiar();
+    totalRevisados++;
+    if (esperado !== real) {
+      inconsistenciasLiar++;
+      console.log("INCONSISTENCIA:", JSON.stringify(describeVisitor(visitor)), "esperado:", esperado, "real:", real);
+    }
+    const violation = gameG.currentDay.evaluateCharacter(visitor);
+    gameG.decide(violation === null);
   }
-  const real = visitor.specieLiar();
-  totalRevisados++;
-  if (esperado !== real) {
-    inconsistenciasLiar++;
-    console.log("INCONSISTENCIA:", JSON.stringify(describeVisitor(visitor)), "esperado:", esperado, "real:", real);
+  if (!gameG.isLost()) {
+    gameG.endDay();
   }
-  const violation = gameG.currentDay.evaluateCharacter(visitor);
-  gameG.decide(violation === null);
 }
 console.log("visitantes revisados:", totalRevisados, "| inconsistencias:", inconsistenciasLiar, inconsistenciasLiar === 0 ? "[OK]" : "[FALLO]");
 

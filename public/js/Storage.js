@@ -3,6 +3,7 @@ const HISTORY_KEY = "yokaiInspector_history";
 const HISTORY_LIMIT = 3;
 const PLAYER_NAME_KEY = "yokaiInspector_playerName";
 const CREDITS_KEY = "yokaiInspector_credits";
+const DAY_STREAKS_KEY = "yokaiInspector_dayStreaks";
 export function saveCurrentGame(data) {
     localStorage.setItem(CURRENT_GAME_KEY, JSON.stringify(data));
 }
@@ -45,6 +46,20 @@ export function getAllCredits() {
     const rawData = localStorage.getItem(CREDITS_KEY);
     if (rawData === null) {
         return {};
+    }
+    return JSON.parse(rawData);
+}
+// racha con la que termino cada dia de la partida en curso (un numero por dia
+// jugado, en orden) - todavia sin usarse para nada mas que guardarla; queda
+// preparada para una idea a futuro (ver docs/ideas.md): un final alternativo
+// si la racha de todos los dias fue perfecta o pasa cierto umbral.
+export function saveDayStreaks(streaks) {
+    localStorage.setItem(DAY_STREAKS_KEY, JSON.stringify(streaks));
+}
+export function loadDayStreaks() {
+    const rawData = localStorage.getItem(DAY_STREAKS_KEY);
+    if (rawData === null) {
+        return [];
     }
     return JSON.parse(rawData);
 }

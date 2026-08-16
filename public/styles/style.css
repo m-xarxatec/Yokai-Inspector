@@ -565,7 +565,7 @@ button:disabled {
   font-size: 0.85rem;
 }
 
-/* ---------- barra de tiempo por visitante ---------- */
+/* ---------- barra de tiempo del dia (antes era por visitante) ---------- */
 
 #time-bar-track {
   background: #2a2640;
@@ -584,11 +584,7 @@ button:disabled {
 
 #time-bar-fill.corriendo {
   animation: shrink-time-bar linear forwards;
-  /* la duracion la fija main.ts en el estilo inline (animation-duration) segun el dia */
-}
-
-#time-bar-fill.alerta {
-  background: #c0524a;
+  /* la duracion la fija main.ts en el estilo inline (animation-duration), DAY_DURATION_MS */
 }
 
 @keyframes shrink-time-bar {

@@ -1,8 +1,13 @@
 import { Game } from "./classes/Game.js";
-import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits } from "./Storage.js";
+import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits, saveDayStreaks, loadDayStreaks } from "./Storage.js";
 
 let game: Game | null = null;
 let currentState: string = "menu";
+
+// racha con la que termino cada dia de la partida en curso - se guarda en
+// localStorage al cerrar cada dia (ver afterDecision()), todavia sin usarse
+// para nada mas (queda preparada para una idea a futuro, ver docs/ideas.md)
+let rachasPorDia: number[] = [];
 
 // la duracion tiene que coincidir con la transicion de "left" de #character-portrait en style.css
 const PORTRAIT_ANIM_MS = 450;
@@ -62,13 +67,11 @@ const PASSPORT_OPEN_DELAY_MS = 150;
 // antes de que empiece a cerrarse
 const DECISION_STAMP_FLASH_MS = 400;
 
-// tiempo para decidir por visitante: baja con cada dia, y se divide a la mitad en modo alerta
-const TIME_PER_VISITOR_BASE_MS = 16000;
-const TIME_PER_VISITOR_STEP_MS = 1500;
-const ALERT_MODE_ERROR_STREAK = 2;
+// tiempo del dia completo (ya no es por visitante) - fijo: la dificultad ya sube
+// sola por la proporcion de problematicos y la cantidad de reglas activas por dia
+const DAY_DURATION_MS = 90000;
 
 let racha: number = 0;
-let erroresSeguidos: number = 0;
 let timerEnabled: boolean = true;
 
 // variantes del retrato de la Jefa cuando explica las reglas entre dias; se elige
@@ -137,7 +140,8 @@ document.querySelector("#player-name-form")?.addEventListener("submit", (evento)
 
   game = new Game(nombre);
   racha = 0;
-  erroresSeguidos = 0;
+  rachasPorDia = [];
+  saveDayStreaks(rachasPorDia);
   game.loadData(() => {
     if (game === null) {
       return;
@@ -160,7 +164,7 @@ document.querySelectorAll(".back-link").forEach(boton => {
 // disponible para "Continuar partida" desde donde arranco el dia).
 document.querySelectorAll(".exit-to-menu-btn").forEach(boton => {
   boton.addEventListener("click", () => {
-    clearVisitorTimer();
+    clearDayTimer();
     if (dialogueIntervalId !== null) {
       clearInterval(dialogueIntervalId);
       dialogueIntervalId = null;
@@ -270,7 +274,7 @@ document.querySelector("#story-next-btn")?.addEventListener("click", () => {
 document.querySelector("#continue-btn")?.addEventListener("click", () => {
   game = new Game(loadPlayerName());
   racha = 0;
-  erroresSeguidos = 0;
+  rachasPorDia = loadDayStreaks();
   game.loadData(() => {
     if (game === null) {
       return;
@@ -278,6 +282,7 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
     game.loadProgress();
     changeState("game");
     renderVisitor();
+    startDayTimer();
   });
 });
 
@@ -474,19 +479,35 @@ function animatePassportAlongArc(
   window.requestAnimationFrame(paso);
 }
 
-// --- tiempo limite por visitante ---
+// --- tiempo limite del dia ---
 
-let visitorTimeoutId: number | null = null;
+let dayTimeoutId: number | null = null;
 
-function clearVisitorTimer(): void {
-  if (visitorTimeoutId !== null) {
-    clearTimeout(visitorTimeoutId);
-    visitorTimeoutId = null;
+// si el temporizador del dia vence justo mientras se esta animando una
+// decision (resolveDecision(), ver mas abajo - tarda ~2s en total: sello,
+// cierre, arco de vuelta, salida del personaje), no hay que cortarla a la
+// mitad: eso generaba dos caminos llegando a afterDecision() casi juntos (el
+// del timer y el de la decision en curso), cada uno eligiendo una Jefa al
+// azar - por eso se veia "cambiar de golpe" en la pantalla de resultado del
+// dia. En vez de eso, se marca que el dia debe cerrarse, y se cierra recien
+// cuando esa decision termina de procesar (ver el final de resolveDecision()).
+let resolviendoDecision = false;
+let diaTerminaAlSoltar = false;
+
+function clearDayTimer(): void {
+  if (dayTimeoutId !== null) {
+    clearTimeout(dayTimeoutId);
+    dayTimeoutId = null;
   }
 }
 
-function startVisitorTimer(): void {
-  clearVisitorTimer();
+// arranca una sola vez por dia (no por visitante, ver los dos lugares donde se
+// llama: el listener de #continue-day-btn y el de #continue-btn) - mientras
+// corre, los visitantes se suceden sin reiniciarlo (ver renderVisitor() y
+// resolveDecision(), que ya no lo tocan). Al vencer, termina el dia entero,
+// haya o no un visitante a medio decidir en pantalla.
+function startDayTimer(): void {
+  clearDayTimer();
 
   const barraTrackEl = document.querySelector("#time-bar-track") as HTMLElement | null;
   if (!timerEnabled) {
@@ -503,28 +524,26 @@ function startVisitorTimer(): void {
     return;
   }
 
-  const duracionNormalMs = Math.max(TIME_PER_VISITOR_BASE_MS - (game.dayNumber - 1) * TIME_PER_VISITOR_STEP_MS, 6000);
-  const enAlerta = erroresSeguidos >= ALERT_MODE_ERROR_STREAK;
-  const duracionMs = enAlerta ? duracionNormalMs / 2 : duracionNormalMs;
-
   const barraEl = document.querySelector("#time-bar-fill") as HTMLElement | null;
   if (barraEl !== null) {
     barraEl.classList.remove("corriendo");
     void barraEl.offsetWidth; // fuerza el reflow para poder reiniciar la animacion desde cero
-    barraEl.style.animationDuration = duracionMs + "ms";
+    barraEl.style.animationDuration = DAY_DURATION_MS + "ms";
     barraEl.classList.add("corriendo");
-    barraEl.classList.toggle("alerta", enAlerta);
   }
 
-  visitorTimeoutId = window.setTimeout(() => {
-    if (game === null || game.currentVisitor === null) {
+  dayTimeoutId = window.setTimeout(() => {
+    if (game === null) {
       return;
     }
-    // se acabo el tiempo: fuerza la respuesta contraria a la correcta (siempre cuenta como error)
-    const violacion = game.currentDay.evaluateCharacter(game.currentVisitor);
-    const respuestaCorrectaEsAceptar = violacion === null;
-    resolveDecision(!respuestaCorrectaEsAceptar);
-  }, duracionMs);
+    if (resolviendoDecision) {
+      diaTerminaAlSoltar = true;
+      return;
+    }
+    const diaAntes = game.dayNumber;
+    game.endDay();
+    afterDecision(diaAntes);
+  }, DAY_DURATION_MS);
 }
 
 function renderVisitor(): void {
@@ -648,8 +667,6 @@ function renderVisitor(): void {
   }
   if (dineroEl !== null) dineroEl.textContent = "Dinero: " + game.money;
   if (rachaEl !== null) rachaEl.textContent = "Racha: " + racha;
-
-  startVisitorTimer();
 }
 
 function afterDecision(diaAntes: number): void {
@@ -658,12 +675,19 @@ function afterDecision(diaAntes: number): void {
   }
 
   if (game.isLost() || game.isWon()) {
+    clearDayTimer();
+    rachasPorDia.push(racha);
+    saveDayStreaks(rachasPorDia);
     renderFinalScreen();
     changeState("final");
     return;
   }
 
   if (game.dayNumber > diaAntes) {
+    clearDayTimer();
+    rachasPorDia.push(racha);
+    saveDayStreaks(rachasPorDia);
+    racha = 0; // la racha arranca de nuevo en cada dia (ver docs/ideas.md)
     renderDayResultScreen();
     changeState("day-result");
     return;
@@ -676,7 +700,11 @@ function resolveDecision(accept: boolean): void {
   if (game === null) {
     return;
   }
-  clearVisitorTimer();
+  // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
+  // que seguir corriendo mientras se decide (ver startDayTimer()). Se marca
+  // que hay una decision en curso para que, si el dia vence en el medio, no
+  // se corte a la mitad (ver diaTerminaAlSoltar mas abajo y en startDayTimer()).
+  resolviendoDecision = true;
 
   const diaAntes = game.dayNumber;
   const erroresAntes = game.errors;
@@ -724,6 +752,7 @@ function resolveDecision(accept: boolean): void {
         }
 
         slideOutSlidingElements(direccion, () => {
+          resolviendoDecision = false;
           if (game === null) {
             return;
           }
@@ -731,10 +760,19 @@ function resolveDecision(accept: boolean): void {
 
           if (game.errors > erroresAntes) {
             racha = 0;
-            erroresSeguidos += 1;
           } else {
             racha += 1;
-            erroresSeguidos = 0;
+          }
+
+          // el dia vencio mientras se animaba esta decision (ver startDayTimer()):
+          // recien ahora, con el visitante que el jugador realmente vio ya
+          // procesado, se cierra el dia - salvo que decide() ya haya terminado
+          // la partida sola (perdio/gano), en cuyo caso no corresponde avanzar.
+          if (diaTerminaAlSoltar) {
+            diaTerminaAlSoltar = false;
+            if (!game.isLost() && !game.isWon()) {
+              game.endDay();
+            }
           }
 
           afterDecision(diaAntes);
@@ -808,6 +846,7 @@ function renderDayResultScreen(mostrarResumen: boolean = true): void {
 document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
   changeState("game");
   renderVisitor();
+  startDayTimer();
 });
 
 // --- Final screen ---
