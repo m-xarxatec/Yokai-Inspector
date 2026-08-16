@@ -173,8 +173,8 @@ export class Game{
         // array (puede ser "humano", otra especie de Yokai, o directamente una tonteria), sin
         // importar que regla lo genero. La unica forma de descubrirlo es mirar sus rasgos reales.
         if (this.#dayNumber >= 4 && property !== "sello") {
-        const opcionesDeMentira = this.#species.filter((especie: string) => especie !== yokaiType);
-        declaredSpecie = opcionesDeMentira[Math.floor(Math.random() * opcionesDeMentira.length)];
+        const lieOptions = this.#species.filter((specie: string) => specie !== yokaiType);
+        declaredSpecie = lieOptions[Math.floor(Math.random() * lieOptions.length)];
         }
 
         const passport = new Passport(name, region, declaredSpecie, stamp);

@@ -241,8 +241,8 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
     // array (puede ser "humano", otra especie de Yokai, o directamente una tonteria), sin
     // importar que regla lo genero. La unica forma de descubrirlo es mirar sus rasgos reales.
     if (__classPrivateFieldGet(this, _Game_dayNumber, "f") >= 4 && property !== "sello") {
-        const opcionesDeMentira = __classPrivateFieldGet(this, _Game_species, "f").filter((especie) => especie !== yokaiType);
-        declaredSpecie = opcionesDeMentira[Math.floor(Math.random() * opcionesDeMentira.length)];
+        const lieOptions = __classPrivateFieldGet(this, _Game_species, "f").filter((specie) => specie !== yokaiType);
+        declaredSpecie = lieOptions[Math.floor(Math.random() * lieOptions.length)];
     }
     const passport = new Passport(name, region, declaredSpecie, stamp);
     if (targetRule.getProperty() === "sello") {

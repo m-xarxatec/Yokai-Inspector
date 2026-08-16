@@ -7,7 +7,7 @@ let currentState: string = "menu";
 // racha con la que termino cada dia de la partida en curso - se guarda en
 // localStorage al cerrar cada dia (ver afterDecision()), todavia sin usarse
 // para nada mas (queda preparada para una idea a futuro, ver docs/ideas.md)
-let rachasPorDia: number[] = [];
+let dayStreaks: number[] = [];
 
 // la duracion tiene que coincidir con la transicion de "left" de #character-portrait en style.css
 const PORTRAIT_ANIM_MS = 450;
@@ -55,7 +55,7 @@ const PASSPORT_ARC_DESK = { left: 60, top: 68, height: 16 };
 // renderVisitor(). La devolucion no las usa: antes de arrancar el arco de
 // vuelta se sacan de nuevo, asi que el personaje siempre se lo lleva mostrando
 // pasaporte.png, como si el cambio de imagen fuera solo "una vez posado".
-const PASSPORT_DESK_LOOK_VARIANTS = ["mesa1", "mesa2", "mesa3"];
+const PASSPORT_DESK_LOOK_VARIANTS = ["desk1", "desk2", "desk3"];
 
 // el z-index no puede depender solo de la altura del arco: la base del personaje
 // (88%) y el escritorio (80%) estan demasiado cerca en top como para distinguirlos
@@ -92,7 +92,7 @@ const DECISION_STAMP_FLASH_MS = 400;
 // sola por la proporcion de problematicos y la cantidad de reglas activas por dia
 const DAY_DURATION_MS = 90000;
 
-let racha: number = 0;
+let streak: number = 0;
 let timerEnabled: boolean = true;
 
 // variantes del retrato de la Jefa cuando explica las reglas entre dias; se elige
@@ -114,35 +114,35 @@ function changeState(newState: string): void {
 // --- Menu screen ---
 
 function updateContinueButton(): void {
-  const boton = document.querySelector("#continue-btn") as HTMLButtonElement | null;
-  const partidaGuardada = loadCurrentGame();
+  const button = document.querySelector("#continue-btn") as HTMLButtonElement | null;
+  const savedGame = loadCurrentGame();
 
-  if (boton !== null) {
-    boton.disabled = partidaGuardada === null;
+  if (button !== null) {
+    button.disabled = savedGame === null;
   }
 
-  const estadoEl = document.querySelector("#paused-status");
-  if (estadoEl === null) {
+  const statusEl = document.querySelector("#paused-status");
+  if (statusEl === null) {
     return;
   }
-  const estadoHtmlEl = estadoEl as HTMLElement;
-  if (partidaGuardada === null) {
-    estadoHtmlEl.classList.add("hidden");
+  const statusHtmlEl = statusEl as HTMLElement;
+  if (savedGame === null) {
+    statusHtmlEl.classList.add("hidden");
     return;
   }
-  estadoHtmlEl.classList.remove("hidden");
-  estadoEl.textContent = "⏸ Partida pausada — Día " + partidaGuardada.dayNumber + " / 7";
+  statusHtmlEl.classList.remove("hidden");
+  statusEl.textContent = "⏸ Partida pausada — Día " + savedGame.dayNumber + " / 7";
 }
 
 function updateTimerToggleButton(): void {
-  const boton = document.querySelector("#timer-toggle-btn");
-  if (boton === null) {
+  const button = document.querySelector("#timer-toggle-btn");
+  if (button === null) {
     return;
   }
   if (timerEnabled) {
-    boton.textContent = "Desactivar temporizador";
+    button.textContent = "Desactivar temporizador";
   } else {
-    boton.textContent = "Activar temporizador";
+    button.textContent = "Activar temporizador";
   }
 }
 
@@ -153,16 +153,16 @@ document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
 
 // al confirmar el nombre arranca la partida nueva (esto reemplaza lo que antes
 // hacia el click de "Nueva partida" directamente)
-document.querySelector("#player-name-form")?.addEventListener("submit", (evento) => {
-  evento.preventDefault();
+document.querySelector("#player-name-form")?.addEventListener("submit", (event) => {
+  event.preventDefault();
   const input = document.querySelector("#player-name-input") as HTMLInputElement | null;
-  const nombre = input?.value.trim() ?? "";
-  savePlayerName(nombre);
+  const name = input?.value.trim() ?? "";
+  savePlayerName(name);
 
-  game = new Game(nombre);
-  racha = 0;
-  rachasPorDia = [];
-  saveDayStreaks(rachasPorDia);
+  game = new Game(name);
+  streak = 0;
+  dayStreaks = [];
+  saveDayStreaks(dayStreaks);
   game.loadData(() => {
     if (game === null) {
       return;
@@ -173,8 +173,8 @@ document.querySelector("#player-name-form")?.addEventListener("submit", (evento)
   });
 });
 
-document.querySelectorAll(".back-link").forEach(boton => {
-  boton.addEventListener("click", () => {
+document.querySelectorAll(".back-link").forEach(button => {
+  button.addEventListener("click", () => {
     changeState("menu");
   });
 });
@@ -183,13 +183,19 @@ document.querySelectorAll(".back-link").forEach(boton => {
 // el dia actual, tal como quedaria si se recargara la pagina a mitad de partida
 // (la partida guardada solo se actualiza al empezar cada dia, asi que sigue
 // disponible para "Continuar partida" desde donde arranco el dia).
-document.querySelectorAll(".exit-to-menu-btn").forEach(boton => {
-  boton.addEventListener("click", () => {
+document.querySelectorAll(".exit-to-menu-btn").forEach(button => {
+  button.addEventListener("click", () => {
     clearDayTimer();
     if (dialogueIntervalId !== null) {
       clearInterval(dialogueIntervalId);
       dialogueIntervalId = null;
     }
+    // por si se sale a mitad de la intro del dia 1 o de una reaccion de error
+    // (ambas viven en #day-result-screen) - sin esto, #continue-day-btn podria
+    // arrancar mal la proxima vez que se llegue a esa pantalla en una partida
+    // nueva (saltandose startDayTimer() por un errorReactionPending viejo, por ejemplo)
+    introBeatIndex = null;
+    errorReactionPending = false;
     changeState("menu");
     renderHistoryTable();
     updateContinueButton();
@@ -215,63 +221,63 @@ function renderCreditsScreen(): void {
     return;
   }
   listaEl.innerHTML = "";
-  const creditos = getAllCredits();
-  const entradas = Object.entries(creditos).sort((a, b) => b[1] - a[1]);
+  const credits = getAllCredits();
+  const entries = Object.entries(credits).sort((a, b) => b[1] - a[1]);
 
-  if (entradas.length === 0) {
+  if (entries.length === 0) {
     const item = document.createElement("li");
     item.textContent = "Todavía no hay créditos acumulados. ¡Terminá una partida para sumar!";
     listaEl.appendChild(item);
     return;
   }
 
-  entradas.forEach(([nombre, total]) => {
+  entries.forEach(([name, total]) => {
     const item = document.createElement("li");
-    item.textContent = nombre + " — " + total + " créditos";
+    item.textContent = name + " — " + total + " créditos";
     listaEl.appendChild(item);
   });
 }
 
 function renderHistoryTable(): void {
-  const tabla = document.querySelector("#history-table tbody");
-  if (tabla === null) {
+  const table = document.querySelector("#history-table tbody");
+  if (table === null) {
     return;
   }
 
-  tabla.innerHTML = "";
-  const historial = getHistory();
+  table.innerHTML = "";
+  const history = getHistory();
 
-  historial.forEach(resultado => {
-    const fila = document.createElement("tr");
+  history.forEach(entry => {
+    const row = document.createElement("tr");
 
-    const nombreCelda = document.createElement("td");
-    nombreCelda.textContent = resultado.name ?? "—";
-    fila.appendChild(nombreCelda);
+    const nameCell = document.createElement("td");
+    nameCell.textContent = entry.name ?? "—";
+    row.appendChild(nameCell);
 
-    const diaCelda = document.createElement("td");
-    diaCelda.textContent = "Día " + resultado.day + " / 7";
-    fila.appendChild(diaCelda);
+    const dayCell = document.createElement("td");
+    dayCell.textContent = "Día " + entry.day + " / 7";
+    row.appendChild(dayCell);
 
-    const erroresCelda = document.createElement("td");
-    erroresCelda.textContent = resultado.errors + " errores";
-    fila.appendChild(erroresCelda);
+    const errorsCell = document.createElement("td");
+    errorsCell.textContent = entry.errors + " errores";
+    row.appendChild(errorsCell);
 
-    const dineroCelda = document.createElement("td");
-    dineroCelda.textContent = "$" + resultado.money;
-    fila.appendChild(dineroCelda);
+    const moneyCell = document.createElement("td");
+    moneyCell.textContent = "$" + entry.money;
+    row.appendChild(moneyCell);
 
-    const resultadoCelda = document.createElement("td");
-    if (resultado.result === "victoria") {
-      resultadoCelda.textContent = "🏆 Victoria";
-      resultadoCelda.className = "resultado-victoria";
+    const resultCell = document.createElement("td");
+    if (entry.result === "victoria") {
+      resultCell.textContent = "🏆 Victoria";
+      resultCell.className = "result-victoria";
     }
-    if (resultado.result === "derrota") {
-      resultadoCelda.textContent = "💀 Derrota";
-      resultadoCelda.className = "resultado-derrota";
+    if (entry.result === "derrota") {
+      resultCell.textContent = "💀 Derrota";
+      resultCell.className = "result-derrota";
     }
-    fila.appendChild(resultadoCelda);
+    row.appendChild(resultCell);
 
-    tabla.appendChild(fila);
+    table.appendChild(row);
   });
 }
 
@@ -283,19 +289,46 @@ function renderStoryScreen(): void {
   if (game === null) {
     return;
   }
-  const texto = "Bienvenido, detective " + game.playerName + ". Eres un nuevo oficial de la Agencia de Aduana Espiritual, contratado el mismo día en que empieza tu turno (Día 1), sin inducción ni manual de bienvenida. Tu trabajo es revisar los pasaportes de quienes cruzan hacia el mundo humano y decidir si los dejas pasar, según las reglas que la agencia va confirmando día a día sobre los Yokai.";
-  typeDialogue(texto, "#story-text");
+  const text = "Bienvenido, detective " + game.playerName + ". Eres un nuevo oficial de la Agencia de Aduana Espiritual, contratado el mismo día en que empieza tu turno (Día 1). Tu trabajo es revisar los pasaportes de quienes cruzan hacia el mundo humano y decidir si los dejas pasar, según las reglas que la agencia va confirmando día a día sobre los Yokai.";
+  typeDialogue(text, "#story-text");
+}
+
+// --- intro escrita del dia 1 (3 cuadros con la Jefa, antes de arrancar a jugar) ---
+//
+// vive en #day-result-screen (mismo #jefa-portrait/#next-day-message que usa
+// renderDayResultScreen() para el resumen entre dias) - #continue-day-btn
+// avanza estos cuadros primero (ver mas abajo) y recien arranca el juego
+// cuando se acaban.
+type StoryBeat = { image: string; text: string };
+
+const DAY_ONE_INTRO_BEATS: StoryBeat[] = [
+  { image: "jefaPresentacion", text: "Es tu primer día en la agencia espiritual. Nadie te dio un manual de bienvenida, no lo necesitas porque en tu currículum dice que tienes mucha experiencia." },
+  { image: "jefaNeutral", text: "La regla es muy clara: PROHIBIDA LA ENTRADA A QUIEN TENGA CUERNOS. Los oni no pasan." },
+  { image: "jefaExplica-1", text: "Cuidado, ellos saben esconderlos bien. ¡Bienvenido a tu nuevo puesto!" },
+];
+
+let introBeatIndex: number | null = null;
+
+function renderJefaBeat(beat: StoryBeat): void {
+  const jefaEl = document.querySelector("#jefa-portrait");
+  if (jefaEl !== null) jefaEl.className = beat.image;
+
+  const summaryEl = document.querySelector("#day-result-summary") as HTMLElement | null;
+  if (summaryEl !== null) summaryEl.classList.add("hidden");
+
+  typeDialogue(beat.text, "#next-day-message");
 }
 
 document.querySelector("#story-next-btn")?.addEventListener("click", () => {
-  renderDayResultScreen(false);
+  introBeatIndex = 0;
+  renderJefaBeat(DAY_ONE_INTRO_BEATS[0]);
   changeState("day-result");
 });
 
 document.querySelector("#continue-btn")?.addEventListener("click", () => {
   game = new Game(loadPlayerName());
-  racha = 0;
-  rachasPorDia = loadDayStreaks();
+  streak = 0;
+  dayStreaks = loadDayStreaks();
   game.loadData(() => {
     if (game === null) {
       return;
@@ -313,9 +346,9 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
 
 let dialogueIntervalId: number | null = null;
 
-function typeDialogue(texto: string, selectorDestino: string): void {
-  const dialogoEl = document.querySelector(selectorDestino);
-  if (dialogoEl === null) {
+function typeDialogue(text: string, targetSelector: string): void {
+  const dialogueEl = document.querySelector(targetSelector);
+  if (dialogueEl === null) {
     return;
   }
 
@@ -323,14 +356,14 @@ function typeDialogue(texto: string, selectorDestino: string): void {
     clearInterval(dialogueIntervalId);
   }
 
-  const palabras = texto.split(" ");
-  dialogoEl.textContent = "";
-  let indice = 0;
+  const words = text.split(" ");
+  dialogueEl.textContent = "";
+  let index = 0;
 
   dialogueIntervalId = window.setInterval(() => {
-    dialogoEl.textContent = palabras.slice(0, indice + 1).join(" ");
-    indice += 1;
-    if (indice >= palabras.length) {
+    dialogueEl.textContent = words.slice(0, index + 1).join(" ");
+    index += 1;
+    if (index >= words.length) {
       if (dialogueIntervalId !== null) {
         clearInterval(dialogueIntervalId);
       }
@@ -344,13 +377,13 @@ function typeDialogue(texto: string, selectorDestino: string): void {
 // El pasaporte NO usa este mecanismo: viaja en un arco parabolico propio, ver
 // animatePassportAlongArc() mas abajo y su uso en renderVisitor()/resolveDecision().
 
-type ElementoDeslizable = { selector: string; restLeft: string };
+type SlidableElement = { selector: string; restLeft: string };
 
-const CHARACTER_ELEMENT: ElementoDeslizable = { selector: "#character-portrait", restLeft: PORTRAIT_REST_LEFT };
-const SLIDING_ELEMENTS: ElementoDeslizable[] = [CHARACTER_ELEMENT];
+const CHARACTER_ELEMENT: SlidableElement = { selector: "#character-portrait", restLeft: PORTRAIT_REST_LEFT };
+const SLIDING_ELEMENTS: SlidableElement[] = [CHARACTER_ELEMENT];
 
-function resetElementOffscreen(elemento: ElementoDeslizable): void {
-  const el = document.querySelector(elemento.selector) as HTMLElement | null;
+function resetElementOffscreen(element: SlidableElement): void {
+  const el = document.querySelector(element.selector) as HTMLElement | null;
   if (el === null) {
     return;
   }
@@ -358,7 +391,7 @@ function resetElementOffscreen(elemento: ElementoDeslizable): void {
   el.style.left = "130%";
   void el.offsetWidth; // fuerza el reflow para que el salto instantaneo se registre antes de reactivar la transicion
   el.style.transition = "";
-  el.style.left = elemento.restLeft;
+  el.style.left = element.restLeft;
 }
 
 // los sellos ya no son <button>: son <div role="button"> arrastrables (ver
@@ -376,7 +409,7 @@ function setDecisionStampsEnabled(enabled: boolean): void {
   });
 }
 
-function slideOutSlidingElements(direccion: "izquierda" | "derecha", alTerminar: () => void): void {
+function slideOutSlidingElements(direction: "left" | "right", onFinish: () => void): void {
   setDecisionStampsEnabled(false);
 
   SLIDING_ELEMENTS.forEach(({ selector }) => {
@@ -384,15 +417,15 @@ function slideOutSlidingElements(direccion: "izquierda" | "derecha", alTerminar:
     if (el === null) {
       return;
     }
-    if (direccion === "izquierda") {
+    if (direction === "left") {
       el.style.left = "-70%";
     }
-    if (direccion === "derecha") {
+    if (direction === "right") {
       el.style.left = "130%";
     }
   });
 
-  window.setTimeout(alTerminar, PORTRAIT_ANIM_MS);
+  window.setTimeout(onFinish, PORTRAIT_ANIM_MS);
 }
 
 // --- arco parabolico del pasaporte (lanzado/devuelto a traves de la ventanilla) ---
@@ -402,30 +435,30 @@ function slideOutSlidingElements(direccion: "izquierda" | "derecha", alTerminar:
 // asentarse (efecto de rebote/overshoot); PASSPORT_ARC_EASING no lo usa (y2
 // no pasa de 1), es solo una desaceleracion suave, sin rebote
 function createCubicBezierEasing(x1: number, y1: number, x2: number, y2: number): (t: number) => number {
-  function enEje(a1: number, a2: number, t: number): number {
-    const unMenosT = 1 - t;
-    return 3 * unMenosT * unMenosT * t * a1 + 3 * unMenosT * t * t * a2 + t * t * t;
+  function onAxis(a1: number, a2: number, t: number): number {
+    const oneMinusT = 1 - t;
+    return 3 * oneMinusT * oneMinusT * t * a1 + 3 * oneMinusT * t * t * a2 + t * t * t;
   }
 
-  function derivadaEnEje(a1: number, a2: number, t: number): number {
-    const unMenosT = 1 - t;
-    return 3 * unMenosT * unMenosT * a1 + 6 * unMenosT * t * (a2 - a1) + 3 * t * t * (1 - a2);
+  function derivativeOnAxis(a1: number, a2: number, t: number): number {
+    const oneMinusT = 1 - t;
+    return 3 * oneMinusT * oneMinusT * a1 + 6 * oneMinusT * t * (a2 - a1) + 3 * t * t * (1 - a2);
   }
 
-  return function facilitador(x: number): number {
+  return function easing(x: number): number {
     let t = x;
     for (let i = 0; i < 8; i += 1) {
-      const pendiente = derivadaEnEje(x1, x2, t);
-      if (Math.abs(pendiente) > 0.000001) {
-        t = t - (enEje(x1, x2, t) - x) / pendiente;
+      const slope = derivativeOnAxis(x1, x2, t);
+      if (Math.abs(slope) > 0.000001) {
+        t = t - (onAxis(x1, x2, t) - x) / slope;
       }
     }
-    return enEje(y1, y2, t);
+    return onAxis(y1, y2, t);
   };
 }
 
-type PuntoPasaporte = { left: number; top: number; height: number };
-type PuntoControl = { left: number; top: number };
+type PassportPoint = { left: number; top: number; height: number };
+type ControlPoint = { left: number; top: number };
 
 // mueve #passport-object en una curva de bezier cuadratica (desde -> control ->
 // hasta), con el tamaño interpolado con el mismo facilitador para que el rebote
@@ -437,17 +470,17 @@ type PuntoControl = { left: number; top: number };
 // tramo del recorrido mas cercano al escritorio - el resto del arco (saliendo o
 // volviendo hacia el personaje, y el pico) queda detras, ver PASSPORT_ARC_FRONT_THRESHOLD
 function animatePassportAlongArc(
-  desde: PuntoPasaporte,
-  control: PuntoControl,
-  hasta: PuntoPasaporte,
-  duracionMs: number,
-  facilitador: (t: number) => number,
-  terminaEnElEscritorio: boolean,
-  alTerminar: () => void
+  from: PassportPoint,
+  control: ControlPoint,
+  to: PassportPoint,
+  durationMs: number,
+  easing: (t: number) => number,
+  endsAtDesk: boolean,
+  onFinish: () => void
 ): void {
   const passportEl = document.querySelector("#passport-object") as HTMLElement | null;
   if (passportEl === null) {
-    alTerminar();
+    onFinish();
     return;
   }
   const el: HTMLElement = passportEl;
@@ -459,56 +492,56 @@ function animatePassportAlongArc(
   // el z-index por defecto del CSS (5, al frente) queda aplicado hasta que
   // corre el primer requestAnimationFrame, y ese instante ya alcanza para que
   // se vea el pasaporte pasando por delante de la ventanilla al arrancar.
-  el.style.zIndex = terminaEnElEscritorio ? PASSPORT_BEHIND_Z_INDEX : "";
-  const inicio = performance.now();
+  el.style.zIndex = endsAtDesk ? PASSPORT_BEHIND_Z_INDEX : "";
+  const startTime = performance.now();
 
   // para la entrega: en cuanto el "top" deja de subir (deja de acercarse a 0,
   // es decir ya curso el punto mas alto del arco) el pasaporte esta cayendo -
   // de ahi en mas siempre al frente, sin importar que tan alto este todavia
   // (ver comentario junto a PASSPORT_ARC_FRONT_THRESHOLD mas arriba)
-  let topMinimoVisto = desde.top;
-  let yaPasoElPico = false;
+  let minTopSeen = from.top;
+  let pastPeak = false;
 
-  function paso(ahora: number): void {
-    const progreso = Math.min((ahora - inicio) / duracionMs, 1);
-    const t = facilitador(progreso);
-    const unMenosT = 1 - t;
+  function step(now: number): void {
+    const progress = Math.min((now - startTime) / durationMs, 1);
+    const t = easing(progress);
+    const oneMinusT = 1 - t;
 
-    const left = unMenosT * unMenosT * desde.left + 2 * unMenosT * t * control.left + t * t * hasta.left;
-    const top = unMenosT * unMenosT * desde.top + 2 * unMenosT * t * control.top + t * t * hasta.top;
-    const height = desde.height + (hasta.height - desde.height) * t;
+    const left = oneMinusT * oneMinusT * from.left + 2 * oneMinusT * t * control.left + t * t * to.left;
+    const top = oneMinusT * oneMinusT * from.top + 2 * oneMinusT * t * control.top + t * t * to.top;
+    const height = from.height + (to.height - from.height) * t;
 
     el.style.left = left + "%";
     el.style.top = top + "%";
     el.style.height = height + "%";
 
-    let enFrente: boolean;
-    if (terminaEnElEscritorio) {
-      if (top > topMinimoVisto) {
-        yaPasoElPico = true;
+    let inFront: boolean;
+    if (endsAtDesk) {
+      if (top > minTopSeen) {
+        pastPeak = true;
       } else {
-        topMinimoVisto = top;
+        minTopSeen = top;
       }
-      enFrente = yaPasoElPico;
+      inFront = pastPeak;
     } else {
-      const acercandoseAlEscritorio = 1 - progreso;
-      enFrente = acercandoseAlEscritorio >= PASSPORT_ARC_FRONT_THRESHOLD;
+      const approachingDesk = 1 - progress;
+      inFront = approachingDesk >= PASSPORT_ARC_FRONT_THRESHOLD;
     }
 
-    if (enFrente) {
+    if (inFront) {
       el.style.zIndex = "";
     } else {
       el.style.zIndex = PASSPORT_BEHIND_Z_INDEX;
     }
 
-    if (progreso < 1) {
-      window.requestAnimationFrame(paso);
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
     } else {
-      alTerminar();
+      onFinish();
     }
   }
 
-  window.requestAnimationFrame(paso);
+  window.requestAnimationFrame(step);
 }
 
 // --- tiempo limite del dia ---
@@ -523,8 +556,29 @@ let dayTimeoutId: number | null = null;
 // azar - por eso se veia "cambiar de golpe" en la pantalla de resultado del
 // dia. En vez de eso, se marca que el dia debe cerrarse, y se cierra recien
 // cuando esa decision termina de procesar (ver el final de resolveDecision()).
-let resolviendoDecision = false;
-let diaTerminaAlSoltar = false;
+let resolvingDecision = false;
+let dayEndsOnRelease = false;
+
+// true mientras se muestra la reaccion de la Jefa por un error (ver
+// showErrorReaction() mas abajo) - #continue-day-btn la revisa para saber si
+// tiene que volver al visitante siguiente en vez de arrancar un dia nuevo
+let errorReactionPending = false;
+
+// tiempo total ya transcurrido del dia (acumulado a traves de pausas) y el
+// instante en que arranco el tramo que esta corriendo ahora mismo (null =
+// pausado/detenido) - separados asi (en vez de un solo timestamp de inicio)
+// para poder pausar el dia entero (ver pauseDayTimer()/resumeDayTimer() mas
+// abajo, usadas por las pantallas de reaccion de la Jefa por error) sin
+// perder cuenta de cuanto tiempo real ya paso.
+let dayElapsedMs = 0;
+let dayResumedAt: number | null = null;
+
+function currentDayElapsedMs(): number {
+  if (dayResumedAt === null) {
+    return dayElapsedMs;
+  }
+  return dayElapsedMs + (performance.now() - dayResumedAt);
+}
 
 function clearDayTimer(): void {
   if (dayTimeoutId !== null) {
@@ -532,6 +586,8 @@ function clearDayTimer(): void {
     dayTimeoutId = null;
   }
   stopDayClock();
+  dayElapsedMs = 0;
+  dayResumedAt = null;
 }
 
 // --- reloj de arena del dia (reemplaza la barra de tiempo por visitante de antes) ---
@@ -539,72 +595,85 @@ function clearDayTimer(): void {
 // 4 etapas (full/medio/casi/vacio) repartidas en partes iguales del tiempo del
 // dia, cada una alternando entre sus 2 cuadros (mismo criterio que
 // COIN_SPIN_FRAMES) para dar sensacion de movimiento; al quedar <=3s (o
-// vencer) pasa a "roto". Corre en un intervalo aparte (no un solo setTimeout
+// vencer) pasa a "broken". Corre en un intervalo aparte (no un solo setTimeout
 // como el dia): a diferencia de la barra vieja (CSS puro, animationDuration)
 // esto necesita re-evaluar la etapa/cuadro/parpadeo a cada rato.
 const CLOCK_FRAME_MS = 450;
 const CLOCK_TICK_MS = 200;
 const CLOCK_BROKEN_THRESHOLD_MS = 3000;
 
-let dayStartedAt: number | null = null;
 let clockIntervalId: number | null = null;
 
+// solo detiene el intervalo visual (deja el reloj congelado en su ultimo
+// cuadro) - no toca dayElapsedMs/dayResumedAt, eso lo maneja quien pause/pare
+// el dia de verdad (pauseDayTimer()/clearDayTimer())
 function stopDayClock(): void {
   if (clockIntervalId !== null) {
     window.clearInterval(clockIntervalId);
     clockIntervalId = null;
   }
-  dayStartedAt = null;
 }
 
 function startDayClock(): void {
   stopDayClock();
-  dayStartedAt = performance.now();
   updateDayClock();
   clockIntervalId = window.setInterval(updateDayClock, CLOCK_TICK_MS);
 }
 
 function updateDayClock(): void {
   const clockEl = document.querySelector("#day-clock") as HTMLElement | null;
-  if (clockEl === null || dayStartedAt === null) {
+  if (clockEl === null) {
     return;
   }
 
-  const transcurrido = performance.now() - dayStartedAt;
-  const restante = Math.max(DAY_DURATION_MS - transcurrido, 0);
-  const cuartoDelDia = DAY_DURATION_MS / 4;
+  const elapsed = currentDayElapsedMs();
+  const remaining = Math.max(DAY_DURATION_MS - elapsed, 0);
+  const dayQuarter = DAY_DURATION_MS / 4;
 
-  const cuadro = Math.floor(transcurrido / CLOCK_FRAME_MS) % 2 === 0 ? "frame-a" : "frame-b";
+  const frame = Math.floor(elapsed / CLOCK_FRAME_MS) % 2 === 0 ? "frame-a" : "frame-b";
 
-  let etapa: string;
-  if (restante <= CLOCK_BROKEN_THRESHOLD_MS) {
-    etapa = "roto";
-  } else if (restante <= cuartoDelDia) {
-    etapa = "stage-vacio";
-  } else if (restante <= cuartoDelDia * 2) {
-    etapa = "stage-casi";
-  } else if (restante <= cuartoDelDia * 3) {
-    etapa = "stage-medio";
+  let stage: string;
+  if (remaining <= CLOCK_BROKEN_THRESHOLD_MS) {
+    stage = "broken";
+  } else if (remaining <= dayQuarter) {
+    stage = "stage-empty";
+  } else if (remaining <= dayQuarter * 2) {
+    stage = "stage-almost";
+  } else if (remaining <= dayQuarter * 3) {
+    stage = "stage-half";
   } else {
-    etapa = "stage-full";
+    stage = "stage-full";
   }
 
-  clockEl.classList.remove("stage-full", "stage-medio", "stage-casi", "stage-vacio", "roto", "frame-a", "frame-b", "pulso-leve", "pulso-fuerte");
-  clockEl.classList.add(etapa);
-  if (etapa !== "roto") {
-    clockEl.classList.add(cuadro);
+  clockEl.classList.remove("stage-full", "stage-half", "stage-almost", "stage-empty", "broken", "frame-a", "frame-b", "pulse-light", "pulse-strong");
+  clockEl.classList.add(stage);
+  if (stage !== "broken") {
+    clockEl.classList.add(frame);
   }
 
   // parpadeo leve desde la segunda mitad de "casi" en adelante, fuerte recien
   // con el reloj roto y una decision todavia en curso (ver resolviendoDecision) -
   // efecto chico a proposito, no debe interrumpir la pantalla
-  if (etapa === "roto") {
-    if (resolviendoDecision) {
-      clockEl.classList.add("pulso-fuerte");
+  if (stage === "broken") {
+    if (resolvingDecision) {
+      clockEl.classList.add("pulse-strong");
     }
-  } else if (etapa === "stage-vacio" || (etapa === "stage-casi" && restante <= cuartoDelDia * 2.5)) {
-    clockEl.classList.add("pulso-leve");
+  } else if (stage === "stage-empty" || (stage === "stage-almost" && remaining <= dayQuarter * 2.5)) {
+    clockEl.classList.add("pulse-light");
   }
+}
+
+function onDayTimerExpire(): void {
+  if (game === null) {
+    return;
+  }
+  if (resolvingDecision) {
+    dayEndsOnRelease = true;
+    return;
+  }
+  const dayBefore = game.dayNumber;
+  game.endDay();
+  afterDecision(dayBefore);
 }
 
 // arranca una sola vez por dia (no por visitante, ver los dos lugares donde se
@@ -630,20 +699,38 @@ function startDayTimer(): void {
     return;
   }
 
+  dayResumedAt = performance.now();
   startDayClock();
+  dayTimeoutId = window.setTimeout(onDayTimerExpire, DAY_DURATION_MS);
+}
 
-  dayTimeoutId = window.setTimeout(() => {
-    if (game === null) {
-      return;
-    }
-    if (resolviendoDecision) {
-      diaTerminaAlSoltar = true;
-      return;
-    }
-    const diaAntes = game.dayNumber;
-    game.endDay();
-    afterDecision(diaAntes);
-  }, DAY_DURATION_MS);
+// pausa el dia entero (temporizador + reloj visual, que queda congelado en su
+// ultimo cuadro) sin perder el tiempo ya transcurrido - usada mientras se
+// muestra una pantalla de reaccion de la Jefa por error (ver
+// showErrorReaction()), para que leerla no le robe tiempo al jugador.
+function pauseDayTimer(): void {
+  if (dayResumedAt === null) {
+    return; // ya estaba pausado (o el dia nunca arranco), nada que hacer
+  }
+  if (dayTimeoutId !== null) {
+    clearTimeout(dayTimeoutId);
+    dayTimeoutId = null;
+  }
+  dayElapsedMs = currentDayElapsedMs();
+  dayResumedAt = null;
+  stopDayClock();
+}
+
+// reanuda un dia pausado con pauseDayTimer() - re-programa el cierre del dia
+// con el tiempo REAL que queda (no el dia entero de nuevo)
+function resumeDayTimer(): void {
+  if (!timerEnabled || game === null || dayResumedAt !== null) {
+    return;
+  }
+  dayResumedAt = performance.now();
+  startDayClock();
+  const remainingMs = Math.max(DAY_DURATION_MS - dayElapsedMs, 0);
+  dayTimeoutId = window.setTimeout(onDayTimerExpire, remainingMs);
 }
 
 function renderVisitor(): void {
@@ -657,21 +744,21 @@ function renderVisitor(): void {
   // listener de click de #passport-object) - no se puede decidir a ciegas
   setDecisionStampsEnabled(false);
 
-  const visitante = game.currentVisitor;
-  const pasaporte = visitante.obtainPassport;
+  const visitor = game.currentVisitor;
+  const passport = visitor.obtainPassport;
 
   const passportEl = document.querySelector("#passport-object") as HTMLElement | null;
   const decisionStampEl = document.querySelector("#decision-stamp") as HTMLElement | null;
   if (decisionStampEl !== null) {
-    decisionStampEl.classList.remove("mostrar", "aprobado", "rechazado");
+    decisionStampEl.classList.remove("show", "approved", "rejected");
   }
   if (passportEl !== null) {
     // se esconde del todo (todavia no lo "lanzo") - nada de dejarlo chiquito
     // pero visible: eso es lo que se quedaba pegado en la ventanilla despues
     // de devolverse
     passportEl.style.display = "none";
-    passportEl.classList.remove("abierto", "entregado", ...PASSPORT_DESK_LOOK_VARIANTS);
-    passportEl.classList.add("cerrado");
+    passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
+    passportEl.classList.add("closed");
   }
 
   window.setTimeout(() => {
@@ -695,35 +782,35 @@ function renderVisitor(): void {
         passportEl.style.left = "";
         passportEl.style.top = "";
         passportEl.style.height = "";
-        const variante = PASSPORT_DESK_LOOK_VARIANTS[Math.floor(Math.random() * PASSPORT_DESK_LOOK_VARIANTS.length)];
-        passportEl.classList.add(variante);
-        passportEl.classList.add("entregado");
+        const variant = PASSPORT_DESK_LOOK_VARIANTS[Math.floor(Math.random() * PASSPORT_DESK_LOOK_VARIANTS.length)];
+        passportEl.classList.add(variant);
+        passportEl.classList.add("delivered");
         passportEl.style.transition = "";
       });
     }
   }, PORTRAIT_ANIM_MS + PASSPORT_DELIVERY_DELAY_MS);
 
-  const nombreEl = document.querySelector("#passport-name");
+  const nameEl = document.querySelector("#passport-name");
   const regionEl = document.querySelector("#passport-region");
-  const especieEl = document.querySelector("#passport-species");
-  const selloEl = document.querySelector("#passport-stamp");
+  const specieEl = document.querySelector("#passport-species");
+  const passportStampEl = document.querySelector("#passport-stamp");
 
-  if (nombreEl !== null) nombreEl.textContent = pasaporte.obtainName;
-  if (regionEl !== null) regionEl.textContent = pasaporte.obtainRegion;
-  if (selloEl !== null) selloEl.className = pasaporte.obtainStamp;
+  if (nameEl !== null) nameEl.textContent = passport.obtainName;
+  if (regionEl !== null) regionEl.textContent = passport.obtainRegion;
+  if (passportStampEl !== null) passportStampEl.className = passport.obtainStamp;
 
   // la especie declarada recien se revela a partir del dia 4 (ver mensajeIntro de ese dia)
-  if (especieEl !== null) {
-    const especieHtmlEl = especieEl as HTMLElement;
+  if (specieEl !== null) {
+    const specieHtmlEl = specieEl as HTMLElement;
     if (game.dayNumber >= 4) {
-      especieHtmlEl.style.display = "";
-      especieEl.textContent = pasaporte.obtainDeclaredSpecie;
+      specieHtmlEl.style.display = "";
+      specieEl.textContent = passport.obtainDeclaredSpecie;
     } else {
-      especieHtmlEl.style.display = "none";
+      specieHtmlEl.style.display = "none";
     }
   }
 
-  typeDialogue(visitante.dialogueLine(), "#dialogue-bubble");
+  typeDialogue(visitor.dialogueLine(), "#dialogue-bubble");
 
   const faceEl = document.querySelector(".part-face");
   const eyesEl = document.querySelector(".part-eyes");
@@ -731,17 +818,17 @@ function renderVisitor(): void {
   const hairEl = document.querySelector(".part-hair");
   const hornsEl = document.querySelector(".part-horns") as HTMLElement | null;
 
-  if (faceEl !== null) faceEl.className = "part part-face " + visitante.obtainFace;
+  if (faceEl !== null) faceEl.className = "part part-face " + visitor.obtainFace;
   if (eyesEl !== null) {
-    const eyesVariant = visitante.obtainYellowEyes ? "yellowEyes" : visitante.obtainEyes;
+    const eyesVariant = visitor.obtainYellowEyes ? "yellowEyes" : visitor.obtainEyes;
     eyesEl.className = "part part-eyes " + eyesVariant;
   }
-  if (mouthEl !== null) mouthEl.className = "part part-mouth " + visitante.obtainMouth;
-  if (hairEl !== null) hairEl.className = "part part-hair " + visitante.obtainHair;
+  if (mouthEl !== null) mouthEl.className = "part part-mouth " + visitor.obtainMouth;
+  if (hairEl !== null) hairEl.className = "part part-hair " + visitor.obtainHair;
 
   if (hornsEl !== null) {
-    if (visitante.obtainHaveHorns) {
-      hornsEl.className = "part part-horns " + visitante.obtainHorns;
+    if (visitor.obtainHaveHorns) {
+      hornsEl.className = "part part-horns " + visitor.obtainHorns;
       hornsEl.style.display = "";
     } else {
       hornsEl.style.display = "none";
@@ -750,19 +837,19 @@ function renderVisitor(): void {
 
   // "DÍA"/"ERRORES"/"RACHA" ya estan dibujados dentro de fondoPantallaJuegoT.png
   // (ver style.css #hud) - aca solo se ponen los valores, no el texto completo
-  const diaEl = document.querySelector("#day-counter");
-  const erroresEl = document.querySelector("#error-counter") as HTMLElement | null;
-  const dineroEl = document.querySelector("#money-counter");
-  const rachaEl = document.querySelector("#streak-counter");
+  const dayEl = document.querySelector("#day-counter");
+  const errorsEl = document.querySelector("#error-counter") as HTMLElement | null;
+  const moneyEl = document.querySelector("#money-counter");
+  const streakEl = document.querySelector("#streak-counter");
   const sceneEl = document.querySelector("#character-scene") as HTMLElement | null;
 
-  if (diaEl !== null) diaEl.textContent = game.dayNumber + " / 7";
-  if (erroresEl !== null) {
-    erroresEl.textContent = game.errors + " / 4";
+  if (dayEl !== null) dayEl.textContent = game.dayNumber + " / 7";
+  if (errorsEl !== null) {
+    errorsEl.textContent = game.errors + " / 4";
     if (game.errors >= 3) {
-      erroresEl.classList.add("danger");
+      errorsEl.classList.add("danger");
     } else {
-      erroresEl.classList.remove("danger");
+      errorsEl.classList.remove("danger");
     }
   }
   // modo alerta: con 3+ errores, el recuadro solido detras de fondoPantallaJuegoT.png
@@ -771,40 +858,72 @@ function renderVisitor(): void {
   // para un futuro "modo reducir errores"
   if (sceneEl !== null) {
     if (game.errors >= 3) {
-      sceneEl.classList.add("alerta");
+      sceneEl.classList.add("alert");
     } else {
-      sceneEl.classList.remove("alerta");
+      sceneEl.classList.remove("alert");
     }
   }
-  if (dineroEl !== null) dineroEl.textContent = "Dinero: " + game.money;
-  if (rachaEl !== null) rachaEl.textContent = String(racha);
+  if (moneyEl !== null) moneyEl.textContent = "Dinero: " + game.money;
+  if (streakEl !== null) streakEl.textContent = String(streak);
 }
 
-function afterDecision(diaAntes: number): void {
+function afterDecision(dayBefore: number): void {
   if (game === null) {
     return;
   }
 
   if (game.isLost() || game.isWon()) {
     clearDayTimer();
-    rachasPorDia.push(racha);
-    saveDayStreaks(rachasPorDia);
+    dayStreaks.push(streak);
+    saveDayStreaks(dayStreaks);
     renderFinalScreen();
     changeState("final");
     return;
   }
 
-  if (game.dayNumber > diaAntes) {
+  if (game.dayNumber > dayBefore) {
     clearDayTimer();
-    rachasPorDia.push(racha);
-    saveDayStreaks(rachasPorDia);
-    racha = 0; // la racha arranca de nuevo en cada dia (ver docs/ideas.md)
+    dayStreaks.push(streak);
+    saveDayStreaks(dayStreaks);
+    streak = 0; // la racha arranca de nuevo en cada dia (ver docs/ideas.md)
     renderDayResultScreen();
     changeState("day-result");
     return;
   }
 
   renderVisitor();
+}
+
+// --- reaccion de la Jefa por error (1ro/2do/3ro del dia) ---
+//
+// "throughReaction" = el jugador dejo pasar a alguien que debia rechazar
+// (accept=true, error) - "rejectedReaction" = rechazo a alguien que debia
+// aceptar (accept=false, error). El 4to error ya termina la partida sola
+// (isLost()), no necesita reaccion propia - ver el chequeo en resolveDecision().
+const ERROR_REACTIONS: Record<number, { throughReaction: StoryBeat; rejectedReaction: StoryBeat }> = {
+  1: {
+    throughReaction: { image: "jefaEnojo2", text: "Oye, te dije que no dejaras pasar ningún yokai prohibido." },
+    rejectedReaction: { image: "jefaDecepcion", text: "¿Qué haces rechazando espíritus permitidos? Me haces perder dinero." },
+  },
+  2: {
+    throughReaction: { image: "jefaGolpea", text: "No volveré a repetirlo, ¡NO ENTRAN YOKAIS QUE ROMPAN LAS NORMAS!" },
+    rejectedReaction: { image: "jefaAsustada", text: "¡Cada vez pierdo más dinero por ti! ¿ACASO MENTISTE SOBRE TU EXPERIENCIA?" },
+  },
+  3: {
+    throughReaction: { image: "jefaKatana", text: "¡AAAAAAAH, ME TIENES HARTAAAA!" },
+    rejectedReaction: { image: "jefaEnojo", text: "¡Esta vez eso saldrá de tu sueldo! Quedas amonestado." },
+  },
+};
+
+function showErrorReaction(accept: boolean, errorNumber: number): void {
+  const reactions = ERROR_REACTIONS[errorNumber];
+  if (reactions === undefined) {
+    return;
+  }
+  renderJefaBeat(accept ? reactions.throughReaction : reactions.rejectedReaction);
+  errorReactionPending = true;
+  pauseDayTimer();
+  changeState("day-result");
 }
 
 function resolveDecision(accept: boolean): void {
@@ -815,17 +934,17 @@ function resolveDecision(accept: boolean): void {
   // que seguir corriendo mientras se decide (ver startDayTimer()). Se marca
   // que hay una decision en curso para que, si el dia vence en el medio, no
   // se corte a la mitad (ver diaTerminaAlSoltar mas abajo y en startDayTimer()).
-  resolviendoDecision = true;
+  resolvingDecision = true;
 
-  const diaAntes = game.dayNumber;
-  const erroresAntes = game.errors;
-  const direccion = accept ? "izquierda" : "derecha";
+  const dayBefore = game.dayNumber;
+  const errorsBefore = game.errors;
+  const direction = accept ? "left" : "right";
 
   setDecisionStampsEnabled(false);
 
   const decisionStampEl = document.querySelector("#decision-stamp") as HTMLElement | null;
   if (decisionStampEl !== null) {
-    decisionStampEl.className = "mostrar " + (accept ? "aprobado" : "rechazado");
+    decisionStampEl.className = "show " + (accept ? "approved" : "rejected");
   }
 
   const passportEl = document.querySelector("#passport-object") as HTMLElement | null;
@@ -837,13 +956,13 @@ function resolveDecision(accept: boolean): void {
   // personaje sale por separado, con el mecanismo de siempre.
   window.setTimeout(() => {
     if (decisionStampEl !== null) {
-      decisionStampEl.classList.remove("mostrar", "aprobado", "rechazado");
+      decisionStampEl.classList.remove("show", "approved", "rejected");
     }
     if (passportEl !== null) {
       // vuelve a pasaporte.png (saca la variante "en la mesa" si tenia una):
       // se devuelve mostrando el mismo aspecto con el que se entrego
-      passportEl.classList.remove("abierto", "entregado", ...PASSPORT_DESK_LOOK_VARIANTS);
-      passportEl.classList.add("cerrado");
+      passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
+      passportEl.classList.add("closed");
     }
 
     window.setTimeout(() => {
@@ -859,31 +978,42 @@ function resolveDecision(accept: boolean): void {
           passportEl.style.transition = "";
         }
 
-        slideOutSlidingElements(direccion, () => {
-          resolviendoDecision = false;
+        slideOutSlidingElements(direction, () => {
+          resolvingDecision = false;
           if (game === null) {
             return;
           }
           game.decide(accept);
 
-          if (game.errors > erroresAntes) {
-            racha = 0;
+          const justErred = game.errors > errorsBefore;
+          if (justErred) {
+            streak = 0;
           } else {
-            racha += 1;
+            streak += 1;
           }
 
           // el dia vencio mientras se animaba esta decision (ver startDayTimer()):
           // recien ahora, con el visitante que el jugador realmente vio ya
           // procesado, se cierra el dia - salvo que decide() ya haya terminado
           // la partida sola (perdio/gano), en cuyo caso no corresponde avanzar.
-          if (diaTerminaAlSoltar) {
-            diaTerminaAlSoltar = false;
+          if (dayEndsOnRelease) {
+            dayEndsOnRelease = false;
             if (!game.isLost() && !game.isWon()) {
               game.endDay();
             }
           }
 
-          afterDecision(diaAntes);
+          // reaccion de la Jefa por error (1ro/2do/3ro - el 4to ya termino la
+          // partida arriba, isLost() corta esto solo): solo tiene sentido si
+          // se sigue jugando el MISMO dia, ni con la partida recien perdida/
+          // ganada ni con el dia recien cerrado por el temporizador (esos
+          // casos ya los resuelve afterDecision() con su propia pantalla)
+          if (justErred && !game.isLost() && !game.isWon() && game.dayNumber === dayBefore) {
+            showErrorReaction(accept, game.errors);
+            return;
+          }
+
+          afterDecision(dayBefore);
         });
       });
     }, PASSPORT_ANIM_MS);
@@ -909,9 +1039,9 @@ const STAMP_REST_POSITION: Record<string, { left: number; top: number }> = {
 // pasaporte es chico y no hace falta puntería quirúrgica
 const STAMP_DROP_MARGIN_PX = 60;
 
-function esCercaDelPasaporte(clientX: number, clientY: number): boolean {
+function isNearPassport(clientX: number, clientY: number): boolean {
   const passportEl = document.querySelector("#passport-object") as HTMLElement | null;
-  if (passportEl === null || !passportEl.classList.contains("abierto")) {
+  if (passportEl === null || !passportEl.classList.contains("open")) {
     return false;
   }
   const rect = passportEl.getBoundingClientRect();
@@ -931,16 +1061,16 @@ function setupStampDrag(id: string, accept: boolean): void {
     return;
   }
 
-  function volverAlReposo(): void {
+  function returnToRest(): void {
     if (stampEl === null) return;
-    stampEl.classList.remove("arrastrando", "pos2", "pos3");
+    stampEl.classList.remove("dragging", "pos2", "pos3");
     stampEl.classList.add("pos1");
     stampEl.style.left = rest.left + "%";
     stampEl.style.top = rest.top + "%";
     stampEl.style.height = "";
   }
 
-  function mover(clientX: number, clientY: number): void {
+  function move(clientX: number, clientY: number): void {
     if (stampEl === null || sceneEl === null) return;
     const sceneRect = sceneEl.getBoundingClientRect();
     const left = ((clientX - sceneRect.left) / sceneRect.width) * 100;
@@ -949,32 +1079,32 @@ function setupStampDrag(id: string, accept: boolean): void {
     stampEl.style.top = Math.min(Math.max(top, 2), 98) + "%";
 
     stampEl.classList.remove("pos2", "pos3");
-    stampEl.classList.add(esCercaDelPasaporte(clientX, clientY) ? "pos3" : "pos2");
+    stampEl.classList.add(isNearPassport(clientX, clientY) ? "pos3" : "pos2");
   }
 
-  stampEl.addEventListener("pointerdown", (evento: PointerEvent) => {
+  stampEl.addEventListener("pointerdown", (event: PointerEvent) => {
     if (stampEl.getAttribute("aria-disabled") === "true") {
       return;
     }
-    stampEl.setPointerCapture(evento.pointerId);
-    stampEl.classList.add("arrastrando");
-    mover(evento.clientX, evento.clientY);
+    stampEl.setPointerCapture(event.pointerId);
+    stampEl.classList.add("dragging");
+    move(event.clientX, event.clientY);
   });
 
-  stampEl.addEventListener("pointermove", (evento: PointerEvent) => {
-    if (!stampEl.classList.contains("arrastrando")) {
+  stampEl.addEventListener("pointermove", (event: PointerEvent) => {
+    if (!stampEl.classList.contains("dragging")) {
       return;
     }
-    mover(evento.clientX, evento.clientY);
+    move(event.clientX, event.clientY);
   });
 
-  stampEl.addEventListener("pointerup", (evento: PointerEvent) => {
-    if (!stampEl.classList.contains("arrastrando")) {
+  stampEl.addEventListener("pointerup", (event: PointerEvent) => {
+    if (!stampEl.classList.contains("dragging")) {
       return;
     }
-    const soltadoCercaDelPasaporte = esCercaDelPasaporte(evento.clientX, evento.clientY);
-    volverAlReposo();
-    if (soltadoCercaDelPasaporte) {
+    const droppedNearPassport = isNearPassport(event.clientX, event.clientY);
+    returnToRest();
+    if (droppedNearPassport) {
       resolveDecision(accept);
     }
   });
@@ -983,12 +1113,12 @@ function setupStampDrag(id: string, accept: boolean): void {
   // el arrastre (ver el chequeo al principio de pointerdown), pero el teclado
   // (Enter/Espacio) no dispara pointerdown - se agrega un atajo directo, sin
   // arrastre, equivalente al viejo click del <button>
-  stampEl.addEventListener("keydown", (evento: KeyboardEvent) => {
+  stampEl.addEventListener("keydown", (event: KeyboardEvent) => {
     if (stampEl.getAttribute("aria-disabled") === "true") {
       return;
     }
-    if (evento.key === "Enter" || evento.key === " ") {
-      evento.preventDefault();
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
       resolveDecision(accept);
     }
   });
@@ -998,89 +1128,154 @@ setupStampDrag("reject-btn", false);
 setupStampDrag("accept-btn", true);
 
 // el pasaporte no se abre solo: el jugador tiene que clickearlo una vez que el
-// personaje ya se lo entrego (clase "entregado", ver renderVisitor()); recien
+// personaje ya se lo entrego (clase "delivered", ver renderVisitor()); recien
 // ahi se habilitan aceptar/rechazar - no se puede decidir sin haberlo abierto
 document.querySelector("#passport-object")?.addEventListener("click", () => {
   const passportEl = document.querySelector("#passport-object") as HTMLElement | null;
   if (passportEl === null) {
     return;
   }
-  if (!passportEl.classList.contains("cerrado") || !passportEl.classList.contains("entregado")) {
+  if (!passportEl.classList.contains("closed") || !passportEl.classList.contains("delivered")) {
     return;
   }
-  passportEl.classList.remove("entregado");
+  passportEl.classList.remove("delivered");
   window.setTimeout(() => {
-    passportEl.classList.remove("cerrado");
-    passportEl.classList.add("abierto");
+    passportEl.classList.remove("closed");
+    passportEl.classList.add("open");
     setDecisionStampsEnabled(true);
   }, PASSPORT_OPEN_DELAY_MS);
 });
 
 // --- Day result screen ---
 
-function renderDayResultScreen(mostrarResumen: boolean = true): void {
+function renderDayResultScreen(showSummary: boolean = true): void {
   if (game === null) {
     return;
   }
 
-  const resumenEl = document.querySelector("#day-result-summary");
-  const mensajeEl = document.querySelector("#next-day-message");
+  const summaryEl = document.querySelector("#day-result-summary");
+  const messageEl = document.querySelector("#next-day-message");
 
-  if (resumenEl !== null) {
-    const resumenHtmlEl = resumenEl as HTMLElement;
-    if (mostrarResumen) {
-      resumenHtmlEl.classList.remove("hidden");
-      resumenEl.textContent = "Errores acumulados: " + game.errors + " / 4 — Dinero: " + game.money;
+  if (summaryEl !== null) {
+    const summaryHtmlEl = summaryEl as HTMLElement;
+    if (showSummary) {
+      summaryHtmlEl.classList.remove("hidden");
+      summaryEl.textContent = "Errores acumulados: " + game.errors + " / 4 — Dinero: " + game.money;
     } else {
-      resumenHtmlEl.classList.add("hidden");
+      summaryHtmlEl.classList.add("hidden");
     }
   }
   const jefaEl = document.querySelector("#jefa-portrait");
   if (jefaEl !== null) {
-    const variante = JEFA_EXPLICA_VARIANTS[Math.floor(Math.random() * JEFA_EXPLICA_VARIANTS.length)];
-    jefaEl.className = variante;
+    const variant = JEFA_EXPLICA_VARIANTS[Math.floor(Math.random() * JEFA_EXPLICA_VARIANTS.length)];
+    jefaEl.className = variant;
   }
 
-  if (mensajeEl !== null) {
+  if (messageEl !== null) {
     typeDialogue(game.currentDay.getIntroMessage(), "#next-day-message");
   }
 }
 
+// 3 modos posibles, revisados en orden: en medio de la intro del dia 1 (avanza
+// el cuadro, o arranca el juego si ya era el ultimo), reaccion de la Jefa por
+// un error (vuelve al visitante siguiente, SIN reiniciar el temporizador del
+// dia - sigue corriendo igual que durante resolveDecision()), o el paso
+// normal entre dias (arranca el dia nuevo con su propio temporizador).
 document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
+  if (introBeatIndex !== null) {
+    introBeatIndex += 1;
+    if (introBeatIndex < DAY_ONE_INTRO_BEATS.length) {
+      renderJefaBeat(DAY_ONE_INTRO_BEATS[introBeatIndex]);
+      return;
+    }
+    introBeatIndex = null;
+    changeState("game");
+    renderVisitor();
+    startDayTimer();
+    return;
+  }
+
+  if (errorReactionPending) {
+    errorReactionPending = false;
+    changeState("game");
+    renderVisitor();
+    resumeDayTimer();
+    return;
+  }
+
   changeState("game");
   renderVisitor();
   startDayTimer();
 });
 
 // --- Final screen ---
+//
+// 3 finales posibles, elegidos segun isWon()/isLost() y la cantidad total de
+// errores acumulados (game.errors, ya congelado en el momento de ganar - el
+// jugador no sigue jugando despues del ultimo dia):
+// - derrota (siempre igual, sin cambios de esta ronda)
+// - victoria con 2 o 3 errores ("regular"): 2 cuadros, backgroundWin1 solo
+//   texto y despues protaDepre sobre la oficina desenfocada
+// - victoria con 0 o 1 errores ("especial"): 1 solo cuadro, jefaTeAma sobre
+//   la oficina desenfocada
+// Cada cuadro define que clase le pone a #final-backdrop y a #final-portrait
+// (null = sin personaje encima, solo el backdrop) - #final-continue-btn solo
+// se muestra si todavia queda otro cuadro despues del actual.
+type EndingBeat = { backdrop: string; portrait: string | null; text: string };
+
+const ENDING_DEFEAT: EndingBeat[] = [
+  { backdrop: "defeat", portrait: null, text: "Te despiden en el acto y el apocalipsis Yokai se desata sobre la Tierra — nadie más tenía la vista tan fina como la tuya para este trabajo." },
+];
+
+const ENDING_WIN_REGULAR: EndingBeat[] = [
+  { backdrop: "win-regular", portrait: null, text: "Tu desempeño ha sido regular en la agencia, pero lo suficientemente bueno para ser ascendido y obtener una oficina nueva sin ventanas, aunque crees que te pagarán más, solo es mucho papeleo por la misma paga." },
+  { backdrop: "blurred-office", portrait: "protaDepre", text: "Aunque lograste salvar al mundo y eso debería ser suficiente... felicitaciones, supongo..." },
+];
+
+const ENDING_WIN_SPECIAL: EndingBeat[] = [
+  { backdrop: "blurred-office", portrait: "jefaTeAma", text: "Has hecho un trabajo tan eficiente que la jefa se ha enamorado de ti... ella y la agencia han ganado mucho dinero por tu desempeño, eres tan bueno que no puedes ser ascendido y deciden quedarse solo contigo y despedir a los otros trabajadores... recibes un aumento de 2 monedas más al mes... felicidades...." },
+];
+
+let endingBeats: EndingBeat[] = ENDING_DEFEAT;
+let endingBeatIndex = 0;
+
+function renderEndingBeat(): void {
+  const beat = endingBeats[endingBeatIndex];
+  const backdropEl = document.querySelector("#final-backdrop");
+  if (backdropEl !== null) backdropEl.className = beat.backdrop;
+
+  const portraitEl = document.querySelector("#final-portrait");
+  if (portraitEl !== null) portraitEl.className = beat.portrait ?? "";
+
+  typeDialogue(beat.text, "#final-message");
+
+  const hasMoreBeats = endingBeatIndex < endingBeats.length - 1;
+  const continueBtn = document.querySelector("#final-continue-btn") as HTMLElement | null;
+  const backBtn = document.querySelector("#back-to-menu-btn") as HTMLElement | null;
+  if (continueBtn !== null) continueBtn.classList.toggle("hidden", !hasMoreBeats);
+  if (backBtn !== null) backBtn.classList.toggle("hidden", hasMoreBeats);
+}
 
 function renderFinalScreen(): void {
   if (game === null) {
     return;
   }
 
-  const gano = game.isWon();
-
-  const escenaEl = document.querySelector("#final-scene");
-  if (escenaEl !== null) {
-    const escenaHtmlEl = escenaEl as HTMLElement;
-    escenaHtmlEl.classList.remove("derrota");
-    if (gano) {
-      // todavia no hay arte para la victoria - se oculta el cuadro en vez de mostrarlo vacio
-      escenaHtmlEl.classList.add("hidden");
-    } else {
-      escenaHtmlEl.classList.remove("hidden");
-      escenaHtmlEl.classList.add("derrota");
-    }
+  if (!game.isWon()) {
+    endingBeats = ENDING_DEFEAT;
+  } else if (game.errors <= 1) {
+    endingBeats = ENDING_WIN_SPECIAL;
+  } else {
+    endingBeats = ENDING_WIN_REGULAR;
   }
-
-  if (gano) {
-    typeDialogue("¡Salvaste el mundo! Como agradecimiento, la agencia te asciende a Jefe de Sección (con oficina nueva, aunque sin ventana) y además te regalan un unicornio de peluche gigante que insiste en llamarse \"Su Majestad\".", "#final-message");
-  }
-  if (game.isLost()) {
-    typeDialogue("Te despiden en el acto y el apocalipsis Yokai se desata sobre la Tierra — nadie más tenía la vista tan fina como la tuya para este trabajo.", "#final-message");
-  }
+  endingBeatIndex = 0;
+  renderEndingBeat();
 }
+
+document.querySelector("#final-continue-btn")?.addEventListener("click", () => {
+  endingBeatIndex += 1;
+  renderEndingBeat();
+});
 
 document.querySelector("#back-to-menu-btn")?.addEventListener("click", () => {
   changeState("menu");
@@ -1100,14 +1295,14 @@ function preloadImages(urls: string[]): void {
 function preloadCharacterImages(): void {
   fetch("data/partes.json")
     .then(r => r.json())
-    .then(partes => {
-      const rostroUrls = partes.rostro.map((nombre: string) => "img/baseCharacters/" + nombre + ".png");
-      const ojosUrls = partes.ojos.map((nombre: string) => "img/eyes/" + nombre + ".png");
-      const bocaUrls = partes.boca.map((nombre: string) => "img/mouth/" + nombre + ".png");
-      preloadImages(rostroUrls);
-      preloadImages(ojosUrls);
-      preloadImages(bocaUrls);
-      preloadImages(["img/eyes/" + partes.ojosAmarillos + ".png"]);
+    .then(parts => {
+      const faceUrls = parts.rostro.map((name: string) => "img/baseCharacters/" + name + ".png");
+      const eyesUrls = parts.ojos.map((name: string) => "img/eyes/" + name + ".png");
+      const mouthUrls = parts.boca.map((name: string) => "img/mouth/" + name + ".png");
+      preloadImages(faceUrls);
+      preloadImages(eyesUrls);
+      preloadImages(mouthUrls);
+      preloadImages(["img/eyes/" + parts.ojosAmarillos + ".png"]);
     })
     .catch(error => console.log("no se pudieron precargar las imagenes", error));
 }
@@ -1117,14 +1312,14 @@ function preloadCharacterImages(): void {
 // y apagarlo en cada cambio de pantalla) ---
 
 function startCoinSpin(): void {
-  const monedaEl = document.querySelector("#coin-spin");
-  if (monedaEl === null) {
+  const coinEl = document.querySelector("#coin-spin");
+  if (coinEl === null) {
     return;
   }
-  let indice = 0;
+  let index = 0;
   window.setInterval(() => {
-    indice = (indice + 1) % COIN_SPIN_FRAMES.length;
-    monedaEl.className = COIN_SPIN_FRAMES[indice];
+    index = (index + 1) % COIN_SPIN_FRAMES.length;
+    coinEl.className = COIN_SPIN_FRAMES[index];
   }, 120);
 }
 

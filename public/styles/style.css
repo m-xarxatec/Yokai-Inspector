@@ -377,12 +377,12 @@ button:disabled {
   display: none;
 }
 
-#history-table td.resultado-victoria {
+#history-table td.result-victoria {
   color: #9be8a8;
   font-weight: 500;
 }
 
-#history-table td.resultado-derrota {
+#history-table td.result-derrota {
   color: #e59b96;
   font-weight: 500;
 }
@@ -459,6 +459,18 @@ button:disabled {
 #jefa-portrait.jefaExplica-4 { background-image: url("../img/jefa/jefaExplica-4.png"); }
 #jefa-portrait.jefaExplica-5 { background-image: url("../img/jefa/jefaExplica-5.png"); }
 
+/* usadas en la intro del dia 1 (ver DAY_ONE_INTRO_BEATS en main.ts) y en las
+   reacciones de la Jefa por cada error (ver ERROR_REACTIONS en main.ts) -
+   mismo #jefa-portrait/#jefa-scene de siempre, solo mas variantes de imagen */
+#jefa-portrait.jefaPresentacion { background-image: url("../img/jefa/jefaPresentacion.png"); }
+#jefa-portrait.jefaNeutral { background-image: url("../img/jefa/jefaNeutral.png"); }
+#jefa-portrait.jefaEnojo2 { background-image: url("../img/jefa/jefaEnojo2.png"); }
+#jefa-portrait.jefaDecepcion { background-image: url("../img/jefa/jefaDecepcion.png"); }
+#jefa-portrait.jefaGolpea { background-image: url("../img/jefa/jefaGolpea.png"); }
+#jefa-portrait.jefaAsustada { background-image: url("../img/jefa/jefaAsustada.png"); }
+#jefa-portrait.jefaKatana { background-image: url("../img/jefa/jefaKatana.png"); }
+#jefa-portrait.jefaEnojo { background-image: url("../img/jefa/jefaEnojo.png"); }
+
 /* ---------- pantalla final ---------- */
 
 #final-screen {
@@ -466,24 +478,72 @@ button:disabled {
 }
 
 /*
-  el aspect-ratio coincide exacto con el de fondoPierdes.png (1536x1024), asi que
-  "cover" no recorta nada - se ve la imagen completa. El texto ya NO va encima
-  (antes se superponia y costaba leerlo): va aparte, debajo, como dialogo.
+  el aspect-ratio coincide casi exacto con fondoPierdes.png (1536x1024) Y con
+  backgroundWin1.png (3670x2446 - misma proporcion, 1.5008 contra 1.5, la
+  diferencia no se nota), asi que "cover" no recorta ninguna de las dos.
+
+  #final-scene ahora es solo el marco (tamaño/recorte) - el contenido visual
+  vive en 2 capas adentro (mismo criterio que #jefa-scene/#jefa-background/
+  #jefa-portrait): #final-backdrop es el fondo (una escena completa como
+  fondoPierdes/backgroundWin1, o la oficina desenfocada cuando el final
+  necesita mostrar un personaje encima - ver .blurred-office) y
+  #final-portrait es el personaje que va apoyado sobre ese fondo (vacio/oculto
+  cuando el final no necesita uno, ej. la derrota o el primer cuadro del final
+  "regular"). Ver renderFinalScreen()/ENDING_* en main.ts para que combinacion
+  de backdrop+portrait corresponde a cada final.
 */
 #final-scene {
+  position: relative;
   width: 100%;
   aspect-ratio: 1536 / 1024;
   margin: 0 auto 1rem;
   border-radius: 10px;
   overflow: hidden;
   background-color: #2a2640;
+}
+
+#final-backdrop {
+  position: absolute;
+  inset: 0;
   background-size: cover;
   background-position: center;
 }
 
-#final-scene.derrota {
+#final-backdrop.defeat {
   background-image: url("../img/backgrounds/fondoPierdes.png");
 }
+
+#final-backdrop.win-regular {
+  background-image: url("../img/backgrounds/backgroundWin1.png");
+}
+
+/* mismo truco que #jefa-background: oficina de fondo, desenfocada, para las
+   escenas donde el final necesita mostrar un personaje (#final-portrait)
+   encima en vez de una escena completa ya dibujada */
+#final-backdrop.blurred-office {
+  background-image: url("../img/backgrounds/general_background.png");
+  background-size: 100% 100%;
+  filter: blur(6px) brightness(0.6);
+  transform: scale(1.05);
+}
+
+/* mismo criterio que #jefa-portrait: personaje apoyado sobre el borde
+   inferior del backdrop, oculto cuando ese cuadro del final no lo necesita */
+#final-portrait {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 70%;
+  height: 98%;
+  transform: translateX(-50%);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+}
+
+#final-portrait.protaDepre { display: block; background-image: url("../img/protagonista/protaDepre.png"); }
+#final-portrait.jefaTeAma { display: block; background-image: url("../img/jefa/jefaTeAma.png"); }
 
 /* mismo estilo que el dialogo de los visitantes/la Jefa - se "habla" con typeDialogue() */
 #final-message {
@@ -613,7 +673,7 @@ button:disabled {
   transition: transform 0.15s ease;
 }
 
-#day-clock.roto {
+#day-clock.broken {
   aspect-ratio: 1.068;
 }
 
@@ -635,31 +695,31 @@ button:disabled {
 
 #day-clock.stage-full.frame-a { background-image: url("../img/animaciones/relojfull1.png"); }
 #day-clock.stage-full.frame-b { background-image: url("../img/animaciones/rejojfull2.png"); }
-#day-clock.stage-medio.frame-a { background-image: url("../img/animaciones/relojmedio1.png"); }
-#day-clock.stage-medio.frame-b { background-image: url("../img/animaciones/rejojmedio2.png"); }
-#day-clock.stage-casi.frame-a { background-image: url("../img/animaciones/relojcasi1.png"); }
-#day-clock.stage-casi.frame-b { background-image: url("../img/animaciones/relojcasi2.png"); }
-#day-clock.stage-vacio.frame-a { background-image: url("../img/animaciones/relojvacio1.png"); }
-#day-clock.stage-vacio.frame-b { background-image: url("../img/animaciones/relojvacio2.png"); }
-#day-clock.roto { background-image: url("../img/animaciones/relojRoto.png"); }
+#day-clock.stage-half.frame-a { background-image: url("../img/animaciones/relojmedio1.png"); }
+#day-clock.stage-half.frame-b { background-image: url("../img/animaciones/rejojmedio2.png"); }
+#day-clock.stage-almost.frame-a { background-image: url("../img/animaciones/relojcasi1.png"); }
+#day-clock.stage-almost.frame-b { background-image: url("../img/animaciones/relojcasi2.png"); }
+#day-clock.stage-empty.frame-a { background-image: url("../img/animaciones/relojvacio1.png"); }
+#day-clock.stage-empty.frame-b { background-image: url("../img/animaciones/relojvacio2.png"); }
+#day-clock.broken { background-image: url("../img/animaciones/relojRoto.png"); }
 
 /* parpadeo leve (arranca desde la etapa "casi", avanzada) que se hace fuerte
    recien con el reloj roto y todavia una decision en curso - efecto chico a
    proposito, no debe interrumpir la pantalla (ver diario.md) */
-#day-clock.pulso-leve {
-  animation: reloj-pulso-leve 1.1s ease-in-out infinite;
+#day-clock.pulse-light {
+  animation: clock-pulse-light 1.1s ease-in-out infinite;
 }
 
-#day-clock.pulso-fuerte {
-  animation: reloj-pulso-fuerte 0.55s ease-in-out infinite;
+#day-clock.pulse-strong {
+  animation: clock-pulse-strong 0.55s ease-in-out infinite;
 }
 
-@keyframes reloj-pulso-leve {
+@keyframes clock-pulse-light {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
   50% { transform: translate(-50%, -50%) scale(1.07); }
 }
 
-@keyframes reloj-pulso-fuerte {
+@keyframes clock-pulse-strong {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
   50% { transform: translate(-50%, -50%) scale(1.18); }
 }
@@ -703,7 +763,7 @@ button:disabled {
   sobreponen ahi mismo). Sus bordes son transparentes/suaves a proposito (ver
   diario.md) por eso #character-scene le pone un color solido atras (el
   "recuadro" que pidio Mike) - con 3+ errores ese fondo empieza a parpadear en
-  rosa (ver .alerta), lo que se lee como todo el borde de la pantalla
+  rosa (ver .alert), lo que se lee como todo el borde de la pantalla
   parpadeando en modo alerta.
 
   window.png (la ventanilla que antes iba delante del personaje) se dio de
@@ -730,11 +790,11 @@ button:disabled {
   background-color: #140c24;
 }
 
-#character-scene.alerta {
-  animation: alerta-parpadeo 1s ease-in-out infinite;
+#character-scene.alert {
+  animation: alert-blink 1s ease-in-out infinite;
 }
 
-@keyframes alerta-parpadeo {
+@keyframes alert-blink {
   0%, 100% { background-color: #140c24; }
   50% { background-color: #ff4fa3; }
 }
@@ -799,7 +859,7 @@ button:disabled {
   la sensacion de que lo entrega al llegar, no de que viaja con el.
   Arranca (y descansa en el escritorio) cerrado y chico; recien crece al tamaño
   "abierto" cuando el jugador hace click sobre el (no es automatico, ver
-  .entregado mas abajo) - esta transicion "en el sitio" (abrir/cerrar, sin
+  .delivered mas abajo) - esta transicion "en el sitio" (abrir/cerrar, sin
   moverse) si es la de esta clase base (left/top/height con transition normal).
   Al decidir, se cierra en el sitio y despues se devuelve con el mismo arco
   pero al reves (ver resolveDecision()), terminando escondido (display:none)
@@ -820,7 +880,7 @@ button:disabled {
    83% a 68% porque DesktopNew.png solo llega hasta ~86.4% de alto (no 100%
    como el desktop.png viejo); con 83%+16% de alto se pisaba la barra de
    dialogo (empieza en ~87.8%) */
-#passport-object.cerrado {
+#passport-object.closed {
   aspect-ratio: 646 / 700;
   background-image: url("../img/documentos/pasaporte.png");
   top: 68%;
@@ -832,15 +892,15 @@ button:disabled {
    main.ts) - dan la sensacion de que quedo apoyado sobre la mesa, en vez del
    "de pie" que usa pasaporte.png en transito. Se sacan antes de la devolucion
    (vuelve a pasaporte.png), asi que la devolucion no cambia en nada. */
-#passport-object.cerrado.mesa1 {
+#passport-object.closed.desk1 {
   aspect-ratio: 833 / 700;
   background-image: url("../img/documentos/pasaporte1.png");
 }
-#passport-object.cerrado.mesa2 {
+#passport-object.closed.desk2 {
   aspect-ratio: 732 / 700;
   background-image: url("../img/documentos/pasaporte2.png");
 }
-#passport-object.cerrado.mesa3 {
+#passport-object.closed.desk3 {
   aspect-ratio: 706 / 700;
   background-image: url("../img/documentos/pasaporte3.png");
 }
@@ -852,10 +912,10 @@ button:disabled {
   la base) da el efecto de pulpito de conferencias: la parte de arriba de las
   paginas se aleja del jugador en vez de quedar de frente, plano.
 */
-/* top bajado de 71% a 55% por la misma razon que .cerrado de arriba (el
+/* top bajado de 71% a 55% por la misma razon que .closed de arriba (el
    escritorio nuevo termina antes que el viejo) - con 71%+30% de alto se salia
    del escritorio (y del canvas: 71+30=101%) */
-#passport-object.abierto {
+#passport-object.open {
   aspect-ratio: 989 / 700;
   background-image: url("../img/documentos/pasaporteAbierto.png");
   top: 55%;
@@ -867,7 +927,7 @@ button:disabled {
 
 /* una vez entregado (ya termino de deslizarse y sigue cerrado), invita al click
    con un pulso suave y el cursor de mano; deja de aplicar en cuanto se abre */
-#passport-object.cerrado.entregado {
+#passport-object.closed.delivered {
   cursor: pointer;
   animation: passport-pulse 1.6s ease-in-out infinite;
 }
@@ -883,7 +943,7 @@ button:disabled {
   display: none;
 }
 
-#passport-object.abierto #passport-page-left {
+#passport-object.open #passport-page-left {
   display: block;
   position: absolute;
   left: 12%;
@@ -904,7 +964,7 @@ button:disabled {
   display: none;
 }
 
-#passport-object.abierto #passport-stamp {
+#passport-object.open #passport-stamp {
   display: block;
   position: absolute;
   left: 58%;
@@ -937,16 +997,16 @@ button:disabled {
   opacity: 0.92;
 }
 
-#decision-stamp.mostrar {
+#decision-stamp.show {
   display: block;
 }
 
-#decision-stamp.aprobado {
+#decision-stamp.approved {
   aspect-ratio: 738 / 700;
   background-image: url("../img/documentos/selloAceptado.png");
 }
 
-#decision-stamp.rechazado {
+#decision-stamp.rejected {
   aspect-ratio: 736 / 700;
   background-image: url("../img/documentos/selloRechazado.png");
 }
@@ -966,7 +1026,7 @@ button:disabled {
   frente, listo para estampar (se muestra al acercarse/soltar sobre el
   pasaporte). Al soltar el mouse, siempre vuelve solo a pos1 en su posicion
   inicial (no puede quedar en otro lado) - la transicion de left/top/height
-  hace ese "regreso" suave; se apaga mientras se arrastra (.arrastrando) para
+  hace ese "regreso" suave; se apaga mientras se arrastra (.dragging) para
   que siga al mouse sin retraso.
 */
 #decision-buttons {
@@ -994,7 +1054,7 @@ button:disabled {
   pointer-events: none;
 }
 
-.stamp-drag.arrastrando {
+.stamp-drag.dragging {
   transition: none;
   cursor: grabbing;
 }
@@ -1163,18 +1223,20 @@ button:disabled {
   cuernos, con un top fijo pensado para "casi sin margen", terminaban
   flotando bien arriba de la cabeza. left/width no cambian: "contain" ajusta
   por ANCHO en esta proporcion, asi que no hay franja vacia a los costados.
+
+  Mike va a agrandar el arte de horns-1..4.png directamente (para que se
+  vean mas sin tener que agrandar el recuadro por CSS, ver diario.md).
 */
 .part-horns {
-  width: 16%;
-  height: 5.44%;
-  top: 26.06%;
-  left: 42%;
-  background: sienna;
-  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  width: 22%;
+  top: 32%;
+  left: 38%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
-.part-horns.variante-1 { background-image: url("../img/test/horns-test.svg"); background-color: transparent; clip-path: none; }
-.part-horns.variante-2 { background: #7a4a2a; }
-.part-horns.variante-3 { background: #8a5a3a; }
+.part-horns.horns-4 { background-image: url("../img/cuernos/horns-4.png"); aspect-ratio: 4.281; }
+.part-horns.horns-5 { background-image: url("../img/cuernos/horns-5.png"); aspect-ratio: 6.37; }
 
 /* sombrero: el cabello ya viene dibujado dentro de cada rostro - esta capa queda
    disponible para un accesorio futuro (gorro/sombrero encima), oculta por ahora

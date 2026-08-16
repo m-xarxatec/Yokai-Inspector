@@ -140,7 +140,7 @@
            cuando el personaje llego y esta con la animacion idle (ver renderVisitor()
            en main.ts), como si lo entregara al llegar. Arranca cerrado y se abre
            con un click del jugador sobre el (no automatico). -->
-      <div id="passport-object" class="cerrado">
+      <div id="passport-object" class="closed">
         <div id="passport-page-left">
           <p id="passport-name">Nombre: -</p>
           <p id="passport-region">Región: -</p>
@@ -174,8 +174,14 @@
   </section>
 
   <section id="final-screen" class="hidden">
-    <div id="final-scene" class="hidden"></div>
+    <div id="final-scene">
+      <div id="final-backdrop"></div>
+      <div id="final-portrait"></div>
+    </div>
     <p id="final-message"></p>
+    <!-- solo visible cuando el final tiene mas de un cuadro (ver ENDING_* en
+         main.ts) - avanza al siguiente cuadro en vez de volver al menu -->
+    <button id="final-continue-btn" class="hidden">Siguiente</button>
     <button id="back-to-menu-btn">Volver al menú</button>
   </section>
 

@@ -24,11 +24,11 @@ export class Yokai extends Character{
         // orden importa: un Yokai puede tener region "rio" ademas de su rasgo principal (ver
         // Game#generateVisitor, rasgos combinados) - por eso la region se chequea primero y el
         // rasgo que define su tipo real (cuernos/ojos amarillos) se chequea al final, para que gane.
-        let especieAparente = "humano";
-        if (this.obtainPassport.obtainRegion === "rio") especieAparente = "kappa";
-        if (this.obtainHaveHorns) especieAparente = "oni";
-        if (this.obtainYellowEyes) especieAparente = "kitsune";
+        let apparentSpecie = "humano";
+        if (this.obtainPassport.obtainRegion === "rio") apparentSpecie = "kappa";
+        if (this.obtainHaveHorns) apparentSpecie = "oni";
+        if (this.obtainYellowEyes) apparentSpecie = "kitsune";
 
-        return this.obtainPassport.obtainDeclaredSpecie !== especieAparente;
+        return this.obtainPassport.obtainDeclaredSpecie !== apparentSpecie;
     }
 }
