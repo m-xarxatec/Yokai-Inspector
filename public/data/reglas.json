@@ -19,9 +19,27 @@
   },
   {
     "dia": 4,
-    "descripcion": "Rechazar a cualquier visitante cuya especie declarada no coincida con lo que se observa (cuernos → Oni, ojos amarillos → Kitsune, región 'rio' → Kappa) — sin importar qué haya declarado (puede decir 'humano', otra especie, o cualquier cosa). Las reglas de los días 1-3 se mantienen activas.",
-    "propiedad": "mintioSobreEspecie",
-    "valorProhibido": true
+    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la especie 'kitsune', sea verdad o mentira: la agencia prohibió que conste esa palabra en el documento.",
+    "propiedad": "especieProhibida",
+    "valorProhibido": "kitsune"
+  },
+  {
+    "dia": 4,
+    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la especie 'oni', sea verdad o mentira: misma prohibición.",
+    "propiedad": "especieProhibida",
+    "valorProhibido": "oni"
+  },
+  {
+    "dia": 4,
+    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la especie 'kappa', sea verdad o mentira: misma prohibición.",
+    "propiedad": "especieProhibida",
+    "valorProhibido": "kappa"
+  },
+  {
+    "dia": 4,
+    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la especie 'poseido': la agencia no deja pasar a nadie que admita estar poseído, sin excepciones.",
+    "propiedad": "especieProhibida",
+    "valorProhibido": "poseido"
   },
   {
     "dia": 5,
@@ -31,7 +49,7 @@
   },
   {
     "dia": 6,
-    "descripcion": "Rechazar a cualquier visitante con sello plateado en el pasaporte: es la falsificación de una aduana rival que la agencia acaba de detectar. Las reglas anteriores se mantienen, excepto la de los cuernos (ver mensaje del día 6).",
+    "descripcion": "Rechazar a cualquier visitante con sello plateado en el pasaporte: es la falsificación de una aduana rival que la agencia acaba de detectar. El resto de las reglas se mantiene igual, sin excepciones.",
     "propiedad": "sello",
     "valorProhibido": "plateado"
   }

@@ -18,20 +18,6 @@ export class Yokai extends Character {
         _Yokai_yokaiType.set(this, void 0);
         __classPrivateFieldSet(this, _Yokai_yokaiType, yokaiType, "f");
     }
-    specieLiar() {
-        // la especie "aparente" es la que se deduce mirando al personaje, no lo que dice el pasaporte.
-        // orden importa: un Yokai puede tener region "rio" ademas de su rasgo principal (ver
-        // Game#generateVisitor, rasgos combinados) - por eso la region se chequea primero y el
-        // rasgo que define su tipo real (cuernos/ojos amarillos) se chequea al final, para que gane.
-        let apparentSpecie = "humano";
-        if (this.obtainPassport.obtainRegion === "rio")
-            apparentSpecie = "kappa";
-        if (this.obtainHaveHorns)
-            apparentSpecie = "oni";
-        if (this.obtainYellowEyes)
-            apparentSpecie = "kitsune";
-        return this.obtainPassport.obtainDeclaredSpecie !== apparentSpecie;
-    }
 }
 _Yokai_yokaiType = new WeakMap();
 //# sourceMappingURL=Yokai.js.map

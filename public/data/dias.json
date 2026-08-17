@@ -21,7 +21,7 @@
     "dia": 4,
     "objetivoVisitantes": 6,
     "reglasActivas": [1, 2, 3, 4],
-    "mensajeIntro": "A partir de ahora todos los visitantes deben declarar su especie en el pasaporte. Pero cuidado: ningún Yokai va a reconocer lo que es — puede declarar ser humano, otra especie, o cualquier cosa. Lo único que no cambia es lo que ves: cuernos, ojos amarillos, o venir del río. Si lo que declara no coincide con lo que observás, está mintiendo. (Las reglas anteriores se mantienen.)"
+    "mensajeIntro": "Ya te habrás dado cuenta de que el pasaporte trae, desde tu primer día, un dato que hasta ahora era solo decorativo: la especie declarada. Desde hoy empieza a importar: la agencia prohibió 4 palabras en ese campo, sea verdad o mentira — 'kitsune', 'oni', 'kappa' y 'poseído'. Si el pasaporte trae cualquiera de esas 4, se rechaza sin pensarlo, mires o no mires el resto. Ojo: esto no tiene nada que ver con cuernos, ojos amarillos o venir del río — un visitante sin ninguno de esos rasgos puede perfectamente traer una de estas 4 palabras igual, así que revisá el campo de especie aunque el resto del pasaporte parezca impecable. (Las reglas anteriores se mantienen, como siempre.)"
   },
   {
     "dia": 5,
@@ -32,13 +32,13 @@
   {
     "dia": 6,
     "objetivoVisitantes": 8,
-    "reglasActivas": [2, 3, 4, 5],
-    "mensajeIntro": "La agencia revisó sus propios archivos y encontró algo incómodo: los cuernos se pueden disimular con cascos rituales. A partir de hoy ya no son prueba por sí solos — pero la declaración de especie sigue sin fallar, así que ojo con eso. Hoy además llegan más visitantes."
+    "reglasActivas": [1, 2, 3, 4, 5],
+    "mensajeIntro": "Sin reglas nuevas hoy — la agencia todavía no encontró nada raro que agregar. Pero ojo: NINGUNA de las reglas anteriores se cae nunca, se acumulan todas, así que hoy toca aplicar las cinco a la vez con más visitantes en menos tiempo. Que la calma de hoy no te confíe."
   },
   {
     "dia": 7,
     "objetivoVisitantes": 8,
-    "reglasActivas": [2, 3, 4, 5, 6],
+    "reglasActivas": [1, 2, 3, 4, 5, 6],
     "mensajeIntro": "Nuevo memo de la agencia: apareció un sello plateado, falsificación de una aduana rival. Se suma a la lista de sellos prohibidos. El resto de las reglas se mantiene igual."
   }
 ]

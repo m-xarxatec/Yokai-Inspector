@@ -43,8 +43,8 @@ export class Rule {
                 return character.obtainPassport.obtainRegion === __classPrivateFieldGet(this, _Rule_forbiddenValue, "f");
             case "sello":
                 return character.obtainPassport.obtainStamp === __classPrivateFieldGet(this, _Rule_forbiddenValue, "f");
-            case "mintioSobreEspecie":
-                return character.specieLiar() === __classPrivateFieldGet(this, _Rule_forbiddenValue, "f");
+            case "especieProhibida":
+                return character.obtainPassport.obtainDeclaredSpecie === __classPrivateFieldGet(this, _Rule_forbiddenValue, "f");
             default:
                 return false;
         }

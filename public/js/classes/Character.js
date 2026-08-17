@@ -66,9 +66,6 @@ export class Character {
     dialogueLine() {
         return __classPrivateFieldGet(this, _Character_phrase, "f");
     }
-    specieLiar() {
-        return false;
-    }
 }
 _Character_name = new WeakMap(), _Character_passport = new WeakMap(), _Character_face = new WeakMap(), _Character_eyes = new WeakMap(), _Character_yellowEyes = new WeakMap(), _Character_mouth = new WeakMap(), _Character_horns = new WeakMap(), _Character_haveHorns = new WeakMap(), _Character_hair = new WeakMap(), _Character_phrase = new WeakMap();
 //# sourceMappingURL=Character.js.map

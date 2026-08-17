@@ -62,8 +62,5 @@ export abstract class Character{
     dialogueLine(): string{
         return this.#phrase;
     }
-    specieLiar(): boolean {
-        return false;
-    }
 
 }
