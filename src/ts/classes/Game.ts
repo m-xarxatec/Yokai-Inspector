@@ -17,7 +17,6 @@ export class Game{
     #days: Day[];
     #currentVisitor: Character | null;
     #visitorsSeenToday: number;
-    #todayProblematicSlots: boolean [];
     #parts: any;
     #names: string[];
     #phrases: string[]
@@ -36,7 +35,6 @@ export class Game{
         this.#days = [];
         this.#currentVisitor = null;
         this.#visitorsSeenToday = 0;
-        this.#todayProblematicSlots = [];
         this.#names = [];
         this.#phrases = [];
         this.#stamps = [];
@@ -77,23 +75,17 @@ export class Game{
 
     #startDay(): void {
         this.#visitorsSeenToday = 0;
-
-        const goal = this.#days[this.#dayNumber -1].getVisitorGoal();
-        const problematicCount = Math.min(this.#dayNumber +1, goal - 1)
-
-        const slots: boolean[] = [];
-        for (let i = 0; i< goal; i++){
-            slots.push(i < problematicCount)
-        }
-
-        this.#todayProblematicSlots = slots.sort(() => Math.random() - 0.5);
-
         this.#currentVisitor = this.#generateVisitor();
         saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money})
     }
     #generateVisitor(): Character {
-        
-        const isProblematic = this.#todayProblematicSlots[this.#visitorsSeenToday];
+        // el dia ya no tiene una cantidad fija de visitantes (dura por tiempo, no
+        // por conteo) - "goal" queda solo como el denominador de la proporcion de
+        // problematicos, calibrada por dia; en vez de repartir una cantidad exacta
+        // en un array pre-armado, se sortea de nuevo en cada visitante.
+        const goal = this.#days[this.#dayNumber - 1].getVisitorGoal();
+        const problematicRatio = Math.min(this.#dayNumber + 1, goal - 1) / goal;
+        const isProblematic = Math.random() < problematicRatio;
         const name = this.#names[Math.floor(Math.random() * this.#names.length)];
         const phrase = this.#pickPhrase(isProblematic);
         const face = this.#parts.rostro[Math.floor(Math.random() * this.#parts.rostro.length)];
@@ -181,8 +173,8 @@ export class Game{
         // array (puede ser "humano", otra especie de Yokai, o directamente una tonteria), sin
         // importar que regla lo genero. La unica forma de descubrirlo es mirar sus rasgos reales.
         if (this.#dayNumber >= 4 && property !== "sello") {
-        const opcionesDeMentira = this.#species.filter((especie: string) => especie !== yokaiType);
-        declaredSpecie = opcionesDeMentira[Math.floor(Math.random() * opcionesDeMentira.length)];
+        const lieOptions = this.#species.filter((specie: string) => specie !== yokaiType);
+        declaredSpecie = lieOptions[Math.floor(Math.random() * lieOptions.length)];
         }
 
         const passport = new Passport(name, region, declaredSpecie, stamp);
@@ -210,7 +202,7 @@ export class Game{
     const wasCorrect = (accept && !shouldReject) || (!accept && shouldReject);
 
     if (wasCorrect) {
-        this.#money += 10;
+        this.#money += 2; // antes 10 - se achico porque ahora, con dia por tiempo, se pueden ver muchos mas visitantes que antes
     } else {
         this.#money -= 5;
         this.#errors += 1;
@@ -225,19 +217,21 @@ export class Game{
         return;
     }
 
-    if (this.#visitorsSeenToday >= currentDay.getVisitorGoal()) {
-        this.#dayNumber += 1;
-        if (this.isWon()) {
+    this.#currentVisitor = this.#generateVisitor();
+    }
+
+    // el dia ya no termina por cantidad de visitantes: lo llama main.ts cuando se
+    // acaba el temporizador del dia. Antes vivia adentro de decide(), atado a
+    // visitorsSeenToday >= currentDay.getVisitorGoal().
+    endDay(): void {
+    this.#dayNumber += 1;
+    if (this.isWon()) {
         saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName });
         addCredits(this.#playerName, this.#money);
         deleteCurrentGame();
         return;
-        }
-        this.#startDay();
-        return;
     }
-
-    this.#currentVisitor = this.#generateVisitor();
+    this.#startDay();
     }
 
     isLost(): boolean {

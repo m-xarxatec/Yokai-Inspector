@@ -1,14 +1,27 @@
-@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Marcellus&display=swap");
+/* Press Start 2P y Pixelify Sans (idea de Iralys, ver e84ea1e) alojadas en el
+   propio repo (public/fonts/), no via Google Fonts - el juego no depende de
+   internet para verse bien. Pixelify Sans es variable (un solo archivo cubre
+   400-700); Press Start 2P solo existe en un peso. */
+@font-face {
+  font-family: "Pixelify Sans";
+  src: url("../fonts/pixelify-sans-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("../fonts/press-start-2p-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
-  /* ancho de la pantalla de juego - una sola variable para que el widget de la
-     moneda (fijo, fuera de la columna) sepa donde termina la columna y se
-     acomode pegado a ella en vez de quedar perdido en el borde de la ventana */
-  --game-max-width: 760px;
-
-  /* pixel-art: se mantiene solo para el sello de aceptado/rechazado (ver
-     #decision-stamp), que busca ese contraste "de sello oficial retro" */
+  /* dos familias: pixel-art gruesa para titulos/acentos cortos (su ancho fijo
+     por caracter no compromete la lectura ahi) y una version pixel-art mas
+     legible para todo el texto funcional (parrafos, botones, tablas) */
   --font-display: "Press Start 2P", "Pixelify Sans", system-ui, sans-serif;
   --font-body: "Pixelify Sans", system-ui, sans-serif;
 }
@@ -19,18 +32,8 @@
 }
 
 h1, h2, #menu-buttons h1, .screen-panel h2 {
-  font-family: 'Marcellus', serif;
+  font-family: var(--font-display);
   letter-spacing: 0.04em;
-  font-weight: 400;
-}
-
-/* elimina el scroll en TODA la app, en cualquier pantalla y dispositivo */
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
 }
 
 body {
@@ -47,10 +50,21 @@ section {
   margin: 0 auto;
 }
 
-/* mas grande que el resto de pantallas: hay lugar para detalles chicos del
-   personaje (ojos amarillos, etc.) y para el pasaporte que va sobre el escritorio */
+/*
+  a pantalla completa, mismo criterio que #menu-screen: fondoPantallaJuegoT.png
+  esta pensado como el fondo de TODA la pantalla de juego (HUD, barra lateral
+  y de dialogo ya vienen dibujados adentro), asi que ya no tiene sentido
+  encerrarlo en la columna angosta de 480px que usan el resto de pantallas
+  (texto). #character-scene (adentro) es quien realmente controla el tamaño
+  real, ver mas abajo.
+*/
 #game-screen {
-  max-width: var(--game-max-width);
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: #140c24;
 }
 
 button {
@@ -69,27 +83,49 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* ---------- menu: imagen a pantalla completa, sin scroll, en PC/tablet/movil ---------- */
+/* ---------- menu: backgroundEnd.png a pantalla completa, sin scroll ---------- */
 
+/*
+  ojo con este selector: NUNCA declararle un "display" directo por ID (ni
+  aca ni en ningun otro #x-screen) - le ganaria en especificidad a ".hidden"
+  (display:none) y changeState() dejaria de poder ocultarlo de verdad, el
+  mismo bug real que ya paso una vez con #final-screen (ver diario.md). El
+  centrado de #menu-layout se resuelve aparte, con position+transform, sin
+  que #menu-screen necesite ser flex.
+*/
 #menu-screen {
+  position: fixed;
+  inset: 0;
   max-width: none;
-  width: 100%;
-  height: 100%;
   margin: 0;
   padding: 0;
+  background: #1e1b2e; /* se ve en el margen alrededor de la imagen */
 }
 
+/*
+  el contenedor mantiene siempre la proporcion real de backgroundEnd.png
+  (1536/1024) y ocupa el maximo posible sin pasarse de 94% del ancho ni 90%
+  del alto de la ventana - a proposito no llega a pantalla completa (en un
+  monitor grande se siente demasiado invasivo), pero la diferencia es chica
+  para no perder espacio en pantallas ya ajustadas (laptop, tablet, movil).
+  Los botones y la barra lateral se posicionan como porcentaje de ESTA caja
+  (no de la ventana), asi que quedan siempre alineados con la imagen real,
+  sea cual sea la pantalla. Se centra con position+transform (no con flex
+  en el padre) justo por la razon de arriba.
+*/
 #menu-layout {
-  width: 100%;
-  height: 100%;
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 1536 / 1024;
+  width: min(94vw, calc(90vh * 1536 / 1024));
 }
 
 #menu-stage {
   position: relative;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh; /* corrige el salto de la barra de direcciones en tablet/movil */
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   border-radius: 0;
   background: #1e1b2e; /* se ve en las franjas que deja la imagen sin recortar */
@@ -111,8 +147,9 @@ button:disabled {
   -webkit-user-drag: none;
 }
 
-/* titulo + botones reales, ahora posicionados sobre TODA la ventana. Bajados
-   (top: 62%) para dejar libre el titulo/kanji de la parte superior de la imagen */
+/* titulo (vacio, backgroundEnd.png ya lo trae dibujado) + botones reales,
+   posicionados sobre la imagen - bajados (top: 62%) para dejar libre el
+   titulo/kanji de la parte superior */
 #menu-buttons {
   position: absolute;
   left: 5%;
@@ -172,7 +209,7 @@ button:disabled {
 
 /*
   panel de "ultimas partidas": chico, sin scroll (overflow: hidden, no auto),
-  apoyado debajo de la mujer del fondo. La altura ya no se limita con
+  apoyado abajo a la derecha de la imagen. La altura no se limita con
   max-height + scroll: se limita el CONTENIDO (solo 3 filas, ver
   #history-table tbody tr mas abajo), asi el panel nunca necesita scrollear.
 */
@@ -345,12 +382,12 @@ button:disabled {
   display: none;
 }
 
-#history-table td.resultado-victoria {
+#history-table td.result-victoria {
   color: #9be8a8;
   font-weight: 500;
 }
 
-#history-table td.resultado-derrota {
+#history-table td.result-derrota {
   color: #e59b96;
   font-weight: 500;
 }
@@ -427,6 +464,18 @@ button:disabled {
 #jefa-portrait.jefaExplica-4 { background-image: url("../img/jefa/jefaExplica-4.png"); }
 #jefa-portrait.jefaExplica-5 { background-image: url("../img/jefa/jefaExplica-5.png"); }
 
+/* usadas en la intro del dia 1 (ver DAY_ONE_INTRO_BEATS en main.ts) y en las
+   reacciones de la Jefa por cada error (ver ERROR_REACTIONS en main.ts) -
+   mismo #jefa-portrait/#jefa-scene de siempre, solo mas variantes de imagen */
+#jefa-portrait.jefaPresentacion { background-image: url("../img/jefa/jefaPresentacion.png"); }
+#jefa-portrait.jefaNeutral { background-image: url("../img/jefa/jefaNeutral.png"); }
+#jefa-portrait.jefaEnojo2 { background-image: url("../img/jefa/jefaEnojo2.png"); }
+#jefa-portrait.jefaDecepcion { background-image: url("../img/jefa/jefaDecepcion.png"); }
+#jefa-portrait.jefaGolpea { background-image: url("../img/jefa/jefaGolpea.png"); }
+#jefa-portrait.jefaAsustada { background-image: url("../img/jefa/jefaAsustada.png"); }
+#jefa-portrait.jefaKatana { background-image: url("../img/jefa/jefaKatana.png"); }
+#jefa-portrait.jefaEnojo { background-image: url("../img/jefa/jefaEnojo.png"); }
+
 /* ---------- pantalla final ---------- */
 
 #final-screen {
@@ -434,24 +483,72 @@ button:disabled {
 }
 
 /*
-  el aspect-ratio coincide exacto con el de fondoPierdes.png (1536x1024), asi que
-  "cover" no recorta nada - se ve la imagen completa. El texto ya NO va encima
-  (antes se superponia y costaba leerlo): va aparte, debajo, como dialogo.
+  el aspect-ratio coincide casi exacto con fondoPierdes.png (1536x1024) Y con
+  backgroundWin1.png (3670x2446 - misma proporcion, 1.5008 contra 1.5, la
+  diferencia no se nota), asi que "cover" no recorta ninguna de las dos.
+
+  #final-scene ahora es solo el marco (tamaño/recorte) - el contenido visual
+  vive en 2 capas adentro (mismo criterio que #jefa-scene/#jefa-background/
+  #jefa-portrait): #final-backdrop es el fondo (una escena completa como
+  fondoPierdes/backgroundWin1, o la oficina desenfocada cuando el final
+  necesita mostrar un personaje encima - ver .blurred-office) y
+  #final-portrait es el personaje que va apoyado sobre ese fondo (vacio/oculto
+  cuando el final no necesita uno, ej. la derrota o el primer cuadro del final
+  "regular"). Ver renderFinalScreen()/ENDING_* en main.ts para que combinacion
+  de backdrop+portrait corresponde a cada final.
 */
 #final-scene {
+  position: relative;
   width: 100%;
   aspect-ratio: 1536 / 1024;
   margin: 0 auto 1rem;
   border-radius: 10px;
   overflow: hidden;
   background-color: #2a2640;
+}
+
+#final-backdrop {
+  position: absolute;
+  inset: 0;
   background-size: cover;
   background-position: center;
 }
 
-#final-scene.derrota {
+#final-backdrop.defeat {
   background-image: url("../img/backgrounds/fondoPierdes.png");
 }
+
+#final-backdrop.win-regular {
+  background-image: url("../img/backgrounds/backgroundWin1.png");
+}
+
+/* mismo truco que #jefa-background: oficina de fondo, desenfocada, para las
+   escenas donde el final necesita mostrar un personaje (#final-portrait)
+   encima en vez de una escena completa ya dibujada */
+#final-backdrop.blurred-office {
+  background-image: url("../img/backgrounds/general_background.png");
+  background-size: 100% 100%;
+  filter: blur(6px) brightness(0.6);
+  transform: scale(1.05);
+}
+
+/* mismo criterio que #jefa-portrait: personaje apoyado sobre el borde
+   inferior del backdrop, oculto cuando ese cuadro del final no lo necesita */
+#final-portrait {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 70%;
+  height: 98%;
+  transform: translateX(-50%);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+}
+
+#final-portrait.protaDepre { display: block; background-image: url("../img/protagonista/protaDepre.png"); }
+#final-portrait.jefaTeAma { display: block; background-image: url("../img/jefa/jefaTeAma.png"); }
 
 /* mismo estilo que el dialogo de los visitantes/la Jefa - se "habla" con typeDialogue() */
 #final-message {
@@ -465,60 +562,82 @@ button:disabled {
 
 /* ---------- HUD y pasaporte ---------- */
 
+/*
+  fondoPantallaJuegoT.png ya trae dibujada la barra superior (iconos + las
+  palabras DIA/ERRORES/RACHA) - #hud solo pone los VALORES encima, en el
+  espacio libre que queda a la derecha de cada etiqueta ya dibujada (medido a
+  ojo sobre el arte, ver diario.md - puede necesitar un ajuste fino de mm).
+  pointer-events:none en el contenedor para no tapar clicks del escritorio;
+  el boton de salir se reactiva aparte.
+*/
 #hud {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.3rem 0.8rem;
-  background: #2a2640;
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
-  margin-bottom: 0.6rem;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 9.5%;
+  z-index: 9;
+  pointer-events: none;
 }
 
+/* posiciones a ojo (medidas sobre un recorte del PNG, no con bbox real) -
+   ajustadas una vez ya jugado: DIA quedo bien en horizontal, solo hacia
+   falta bajarlo; ERRORES y RACHA (RACHA mas todavia) se corrieron a la
+   derecha para caer despues de la palabra ya dibujada en el arte */
+#day-counter,
+#error-counter,
+#streak-counter {
+  position: absolute;
+  top: 59%;
+  transform: translateY(-50%);
+  font-size: clamp(0.6rem, 1.9vw, 1rem);
+  color: #f2ede3;
+}
+
+#day-counter { left: 32%; }
+#error-counter { left: 56%; }
+#streak-counter { left: 77%; }
+
 #error-counter.danger {
-  color: #e0837e;
+  color: #ff6f91;
   font-weight: bold;
 }
 
-/* moneda + dinero, fuera de la barra del HUD, flotando al costado de la pantalla.
-   Antes vivia adentro de #money-counter y se borraba cada vez que se actualizaba
-   el texto del dinero - ahora son hermanos, cada uno con su propio contenido. */
-/* pegado al borde de la columna del juego (no al borde de la ventana): la
-   columna esta centrada con "margin: 0 auto", asi que su borde derecho queda
-   en 50% + la mitad de su ancho - desde ahi el widget se acomoda con un margen chico */
-#coin-widget {
-  position: fixed;
+#hud .exit-to-menu-btn {
+  position: absolute;
+  right: 1.5%;
   top: 50%;
-  left: calc(50% + (var(--game-max-width) / 2) + 0.8rem);
   transform: translateY(-50%);
+  pointer-events: auto;
+  margin: 0;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+/* moneda + dinero: antes flotaba fuera del canvas, pegado al costado de la
+   columna - ahora vive DENTRO de #character-scene, centrado sobre el recuadro
+   que barraLateralIzq.png dibuja para el (medido con PIL sobre esa imagen,
+   ver diario.md). Por eso ya no necesita su propio fondo/borde: la barra
+   lateral ya se lo da. */
+#coin-widget {
+  position: absolute;
+  left: 10.9%;
+  top: 45%;
+  transform: translate(-50%, -50%);
   z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  background: #2a2640;
-  border: 1px solid #4a4658;
-  border-radius: 10px;
-  padding: 0.6rem 0.9rem;
-}
-
-/* si no entra al costado de la columna, se acomoda arriba del HUD */
-@media (max-width: 900px) {
-  #coin-widget {
-    position: static;
-    flex-direction: row;
-    transform: none;
-    width: fit-content;
-    margin: 0 auto 0.6rem;
-  }
+  gap: 0.2rem;
 }
 
 /* main.ts va cambiando la clase entre los 4 cuadros (moneda-1..4), cada uno con
-   su propio ancho (elipse cerrandose), para que se vea girar */
+   su propio ancho (elipse cerrandose), para que se vea girar - tamaño en vw
+   (no rem fijo) para que crezca junto con el resto de la escena, que ahora
+   ocupa casi toda la ventana en vez de una columna angosta */
 #coin-spin {
-  width: 2.6rem;
-  height: 2.9rem;
+  width: clamp(2.6rem, 4.2vw, 4.6rem);
+  height: clamp(2.9rem, 4.6vw, 5rem);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -529,79 +648,188 @@ button:disabled {
 #coin-spin.moneda-3 { background-image: url("../img/animaciones/moneda-3.png"); }
 #coin-spin.moneda-4 { background-image: url("../img/animaciones/moneda-4.png"); }
 
+#money-counter {
+  font-size: clamp(0.5rem, 1.5vw, 0.8rem);
+  color: #f2ede3;
+  text-align: center;
+}
+
 .exit-to-menu-btn {
   background: #4a4658;
 }
 
-#hud .exit-to-menu-btn {
-  margin: 0;
-  padding: 0.35rem 0.7rem;
-  font-size: 0.85rem;
+/* ---------- reloj de arena del dia (reemplaza la barra de tiempo, por visitante antes) ----------
+   4 etapas (full/medio/casi/vacio), cada una con 2 cuadros que main.ts va
+   alternando (mismo criterio que #coin-spin) para dar sensacion de movimiento;
+   al vencer el tiempo (o quedar <=3s) pasa a "roto" - ver startDayClock() en
+   main.ts. Se ubica debajo de la moneda, en la misma barra lateral (posicion
+   provisoria, ver diario.md). */
+#day-clock {
+  position: absolute;
+  left: 10.9%;
+  top: 63%;
+  transform: translate(-50%, -50%);
+  height: 16%;
+  aspect-ratio: 0.567;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 5;
+  transition: transform 0.15s ease;
 }
 
-/* ---------- barra de tiempo por visitante ---------- */
-
-#time-bar-track {
-  background: #2a2640;
-  border-radius: 6px;
-  height: 0.5rem;
-  margin-bottom: 1rem;
-  overflow: hidden;
+#day-clock.broken {
+  aspect-ratio: 1.068;
 }
-
-#time-bar-fill {
-  height: 100%;
-  width: 100%;
-  background: #6b4fa0;
-  transform-origin: left;
-}
-
-#time-bar-fill.corriendo {
-  animation: shrink-time-bar linear forwards;
-  /* la duracion la fija main.ts en el estilo inline (animation-duration) segun el dia */
-}
-
-#time-bar-fill.alerta {
-  background: #c0524a;
-}
-
-@keyframes shrink-time-bar {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
-}
-
-#dialogue-bubble {
-  font-style: italic;
-  line-height: 1.5;
-  background: #2a2640;
-  border-radius: 6px;
-  padding: 0.6rem 1rem;
-  min-height: 1.2rem;
-}
-
-/* ---------- escena completa: fondo + personaje + ventanilla + escritorio ---------- */
 
 /*
-  Las 3 imagenes de fondo (general_background, window, desktop) comparten el mismo
-  canvas (3670x2446), asi que #character-scene mantiene esa proporcion y las 3 capas
-  se superponen exactas al 100%/100%, sin reposicionar nada entre ellas.
-
-  Orden de montaje (de atras hacia adelante), tal cual se definio:
-  fondo general -> personaje -> ventanilla -> escritorio.
+  relojfull1.png/rejojfull2.png tienen una pequeña diferencia de tamaño real
+  entre si (el cuadro 2 es ~1.3% mas chico) que hace que al alternar entre
+  ambos el reloj "palpite" un poco - a Mike le gusto ese efecto, pero las
+  otras 3 etapas (medio/casi/vacio) no lo tienen en el arte original (sus dos
+  cuadros son identicos en tamaño). En vez de editar los PNG a mano (fragil,
+  dificil de calibrar igual en las 3), se extiende el mismo efecto por CSS a
+  TODAS las etapas: el cuadro "b" mide un poco menos de alto que el "a" (el
+  ancho lo sigue solo, por el aspect-ratio fijo) - "transform" no se toca
+  (ahi vive el centrado y el pulso de "roto", ver mas abajo), asi que no hay
+  conflicto entre este achique y esas otras animaciones.
 */
-#character-scene {
-  position: relative;
-  width: 100%;
-  max-width: var(--game-max-width);
-  aspect-ratio: 3670 / 2446;
-  margin: 1rem auto;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #2a2640;
+#day-clock.frame-b {
+  height: 15.8%;
 }
 
-#scene-background,
-#scene-window,
+#day-clock.stage-full.frame-a { background-image: url("../img/animaciones/relojfull1.png"); }
+#day-clock.stage-full.frame-b { background-image: url("../img/animaciones/rejojfull2.png"); }
+#day-clock.stage-half.frame-a { background-image: url("../img/animaciones/relojmedio1.png"); }
+#day-clock.stage-half.frame-b { background-image: url("../img/animaciones/rejojmedio2.png"); }
+#day-clock.stage-almost.frame-a { background-image: url("../img/animaciones/relojcasi1.png"); }
+#day-clock.stage-almost.frame-b { background-image: url("../img/animaciones/relojcasi2.png"); }
+#day-clock.stage-empty.frame-a { background-image: url("../img/animaciones/relojvacio1.png"); }
+#day-clock.stage-empty.frame-b { background-image: url("../img/animaciones/relojvacio2.png"); }
+#day-clock.broken { background-image: url("../img/animaciones/relojRoto.png"); }
+
+/* parpadeo leve (arranca desde la etapa "casi", avanzada) que se hace fuerte
+   recien con el reloj roto y todavia una decision en curso - efecto chico a
+   proposito, no debe interrumpir la pantalla (ver diario.md) */
+#day-clock.pulse-light {
+  animation: clock-pulse-light 1.1s ease-in-out infinite;
+}
+
+#day-clock.pulse-strong {
+  animation: clock-pulse-strong 0.55s ease-in-out infinite;
+}
+
+@keyframes clock-pulse-light {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.07); }
+}
+
+@keyframes clock-pulse-strong {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.18); }
+}
+
+/* dialogo de los visitantes: ya no tiene fondo/borde propio, se apoya sobre
+   el recuadro que barraDialogos.png dibuja debajo del escritorio (medido con
+   PIL sobre esa imagen, ver diario.md) */
+/*
+  ocupa mas alto que antes (6.5% -> 8%, adentro del recuadro real que dibuja
+  barraDialogos.png: 87.82%-97.06%) para tener lugar de sobra para una 2da
+  linea si el texto no entra en una sola - lo ideal sigue siendo 1 sola linea
+  (font-size pensado para que la mayoria de los dialogos entren asi), pero ya
+  no se recorta a la fuerza: si es muy largo, ahora SI baja a la linea de
+  abajo (white-space normal, default) en vez de cortarse. overflow:hidden
+  queda solo como red de seguridad por si un texto excepcionalmente largo
+  pasara de 2 lineas.
+*/
+#dialogue-bubble {
+  position: absolute;
+  left: 24%;
+  top: 89%;
+  width: 70%;
+  height: 8%;
+  z-index: 8;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  font-style: italic;
+  line-height: 1.25;
+  font-size: clamp(0.5rem, 1.4vw, 0.78rem);
+  color: #f2ede3;
+}
+
+/* ---------- escena completa: fondo + personaje + escritorio ---------- */
+
+/*
+  fondoPantallaJuegoT.png es ahora el fondo unico de toda la pantalla de juego
+  (HUD, barra lateral y barra de dialogo ya vienen dibujados adentro como
+  "placeholders" - ver mas abajo #scene-sidebar/#scene-dialogue-bar, que se
+  sobreponen ahi mismo). Sus bordes son transparentes/suaves a proposito (ver
+  diario.md) por eso #character-scene le pone un color solido atras (el
+  "recuadro" que pidio Mike) - con 3+ errores ese fondo empieza a parpadear en
+  rosa (ver .alert), lo que se lee como todo el borde de la pantalla
+  parpadeando en modo alerta.
+
+  window.png (la ventanilla que antes iba delante del personaje) se dio de
+  baja, confirmado por Mike: fondoPantallaJuegoT.png ya trae esa escena
+  dibujada adentro y no calza con el arte nuevo.
+
+  Tamaño: mismo criterio que #menu-layout (ver mas arriba) - ocupa el maximo
+  posible sin pasarse de 96% del ancho ni 92% del alto de la ventana, siempre
+  respetando la proporcion real del canvas (3670/2446) para que TODO lo que
+  esta posicionado en % adentro (HUD, sellos, reloj, pasaporte, etc.) calce
+  exacto sea cual sea el tamaño de pantalla. Si en algun momento se lo quiere
+  mas chico o mas grande, este es el unico lugar a tocar (los % de los
+  porcentajes internos son relativos a ESTA caja, no a la ventana).
+*/
+#character-scene {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(80vw, calc(70vh * 3670 / 2446));
+  aspect-ratio: 3670 / 2446;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #140c24;
+}
+
+#character-scene.alert {
+  animation: alert-blink 1s ease-in-out infinite;
+}
+
+@keyframes alert-blink {
+  0%, 100% { background-color: #140c24; }
+  50% { background-color: #ff4fa3; }
+}
+
+#scene-background {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("../img/backgrounds/fondoPantallaJuegoT.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+/*
+  ojo aca: barraLateralIzq.png/barraDialogos.png/DesktopNew.png SI son
+  3670x2446 igual que fondoPantallaJuegoT.png - el contenido real de cada una
+  ocupa solo una parte de ese canvas (el resto es transparente), pero el
+  ARCHIVO entero es del mismo tamaño y esta pensado para superponerse tal
+  cual, inset:0, igual que #scene-background. (bug ya corregido: antes este
+  bloque las achicaba a su propio bbox con PIL y despues estiraba la imagen
+  COMPLETA -incluido el margen transparente- adentro de esa caja chica, lo
+  que encogia y desalineaba el arte real en vez de calzarlo con
+  fondoPantallaJuegoT.png. El bbox medido con PIL sigue sirviendo para ubicar
+  los elementos HTML que SI son mas chicos que el canvas -HUD, moneda, reloj,
+  sellos, dialogo-, pero no para estas 3 imagenes de fondo.) */
+#scene-sidebar,
+#scene-dialogue-bar,
 #scene-desktop {
   position: absolute;
   left: 0;
@@ -610,21 +838,19 @@ button:disabled {
   height: 100%;
   background-size: 100% 100%;
   background-repeat: no-repeat;
+  z-index: 4;
 }
 
-#scene-background {
-  background-image: url("../img/backgrounds/general_background.png");
-  z-index: 1;
+#scene-sidebar {
+  background-image: url("../img/backgrounds/barraLateralIzq.png");
 }
 
-#scene-window {
-  background-image: url("../img/backgrounds/window.png");
-  z-index: 3;
+#scene-dialogue-bar {
+  background-image: url("../img/backgrounds/barraDialogos.png");
 }
 
 #scene-desktop {
-  background-image: url("../img/backgrounds/desktop.png");
-  z-index: 4;
+  background-image: url("../img/backgrounds/DesktopNew.png");
 }
 
 /*
@@ -638,7 +864,7 @@ button:disabled {
   la sensacion de que lo entrega al llegar, no de que viaja con el.
   Arranca (y descansa en el escritorio) cerrado y chico; recien crece al tamaño
   "abierto" cuando el jugador hace click sobre el (no es automatico, ver
-  .entregado mas abajo) - esta transicion "en el sitio" (abrir/cerrar, sin
+  .delivered mas abajo) - esta transicion "en el sitio" (abrir/cerrar, sin
   moverse) si es la de esta clase base (left/top/height con transition normal).
   Al decidir, se cierra en el sitio y despues se devuelve con el mismo arco
   pero al reves (ver resolveDecision()), terminando escondido (display:none)
@@ -655,23 +881,58 @@ button:disabled {
   background-position: center;
 }
 
-#passport-object.cerrado {
+/* top tiene que coincidir con PASSPORT_ARC_DESK.top en main.ts - se subio de
+   83% a 68% porque DesktopNew.png solo llega hasta ~86.4% de alto (no 100%
+   como el desktop.png viejo); con 83%+16% de alto se pisaba la barra de
+   dialogo (empieza en ~87.8%) */
+#passport-object.closed {
   aspect-ratio: 646 / 700;
   background-image: url("../img/documentos/pasaporte.png");
-  top: 76%;
-  height: 13%;
+  top: 68%;
+  height: 16%;
 }
 
-#passport-object.abierto {
+/* una vez que la entrega termina de caer, se cambia a una de estas 3 variantes
+   (elegida al azar en renderVisitor(), ver PASSPORT_DESK_LOOK_VARIANTS en
+   main.ts) - dan la sensacion de que quedo apoyado sobre la mesa, en vez del
+   "de pie" que usa pasaporte.png en transito. Se sacan antes de la devolucion
+   (vuelve a pasaporte.png), asi que la devolucion no cambia en nada. */
+#passport-object.closed.desk1 {
+  aspect-ratio: 833 / 700;
+  background-image: url("../img/documentos/pasaporte1.png");
+}
+#passport-object.closed.desk2 {
+  aspect-ratio: 732 / 700;
+  background-image: url("../img/documentos/pasaporte2.png");
+}
+#passport-object.closed.desk3 {
+  aspect-ratio: 706 / 700;
+  background-image: url("../img/documentos/pasaporte3.png");
+}
+
+/*
+  al abrirse: mas grande, un poco mas abajo, y mas centrado (left propio, no el
+  60% de la clase base) porque los sellos/botones de aceptar-rechazar quedan
+  del lado derecho. La inclinacion (perspective + rotateX, con el "gozne" en
+  la base) da el efecto de pulpito de conferencias: la parte de arriba de las
+  paginas se aleja del jugador en vez de quedar de frente, plano.
+*/
+/* top bajado de 71% a 55% por la misma razon que .closed de arriba (el
+   escritorio nuevo termina antes que el viejo) - con 71%+30% de alto se salia
+   del escritorio (y del canvas: 71+30=101%) */
+#passport-object.open {
   aspect-ratio: 989 / 700;
   background-image: url("../img/documentos/pasaporteAbierto.png");
-  top: 68%;
-  height: 27%;
+  top: 55%;
+  height: 30%;
+  left: 52%;
+  transform: translateX(-50%) perspective(900px) rotateX(20deg);
+  transform-origin: center bottom;
 }
 
 /* una vez entregado (ya termino de deslizarse y sigue cerrado), invita al click
    con un pulso suave y el cursor de mano; deja de aplicar en cuanto se abre */
-#passport-object.cerrado.entregado {
+#passport-object.closed.delivered {
   cursor: pointer;
   animation: passport-pulse 1.6s ease-in-out infinite;
 }
@@ -687,7 +948,7 @@ button:disabled {
   display: none;
 }
 
-#passport-object.abierto #passport-page-left {
+#passport-object.open #passport-page-left {
   display: block;
   position: absolute;
   left: 12%;
@@ -708,7 +969,7 @@ button:disabled {
   display: none;
 }
 
-#passport-object.abierto #passport-stamp {
+#passport-object.open #passport-stamp {
   display: block;
   position: absolute;
   left: 58%;
@@ -726,68 +987,122 @@ button:disabled {
 #passport-stamp.negro { background-image: url("../img/documentos/selloNegro.png"); }
 #passport-stamp.plateado { background-image: url("../img/documentos/selloPlata.png"); }
 
-/* sello de aceptado/rechazado: placeholder de texto, todavia no hay arte para esto */
+/* sello de aceptado/rechazado: arte real (ya viene con su propia inclinacion
+   dibujada, por eso no se le suma rotacion por CSS) */
 #decision-stamp {
   display: none;
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%) rotate(-12deg);
-  padding: 0.3rem 0.8rem;
-  border: 0.25rem solid;
-  border-radius: 6px;
-  font-family: var(--font-display);
-  font-size: clamp(0.5rem, 1.6vw, 0.65rem);
-  letter-spacing: 0.02em;
-  background: rgba(242, 237, 227, 0.15);
+  transform: translate(-50%, -50%);
+  width: 34%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.92;
 }
 
-#decision-stamp.mostrar {
+#decision-stamp.show {
   display: block;
 }
 
-#decision-stamp.aprobado {
-  color: #4a9d5f;
-  border-color: #4a9d5f;
+#decision-stamp.approved {
+  aspect-ratio: 738 / 700;
+  background-image: url("../img/documentos/selloAceptado.png");
 }
 
-#decision-stamp.rechazado {
-  color: #c0524a;
-  border-color: #c0524a;
-}
-
-/* aceptar/rechazar ahora viven sobre el escritorio, del lado izquierdo (el
-   pasaporte quedo del lado derecho, ver #passport-object) */
-#decision-buttons {
-  position: absolute;
-  z-index: 6;
-  left: 4%;
-  top: 74%;
-  width: 26%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-#decision-buttons button {
-  margin: 0;
-  padding: 0.4rem 0.5rem;
-  font-size: clamp(0.75rem, 2vw, 0.85rem);
-  width: 100%;
+#decision-stamp.rejected {
+  aspect-ratio: 736 / 700;
+  background-image: url("../img/documentos/selloRechazado.png");
 }
 
 /*
-  el personaje se ubica dentro de la apertura de la ventanilla (medida a pixel sobre
-  window.png, canvas 3670x2446): arranca debajo del arco, y su parte de abajo queda
-  tapada por el escritorio (que se monta encima, z-index 4).
+  sellos reales (reemplazan los botones Aceptar/Rechazar), esquina inferior
+  derecha del escritorio - drag and drop real, ver setupStampDrag() en main.ts.
+  "display:contents" en el contenedor para que cada sello se posicione
+  absoluto respecto de #character-scene (no de #decision-buttons) - asi
+  main.ts puede moverlos en % durante el arrastre sin depender de un padre
+  con su propio tamaño.
+
+  3 posiciones (imagenes reales, ya recortadas a su contenido - ver
+  public/img/sellos/originales/ para las versiones completas sin recortar):
+  pos1 = en reposo sobre el escritorio: pos2 = levantado/arrastrando (mas
+  grande, inclinado - la imagen ya trae la inclinacion dibujada); pos3 = de
+  frente, listo para estampar (se muestra al acercarse/soltar sobre el
+  pasaporte). Al soltar el mouse, siempre vuelve solo a pos1 en su posicion
+  inicial (no puede quedar en otro lado) - la transicion de left/top/height
+  hace ese "regreso" suave; se apaga mientras se arrastra (.dragging) para
+  que siga al mouse sin retraso.
+*/
+#decision-buttons {
+  display: contents;
+}
+
+.stamp-drag {
+  position: absolute;
+  z-index: 6;
+  top: 78%;
+  height: 13%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: grab;
+  transform: translate(-50%, -50%);
+  transition: left 0.35s ease, top 0.35s ease, height 0.35s ease;
+  touch-action: none;
+}
+
+/* deshabilitado = no se puede clickear/arrastrar, pero el arte se ve
+   exactamente igual (Mike pidio explicitamente que no se vea transparente) */
+.stamp-drag[aria-disabled="true"] {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.stamp-drag.dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+/* sombra solo mientras esta apoyado en reposo sobre el escritorio (pos1) -
+   drop-shadow sigue la silueta real del sello (son PNG transparentes), da
+   sensacion de objeto 3D parado ahi en vez de una pegatina plana. Se saca en
+   pos2/pos3 (levantado/arrastrando), donde ya no tiene sentido que "toque"
+   la mesa. */
+.stamp-drag.pos1 {
+  filter: drop-shadow(0 0.5rem 0.35rem rgba(0, 0, 0, 0.5));
+}
+
+#reject-btn { left: 80%; }
+#accept-btn { left: 91%; }
+
+.stamp-rojo.pos1 { background-image: url("../img/sellos/selloRojoPosicion1.png"); aspect-ratio: 0.966; }
+.stamp-rojo.pos2 { background-image: url("../img/sellos/selloRojoPosicion2.png"); aspect-ratio: 0.905; height: 15%; }
+.stamp-rojo.pos3 { background-image: url("../img/sellos/selloRojoposicion3.png"); aspect-ratio: 0.811; height: 17%; }
+
+.stamp-verde.pos1 { background-image: url("../img/sellos/selloVerdePosicion1.png"); aspect-ratio: 0.969; }
+.stamp-verde.pos2 { background-image: url("../img/sellos/selloVerdePosicion2.png"); aspect-ratio: 0.903; height: 15%; }
+.stamp-verde.pos3 { background-image: url("../img/sellos/selloVerdePosicion3.png"); aspect-ratio: 0.842; height: 17%; }
+
+/*
+  ancho achicado respecto de la caja vieja (30.4% -> 20%, medida sobre
+  window.png, ya dado de baja) para que no se vea "enorme". El alto (base del
+  personaje) se calibro directo contra el escritorio nuevo (#scene-desktop:
+  empieza en 53.68% de alto, mide 32.71%): Mike pidio que la base quede a
+  ~83% de esa altura del escritorio, "casi al borde" de abajo - es decir
+  53.68 + 0.83*32.71 ≈ 80.8%, de ahi top+height. El escritorio (z-index 4,
+  delante del personaje, z-index 2) tapa la parte de abajo, dando la
+  sensacion de que esta parado justo detras suyo. Si hace falta afinar mas,
+  este es el lugar (y PORTRAIT_REST_LEFT/PASSPORT_ARC_BASE en main.ts si se
+  toca el "left" o de donde sale el pasaporte).
 */
 #character-portrait {
   position: absolute;
   z-index: 2;
-  left: 34.8%;
-  top: 24%;
-  width: 30.4%;
-  height: 73.6%;
+  left: 49%;
+  top: 9%;
+  width: 18%;
+  height: 80%;
   /* la duracion tiene que coincidir con PORTRAIT_ANIM_MS en main.ts */
   transition: left 0.45s ease;
   animation: idle-bob 2.6s ease-in-out infinite;
@@ -903,18 +1218,30 @@ button:disabled {
 .part-mouth.mouth-17 { background-image: url("../img/mouth/mouth-17.png"); }
 .part-mouth.mouth-18 { background-image: url("../img/mouth/mouth-18.png"); }
 
-/* cuernos: posicion estimada arriba de la cabeza - revisar a mano, no se midio con script */
+/*
+  cuernos: top/height recalculados (no a ojo) para el nuevo tamaño de
+  #character-portrait (18% x 80%, aspect real 0.338) - como rostro-N.png
+  (aspect real 500/806 = 0.62) ya no coincide con la forma del contenedor
+  como coincidia antes (30.4% x 73.6% ~ 0.62, calzaba case perfecto), ahora
+  "contain" deja franjas vacias arriba y abajo (~22.8% del alto del
+  contenedor cada una) antes de que arranque el dibujo real - por eso los
+  cuernos, con un top fijo pensado para "casi sin margen", terminaban
+  flotando bien arriba de la cabeza. left/width no cambian: "contain" ajusta
+  por ANCHO en esta proporcion, asi que no hay franja vacia a los costados.
+
+  Mike va a agrandar el arte de horns-1..4.png directamente (para que se
+  vean mas sin tener que agrandar el recuadro por CSS, ver diario.md).
+*/
 .part-horns {
-  width: 16%;
-  height: 10%;
-  top: 6%;
-  left: 42%;
-  background: sienna;
-  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  width: 22%;
+  top: 32%;
+  left: 38%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
-.part-horns.variante-1 { background-image: url("../img/test/horns-test.svg"); background-color: transparent; clip-path: none; }
-.part-horns.variante-2 { background: #7a4a2a; }
-.part-horns.variante-3 { background: #8a5a3a; }
+.part-horns.horns-4 { background-image: url("../img/cuernos/horns-4.png"); aspect-ratio: 4.281; }
+.part-horns.horns-5 { background-image: url("../img/cuernos/horns-5.png"); aspect-ratio: 6.37; }
 
 /* sombrero: el cabello ya viene dibujado dentro de cada rostro - esta capa queda
    disponible para un accesorio futuro (gorro/sombrero encima), oculta por ahora
