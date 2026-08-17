@@ -799,15 +799,12 @@ function renderVisitor(): void {
   if (regionEl !== null) regionEl.textContent = passport.obtainRegion;
   if (passportStampEl !== null) passportStampEl.className = passport.obtainStamp;
 
-  // la especie declarada recien se revela a partir del dia 4 (ver mensajeIntro de ese dia)
+  // visible desde el dia 1 (antes se ocultaba hasta el dia 4, que es cuando
+  // arranca a importar para alguna regla) - se muestra ya de entrada para que
+  // el jugador se acostumbre a leer el dato antes de que dependa de el
   if (specieEl !== null) {
-    const specieHtmlEl = specieEl as HTMLElement;
-    if (game.dayNumber >= 4) {
-      specieHtmlEl.style.display = "";
-      specieEl.textContent = passport.obtainDeclaredSpecie;
-    } else {
-      specieHtmlEl.style.display = "none";
-    }
+    (specieEl as HTMLElement).style.display = "";
+    specieEl.textContent = passport.obtainDeclaredSpecie;
   }
 
   typeDialogue(visitor.dialogueLine(), "#dialogue-bubble");
