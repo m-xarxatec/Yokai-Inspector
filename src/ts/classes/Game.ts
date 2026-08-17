@@ -22,7 +22,6 @@ export class Game{
     #phrases: string[]
     #stamps: any[];
     #species: string[];
-    #suspiciousPhrases: string[];
     #playerName: string;
 
     constructor(playerName: string = "Jugador"){
@@ -39,7 +38,6 @@ export class Game{
         this.#phrases = [];
         this.#stamps = [];
         this.#species = [];
-        this.#suspiciousPhrases = [];
     }
 
     loadData(onComplete: () => void): void {
@@ -51,14 +49,12 @@ export class Game{
             fetch("data/reglas.json").then(r => r.json()),
             fetch("data/dias.json").then(r => r.json()),
             fetch("data/sellos.json").then(r => r.json()),
-            fetch("data/species.json").then(r => r.json()),
-            fetch("data/frases_sospechosas.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species, suspiciousPhrases]) =>{
+            fetch("data/species.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) =>{
                 this.#parts = parts;
                 this.#names = names;
                 this.#phrases = phrases;
                 this.#stamps = stamps;
                 this.#species = species;
-                this.#suspiciousPhrases = suspiciousPhrases;
 
                 const rules = rawRules.map((r: any) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
                 this.#days = rawDays.map((d: any) => {
@@ -87,7 +83,7 @@ export class Game{
         const problematicRatio = Math.min(this.#dayNumber + 1, goal - 1) / goal;
         const isProblematic = Math.random() < problematicRatio;
         const name = this.#names[Math.floor(Math.random() * this.#names.length)];
-        const phrase = this.#pickPhrase(isProblematic);
+        const phrase = this.#pickPhrase();
         const face = this.#parts.rostro[Math.floor(Math.random() * this.#parts.rostro.length)];
         const eyesShape = this.#parts.ojos[Math.floor(Math.random() * this.#parts.ojos.length)];
         const mouth = this.#parts.boca[Math.floor(Math.random() * this.#parts.boca.length)];
@@ -228,13 +224,7 @@ export class Game{
         return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
     }
 
-    // los visitantes problematicos tienen mas chance de decir una frase con pista (no siempre);
-    // los honestos tienen una chance chica de decir una tambien, para que la pista no sea 100% confiable.
-    #pickPhrase(isProblematic: boolean): string {
-        const suspiciousChance = isProblematic ? 0.5 : 0.12;
-        if (Math.random() < suspiciousChance) {
-            return this.#suspiciousPhrases[Math.floor(Math.random() * this.#suspiciousPhrases.length)];
-        }
+    #pickPhrase(): string {
         return this.#phrases[Math.floor(Math.random() * this.#phrases.length)];
     }
 

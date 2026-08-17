@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_suspiciousPhrases, _Game_playerName, _Game_startDay, _Game_generateVisitor, _Game_pickPhrase;
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_playerName, _Game_startDay, _Game_generateVisitor, _Game_pickPhrase;
 import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, addCredits } from "../Storage.js";
 import { Passport } from "./Passport.js";
 import { Human } from "./Human.js";
@@ -32,7 +32,6 @@ export class Game {
         _Game_phrases.set(this, void 0);
         _Game_stamps.set(this, void 0);
         _Game_species.set(this, void 0);
-        _Game_suspiciousPhrases.set(this, void 0);
         _Game_playerName.set(this, void 0);
         __classPrivateFieldSet(this, _Game_playerName, playerName.trim() !== "" ? playerName : "Jugador", "f");
         __classPrivateFieldSet(this, _Game_dayNumber, 1, "f");
@@ -47,7 +46,6 @@ export class Game {
         __classPrivateFieldSet(this, _Game_phrases, [], "f");
         __classPrivateFieldSet(this, _Game_stamps, [], "f");
         __classPrivateFieldSet(this, _Game_species, [], "f");
-        __classPrivateFieldSet(this, _Game_suspiciousPhrases, [], "f");
     }
     loadData(onComplete) {
         Promise.all([
@@ -58,15 +56,13 @@ export class Game {
             fetch("data/reglas.json").then(r => r.json()),
             fetch("data/dias.json").then(r => r.json()),
             fetch("data/sellos.json").then(r => r.json()),
-            fetch("data/species.json").then(r => r.json()),
-            fetch("data/frases_sospechosas.json").then(r => r.json())
-        ]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species, suspiciousPhrases]) => {
+            fetch("data/species.json").then(r => r.json())
+        ]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) => {
             __classPrivateFieldSet(this, _Game_parts, parts, "f");
             __classPrivateFieldSet(this, _Game_names, names, "f");
             __classPrivateFieldSet(this, _Game_phrases, phrases, "f");
             __classPrivateFieldSet(this, _Game_stamps, stamps, "f");
             __classPrivateFieldSet(this, _Game_species, species, "f");
-            __classPrivateFieldSet(this, _Game_suspiciousPhrases, suspiciousPhrases, "f");
             const rules = rawRules.map((r) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
             __classPrivateFieldSet(this, _Game_days, rawDays.map((d) => {
                 const activeRules = rules.filter((rule) => d.reglasActivas.includes(rule.getDay()));
@@ -151,7 +147,7 @@ export class Game {
         return true;
     }
 }
-_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_suspiciousPhrases = new WeakMap(), _Game_playerName = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
+_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_playerName = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
     __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
     __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_instances, "m", _Game_generateVisitor).call(this), "f");
     saveCurrentGame({ dayNumber: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f") });
@@ -164,7 +160,7 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
     const problematicRatio = Math.min(__classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, goal - 1) / goal;
     const isProblematic = Math.random() < problematicRatio;
     const name = __classPrivateFieldGet(this, _Game_names, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_names, "f").length)];
-    const phrase = __classPrivateFieldGet(this, _Game_instances, "m", _Game_pickPhrase).call(this, isProblematic);
+    const phrase = __classPrivateFieldGet(this, _Game_instances, "m", _Game_pickPhrase).call(this);
     const face = __classPrivateFieldGet(this, _Game_parts, "f").rostro[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").rostro.length)];
     const eyesShape = __classPrivateFieldGet(this, _Game_parts, "f").ojos[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").ojos.length)];
     const mouth = __classPrivateFieldGet(this, _Game_parts, "f").boca[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").boca.length)];
@@ -282,11 +278,7 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
         return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
     }
     return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
-}, _Game_pickPhrase = function _Game_pickPhrase(isProblematic) {
-    const suspiciousChance = isProblematic ? 0.5 : 0.12;
-    if (Math.random() < suspiciousChance) {
-        return __classPrivateFieldGet(this, _Game_suspiciousPhrases, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_suspiciousPhrases, "f").length)];
-    }
+}, _Game_pickPhrase = function _Game_pickPhrase() {
     return __classPrivateFieldGet(this, _Game_phrases, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_phrases, "f").length)];
 };
 //# sourceMappingURL=Game.js.map

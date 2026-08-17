@@ -19,7 +19,7 @@ Tono: humor.
 - Acertar suma dinero (+10); fallar resta dinero (-5) y suma 1 error. El dinero es solo puntaje visual, no afecta la derrota.
 - Al llegar a 4 errores acumulados se pierde la partida, sin importar el día.
 - Cada visitante tiene un tiempo límite para decidir (baja con cada día); si se acaba, cuenta como error automático. Tras 2 errores seguidos se activa un "modo alerta" temporal: el tiempo límite se reduce a la mitad hasta el próximo acierto.
-- Frase aleatoria al llegar cada visitante (`public/data/frases.json`); a veces, con más frecuencia si el visitante es problemático, dice una frase con una pista sutil (`public/data/frases_sospechosas.json`) — no es 100% confiable, un visitante honesto también puede decir una por casualidad.
+- Frase aleatoria de humor negro al llegar cada visitante (`public/data/frases.json`), sin relación con si es problemático o no.
 - El jugador puede poner un nombre de inspector (persistido, no hace falta escribirlo en cada partida). El historial guarda con qué nombre se jugó cada partida, y el dinero final de cada partida (gane o pierda) se suma a un total acumulado por nombre, visible en la pantalla de Créditos.
 
 ----------------------------------------
