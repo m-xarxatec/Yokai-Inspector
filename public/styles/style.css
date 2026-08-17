@@ -18,12 +18,26 @@
   font-display: swap;
 }
 
+/* pixel-art redondeada, mas moderna que Press Start 2P/Pixelify Sans,
+   pensada para los parrafos largos que tipea la Jefa en #next-day-message
+   (ver --font-jefa) */
+@font-face {
+  font-family: "Jersey 10";
+  src: url("../fonts/jersey-10-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* dos familias: pixel-art gruesa para titulos/acentos cortos (su ancho fijo
      por caracter no compromete la lectura ahi) y una version pixel-art mas
      legible para todo el texto funcional (parrafos, botones, tablas) */
   --font-display: "Press Start 2P", "Pixelify Sans", system-ui, sans-serif;
   --font-body: "Pixelify Sans", system-ui, sans-serif;
+  /* fuente propia de los mensajes de la Jefa en #next-day-message (regla y
+     error por igual) - cae a --font-body si Jersey 10 no carga */
+  --font-jefa: "Jersey 10", var(--font-body);
 }
 
 * {
@@ -475,6 +489,37 @@ button:disabled {
 #jefa-portrait.jefaAsustada { background-image: url("../img/jefa/jefaAsustada.png"); }
 #jefa-portrait.jefaKatana { background-image: url("../img/jefa/jefaKatana.png"); }
 #jefa-portrait.jefaEnojo { background-image: url("../img/jefa/jefaEnojo.png"); }
+
+/* mensaje de la Jefa: siempre --font-jefa (pixel-art legible), nunca
+   --font-display en el parrafo - typeDialogue() tipea texto que puede
+   crecer (mensajeIntro de un dia futuro, por ejemplo) y Press Start 2P no
+   aguanta un parrafo largo. Jersey 10 dibuja mas chico que Pixelify Sans al
+   mismo tamano de fuente, por eso el font-size mas grande. */
+#next-day-message {
+  font-family: var(--font-jefa);
+  font-size: 1.15rem;
+  line-height: 1.5;
+}
+
+/*
+  #notice-kicker vive fuera de #next-day-message (no adentro) porque
+  typeDialogue() reescribe el textContent del parrafo en cada tick del
+  efecto de tipeo y borraria cualquier hijo fijo que pusieramos ahi. Rotulo
+  corto y fijo en --font-display (unico lugar donde esa fuente es legible):
+  "NUEVA REGLA" / "¡ERROR!", asignado desde setNoticeType() en main.ts.
+*/
+#notice-kicker {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.4rem;
+}
+
+/* mismos acentos que ya usa el resto del juego: el dorado informativo de
+   #paused-status para regla, el rojo suave de .result-derrota para error */
+#day-result-screen.notice-rule #notice-kicker { color: #f2d9a5; }
+#day-result-screen.notice-error #notice-kicker { color: #e59b96; }
 
 /* ---------- pantalla final ---------- */
 

@@ -264,8 +264,23 @@ function renderJefaBeat(beat) {
         summaryEl.classList.add("hidden");
     typeDialogue(beat.text, "#next-day-message");
 }
+// distingue, dentro de #day-result-screen, un cambio de regla (mensajeIntro/
+// DAY_ONE_INTRO_BEATS) de una reaccion por error (ERROR_REACTIONS): el color
+// del kicker es la unica pista visual, porque el propio parrafo usa siempre
+// --font-body en los dos casos
+function setNoticeType(type) {
+    const screenEl = document.querySelector("#day-result-screen");
+    const kickerEl = document.querySelector("#notice-kicker");
+    if (screenEl === null || kickerEl === null) {
+        return;
+    }
+    screenEl.classList.remove("notice-rule", "notice-error");
+    screenEl.classList.add(type === "rule" ? "notice-rule" : "notice-error");
+    kickerEl.textContent = type === "rule" ? "NUEVA REGLA" : "¡ERROR!";
+}
 document.querySelector("#story-next-btn")?.addEventListener("click", () => {
     introBeatIndex = 0;
+    setNoticeType("rule");
     renderJefaBeat(DAY_ONE_INTRO_BEATS[0]);
     changeState("day-result");
 });
@@ -795,6 +810,7 @@ function showErrorReaction(accept, errorNumber) {
     if (reactions === undefined) {
         return;
     }
+    setNoticeType("error");
     renderJefaBeat(accept ? reactions.throughReaction : reactions.rejectedReaction);
     errorReactionPending = true;
     pauseDayTimer();
@@ -1019,6 +1035,7 @@ function renderDayResultScreen(showSummary = true) {
         jefaEl.className = variant;
     }
     if (messageEl !== null) {
+        setNoticeType("rule");
         typeDialogue(game.currentDay.getIntroMessage(), "#next-day-message");
     }
 }
@@ -1031,6 +1048,7 @@ document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
     if (introBeatIndex !== null) {
         introBeatIndex += 1;
         if (introBeatIndex < DAY_ONE_INTRO_BEATS.length) {
+            setNoticeType("rule");
             renderJefaBeat(DAY_ONE_INTRO_BEATS[introBeatIndex]);
             return;
         }
