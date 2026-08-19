@@ -18,6 +18,19 @@
   font-display: swap;
 }
 
+/* pixel-art redondeada, mas moderna y legible que Press Start 2P/Pixelify
+   Sans - adoptada como fuente unica del juego (titulos y texto funcional
+   por igual), reemplazando el esquema de dos familias anterior. Press Start
+   2P/Pixelify Sans se dejan cargadas como fallback (ver --font-display/
+   --font-body) por si Jersey 10 no carga. */
+@font-face {
+  font-family: "Jersey 10";
+  src: url("../fonts/jersey-10-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* pixel-art redondeada, mas moderna que Press Start 2P/Pixelify Sans,
    pensada para los parrafos largos que tipea la Jefa en #next-day-message
    (ver --font-jefa) */
@@ -89,7 +102,9 @@ button {
   background: #6b4fa0;
   color: #fff;
   cursor: pointer;
-  font-size: 1rem;
+  /* Jersey 10 dibuja mas chico que Pixelify Sans al mismo tamano (ver
+     comentario del @font-face) - subido de 1rem para compensar */
+  font-size: 1.15rem;
 }
 
 button:disabled {
@@ -134,6 +149,9 @@ button:disabled {
   transform: translate(-50%, -50%);
   aspect-ratio: 1536 / 1024;
   width: min(94vw, calc(90vh * 1536 / 1024));
+  /* mismo motivo que #character-scene: contenedor de query para que
+     .menu-real-btn escale con el ancho real de ESTA caja, no con vw/vh */
+  container-type: inline-size;
 }
 
 #menu-stage {
@@ -186,11 +204,14 @@ button:disabled {
 .menu-real-btn {
   margin: 0;
   text-align: left;
-  padding: 0.65rem 1rem;
+  /* cqw = % del ancho real de #menu-layout (ver container-type ahi) - antes
+     fijo en rem, no se achicaba con la caja en pantallas chicas/angostas y
+     terminaba "comiendose" el espacio disponible */
+  padding: clamp(0.4rem, 0.86cqw, 0.9rem) clamp(0.6rem, 1.32cqw, 1.3rem);
   background: rgba(15, 12, 24, 0.55);
   border: 1px solid rgba(216, 181, 107, 0.6);
   color: #f2ede3;
-  font-size: 0.95rem;
+  font-size: clamp(0.75rem, 1.45cqw, 1.3rem);
   font-weight: 400;
   letter-spacing: 0.03em;
   backdrop-filter: blur(4px);
@@ -210,14 +231,12 @@ button:disabled {
 }
 
 @media (max-width: 599px) {
+  /* .menu-real-btn ya no necesita override aca: font-size/padding en cqw
+     siguen el ancho real de #menu-layout solos. Esto es un ajuste aparte,
+     de posicion/columna, no de escala. */
   #menu-buttons {
     top: 66%;
     width: min(72%, 280px);
-  }
-
-  .menu-real-btn {
-    padding: 0.55rem 0.85rem;
-    font-size: 0.85rem;
   }
 }
 
@@ -428,6 +447,7 @@ button:disabled {
   border-radius: 6px;
   padding: 1rem;
   min-height: 1.2rem;
+  font-size: 1.15rem;
 }
 
 /* ---------- pantalla de resultado del dia: la Jefa explica ---------- */
@@ -603,6 +623,7 @@ button:disabled {
   padding: 0.6rem 1rem;
   min-height: 1.2rem;
   line-height: 1.5;
+  font-size: 1.15rem;
 }
 
 /* ---------- HUD y pasaporte ---------- */
@@ -635,7 +656,10 @@ button:disabled {
   position: absolute;
   top: 59%;
   transform: translateY(-50%);
-  font-size: clamp(0.6rem, 1.9vw, 1rem);
+  /* cqw = % del ancho real de #character-scene (ver container-type ahi) -
+     no vw, que no sigue el tamaño real de la caja en toda proporcion de
+     pantalla (ver diario.md) */
+  font-size: clamp(0.6rem, 1.7cqw, 1.1rem);
   color: #f2ede3;
 }
 
@@ -694,7 +718,9 @@ button:disabled {
 #coin-spin.moneda-4 { background-image: url("../img/animaciones/moneda-4.png"); }
 
 #money-counter {
-  font-size: clamp(0.5rem, 1.5vw, 0.8rem);
+  /* mismo criterio cqw que el HUD/dialogo/pasaporte de arriba (ver
+     container-type en #character-scene) */
+  font-size: clamp(0.5rem, 1.35cqw, 0.8rem);
   color: #f2ede3;
   text-align: center;
 }
@@ -800,7 +826,10 @@ button:disabled {
   overflow: hidden;
   font-style: italic;
   line-height: 1.25;
-  font-size: clamp(0.5rem, 1.4vw, 0.78rem);
+  /* cqw = % del ancho real de #character-scene (ver container-type ahi),
+     no vw - la caja tiene overflow:hidden, si un dialogo largo queda
+     cortado bajar el tope */
+  font-size: clamp(0.6rem, 2.54cqw, 1.5rem);
   color: #f2ede3;
 }
 
@@ -838,6 +867,11 @@ button:disabled {
   border-radius: 8px;
   overflow: hidden;
   background-color: #140c24;
+  /* contenedor de query: el ancho real de ESTA caja (no vw/vh, que no
+     coinciden con el - queda width-constrained o height-constrained segun
+     la pantalla, ver arriba) es la referencia para cqw en HUD/dialogo/
+     pasaporte mas abajo, asi escalan igual sea cual sea la proporcion */
+  container-type: inline-size;
 }
 
 #character-scene.alert {
@@ -996,18 +1030,21 @@ button:disabled {
 #passport-object.open #passport-page-left {
   display: block;
   position: absolute;
-  left: 12%;
-  top: 17%;
-  width: 24%;
-  height: 46%;
+  left: 16%;
+  top: 20%;
+  width: 20%;
+  height: 80%;
   overflow: hidden;
   color: #2a2a1a;
-  font-size: 0.55rem;
-  line-height: 1.3;
+  /* cqw = % del ancho real de #character-scene (ver container-type ahi),
+     no rem fijo - la caja tiene overflow:hidden, si un dato queda muy
+     largo revisar que no se corte */
+  font-size: clamp(0.3rem, 1.86cqw, 1rem);
+  line-height: 1;
 }
 
 #passport-page-left p {
-  margin: 0 0 0.3rem;
+  margin: 0 0 0.4rem;
 }
 
 #passport-stamp {
@@ -1146,8 +1183,8 @@ button:disabled {
   z-index: 2;
   left: 49%;
   top: 9%;
-  width: 18%;
-  height: 80%;
+  width: 21%;
+  height: 75%;
   /* la duracion tiene que coincidir con PORTRAIT_ANIM_MS en main.ts */
   transition: left 0.45s ease;
   animation: idle-bob 2.6s ease-in-out infinite;

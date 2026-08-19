@@ -1,7 +1,9 @@
 import { Game } from "./classes/Game.js";
 import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits, saveDayStreaks, loadDayStreaks } from "./Storage.js";
+import { SoundManager } from "./classes/SoundManager.js";
 let game = null;
 let currentState = "menu";
+const soundManager = new SoundManager();
 // racha con la que termino cada dia de la partida en curso - se guarda en
 // localStorage al cerrar cada dia (ver afterDecision()), todavia sin usarse
 // para nada mas (queda preparada para una idea a futuro, ver docs/ideas.md)
@@ -691,16 +693,12 @@ function renderVisitor() {
         regionEl.textContent = passport.obtainRegion;
     if (passportStampEl !== null)
         passportStampEl.className = passport.obtainStamp;
-    // la especie declarada recien se revela a partir del dia 4 (ver mensajeIntro de ese dia)
+    // visible desde el dia 1 (antes se ocultaba hasta el dia 4, que es cuando
+    // arranca a importar para alguna regla) - se muestra ya de entrada para que
+    // el jugador se acostumbre a leer el dato antes de que dependa de el
     if (specieEl !== null) {
-        const specieHtmlEl = specieEl;
-        if (game.dayNumber >= 4) {
-            specieHtmlEl.style.display = "";
-            specieEl.textContent = passport.obtainDeclaredSpecie;
-        }
-        else {
-            specieHtmlEl.style.display = "none";
-        }
+        specieEl.style.display = "";
+        specieEl.textContent = passport.obtainDeclaredSpecie;
     }
     typeDialogue(visitor.dialogueLine(), "#dialogue-bubble");
     const faceEl = document.querySelector(".part-face");
@@ -870,9 +868,11 @@ function resolveDecision(accept) {
                     const justErred = game.errors > errorsBefore;
                     if (justErred) {
                         streak = 0;
+                        soundManager.playWrong();
                     }
                     else {
                         streak += 1;
+                        accept ? soundManager.playAccept() : soundManager.playReject();
                     }
                     // el dia vencio mientras se animaba esta decision (ver startDayTimer()):
                     // recien ahora, con el visitante que el jugador realmente vio ya

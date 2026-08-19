@@ -26,7 +26,6 @@ global.fetch = async (url) => {
 resetMocks();
 
 const { Game } = await import("../public/js/classes/Game.js");
-const { Yokai } = await import("../public/js/classes/Yokai.js");
 const { getHistory } = await import("../public/js/Storage.js");
 
 function loadDataAsync(game) {
@@ -41,8 +40,7 @@ function describeVisitor(character) {
     yellowEyes: character.obtainYellowEyes,
     region: p.obtainRegion,
     declared: p.obtainDeclaredSpecie,
-    stamp: p.obtainStamp,
-    liar: character.specieLiar()
+    stamp: p.obtainStamp
   };
 }
 
@@ -52,7 +50,11 @@ function describeVisitor(character) {
 // hace main.ts cuando se acaba el temporizador del dia.
 const VISITORS_PER_SIMULATED_DAY = 150;
 
-const expectedRuleCounts = [1, 2, 3, 4, 5, 4, 5];
+// dia 4 en adelante suma 4 reglas de una vez (especieProhibida: kitsune/oni/kappa/
+// poseido, ver reglas.json) en vez de 1 sola, por eso el salto de 3 a 7.
+// Ninguna regla se apaga nunca (ver dias.json) - dia 6 no suma ninguna nueva (se
+// queda en 8, igual que el 5) y el dia 7 suma la del sello plateado (9).
+const expectedRuleCounts = [1, 2, 3, 7, 8, 8, 9];
 // antes eran cantidades exactas (el sorteo pre-armaba un array de tamaño fijo);
 // ahora cada visitante se sortea con esta probabilidad de forma independiente
 // (ver Game#generateVisitor()), asi que solo se puede pedir que la PROPORCION
@@ -206,44 +208,38 @@ const historialF = getHistory();
 console.log("entrada guardada en historial:", JSON.stringify(historialF[0]));
 console.log("resultado 'derrota' con day:1:", (historialF[0].result === "derrota" && historialF[0].day === 1) ? "[OK]" : "[FALLO]");
 
-// ================= TEST 7: specieLiar() coincide con el calculo manual, en volumen =================
-console.log("\n========== TEST 7: specieLiar() consistente en volumen (partida completa) ==========");
+// ================= TEST 7: lista negra de especies (especieProhibida) consistente en volumen =================
+// reemplaza al viejo test de specieLiar() (esa regla/metodo se elimino - quedaba
+// redundante con la lista negra desde que ninguna regla se apaga nunca, ver diario).
+console.log("\n========== TEST 7: especieProhibida consistente en volumen (partida completa) ==========");
 resetMocks();
 const gameG = new Game();
 await loadDataAsync(gameG);
 gameG.startNewGame();
-let inconsistenciasLiar = 0;
+const bannedSpecies = ["kitsune", "oni", "kappa", "poseido"];
+let inconsistenciasLista = 0;
 let totalRevisados = 0;
 for (let dia = 1; dia <= 7 && !gameG.isLost(); dia++) {
+  const reglaActiva = gameG.currentDay.getActiveRules().some(r => r.getProperty() === "especieProhibida");
   for (let i = 0; i < VISITORS_PER_SIMULATED_DAY && !gameG.isLost(); i++) {
     const visitor = gameG.currentVisitor;
     const p = visitor.obtainPassport;
-    // un Human siempre da false sin importar lo que declare (specieLiar() esta hardcodeado ahi);
-    // solo para un Yokai tiene sentido comparar especie declarada vs especie aparente.
-    let esperado = false;
-    if (visitor instanceof Yokai) {
-      // mismo orden que Yokai.specieLiar(): region primero, cuernos/ojos amarillos al final
-      // (para que el rasgo que define el tipo real gane si hay rasgos combinados).
-      let especieAparente = "humano";
-      if (p.obtainRegion === "rio") especieAparente = "kappa";
-      if (visitor.obtainHaveHorns) especieAparente = "oni";
-      if (visitor.obtainYellowEyes) especieAparente = "kitsune";
-      esperado = p.obtainDeclaredSpecie !== especieAparente;
-    }
-    const real = visitor.specieLiar();
-    totalRevisados++;
-    if (esperado !== real) {
-      inconsistenciasLiar++;
-      console.log("INCONSISTENCIA:", JSON.stringify(describeVisitor(visitor)), "esperado:", esperado, "real:", real);
-    }
     const violation = gameG.currentDay.evaluateCharacter(visitor);
+    const declaroProhibida = bannedSpecies.includes(p.obtainDeclaredSpecie);
+    // si declaro una especie de la lista negra Y la regla ya esta activa hoy, tiene
+    // que estar rechazado (por esta regla u otra) - nunca puede pasar "de colado".
+    totalRevisados++;
+    if (declaroProhibida && reglaActiva && violation === null) {
+      inconsistenciasLista++;
+      console.log("INCONSISTENCIA:", JSON.stringify(describeVisitor(visitor)));
+    }
     gameG.decide(violation === null);
   }
   if (!gameG.isLost()) {
     gameG.endDay();
   }
 }
-console.log("visitantes revisados:", totalRevisados, "| inconsistencias:", inconsistenciasLiar, inconsistenciasLiar === 0 ? "[OK]" : "[FALLO]");
+console.log("visitantes revisados:", totalRevisados, "| inconsistencias:", inconsistenciasLista, inconsistenciasLista === 0 ? "[OK]" : "[FALLO]");
 
 // ================= TEST 8: integridad de historial y partida actual tras terminar el juego =================
 console.log("\n========== TEST 8: historial refleja el resultado real, y no queda partida 'en curso' tras terminar ==========");

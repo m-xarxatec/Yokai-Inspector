@@ -1,8 +1,12 @@
 import { Game } from "./classes/Game.js";
 import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits, saveDayStreaks, loadDayStreaks } from "./Storage.js";
+import { SoundManager } from "./classes/SoundManager.js";
+
 
 let game: Game | null = null;
 let currentState: string = "menu";
+const soundManager = new SoundManager();
+
 
 // racha con la que termino cada dia de la partida en curso - se guarda en
 // localStorage al cerrar cada dia (ver afterDecision()), todavia sin usarse
@@ -815,15 +819,12 @@ function renderVisitor(): void {
   if (regionEl !== null) regionEl.textContent = passport.obtainRegion;
   if (passportStampEl !== null) passportStampEl.className = passport.obtainStamp;
 
-  // la especie declarada recien se revela a partir del dia 4 (ver mensajeIntro de ese dia)
+  // visible desde el dia 1 (antes se ocultaba hasta el dia 4, que es cuando
+  // arranca a importar para alguna regla) - se muestra ya de entrada para que
+  // el jugador se acostumbre a leer el dato antes de que dependa de el
   if (specieEl !== null) {
-    const specieHtmlEl = specieEl as HTMLElement;
-    if (game.dayNumber >= 4) {
-      specieHtmlEl.style.display = "";
-      specieEl.textContent = passport.obtainDeclaredSpecie;
-    } else {
-      specieHtmlEl.style.display = "none";
-    }
+    (specieEl as HTMLElement).style.display = "";
+    specieEl.textContent = passport.obtainDeclaredSpecie;
   }
 
   typeDialogue(visitor.dialogueLine(), "#dialogue-bubble");
@@ -1005,8 +1006,10 @@ function resolveDecision(accept: boolean): void {
           const justErred = game.errors > errorsBefore;
           if (justErred) {
             streak = 0;
+            soundManager.playWrong();
           } else {
             streak += 1;
+            accept ? soundManager.playAccept() : soundManager.playReject();
           }
 
           // el dia vencio mientras se animaba esta decision (ver startDayTimer()):

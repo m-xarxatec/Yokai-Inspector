@@ -39,8 +39,8 @@ export class Rule {
         return character.obtainPassport.obtainRegion === this.#forbiddenValue;
       case "sello":
         return character.obtainPassport.obtainStamp === this.#forbiddenValue;
-      case "mintioSobreEspecie":
-        return character.specieLiar() === this.#forbiddenValue;
+      case "especieProhibida":
+        return character.obtainPassport.obtainDeclaredSpecie === this.#forbiddenValue;
       default:
         return false;
     }

@@ -22,7 +22,6 @@ export class Game{
     #phrases: string[]
     #stamps: any[];
     #species: string[];
-    #suspiciousPhrases: string[];
     #playerName: string;
 
     constructor(playerName: string = "Jugador"){
@@ -39,7 +38,6 @@ export class Game{
         this.#phrases = [];
         this.#stamps = [];
         this.#species = [];
-        this.#suspiciousPhrases = [];
     }
 
     loadData(onComplete: () => void): void {
@@ -51,14 +49,12 @@ export class Game{
             fetch("data/reglas.json").then(r => r.json()),
             fetch("data/dias.json").then(r => r.json()),
             fetch("data/sellos.json").then(r => r.json()),
-            fetch("data/species.json").then(r => r.json()),
-            fetch("data/frases_sospechosas.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species, suspiciousPhrases]) =>{
+            fetch("data/species.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) =>{
                 this.#parts = parts;
                 this.#names = names;
                 this.#phrases = phrases;
                 this.#stamps = stamps;
                 this.#species = species;
-                this.#suspiciousPhrases = suspiciousPhrases;
 
                 const rules = rawRules.map((r: any) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
                 this.#days = rawDays.map((d: any) => {
@@ -87,26 +83,53 @@ export class Game{
         const problematicRatio = Math.min(this.#dayNumber + 1, goal - 1) / goal;
         const isProblematic = Math.random() < problematicRatio;
         const name = this.#names[Math.floor(Math.random() * this.#names.length)];
-        const phrase = this.#pickPhrase(isProblematic);
+        const phrase = this.#pickPhrase();
         const face = this.#parts.rostro[Math.floor(Math.random() * this.#parts.rostro.length)];
         const eyesShape = this.#parts.ojos[Math.floor(Math.random() * this.#parts.ojos.length)];
         const mouth = this.#parts.boca[Math.floor(Math.random() * this.#parts.boca.length)];
         const horns = this.#parts.cuernos[Math.floor(Math.random() * this.#parts.cuernos.length)];
         const hair = this.#parts.sombrero[Math.floor(Math.random() * this.#parts.sombrero.length)];
 
+        const activeRules = this.#days[this.#dayNumber - 1].getActiveRules();
+
+        // pool completo menos lo que la regla de esa propiedad prohiba HOY: asi un dato
+        // (region, sello, especie) puede aparecer en el pasaporte desde el dia 1 sin
+        // ninguna consecuencia, y recien se vuelve invalido el dia en que se activa su
+        // regla - un visitante "seguro" nunca puede mostrar, por pura casualidad del
+        // sorteo, un valor que hoy SI seria motivo de rechazo (eso rompería
+        // problematicRatio, que no lo contempla).
+        function withoutForbiddenToday(fullPool: string[], property: string): string[] {
+            const forbiddenToday = activeRules.filter((rule: Rule) => rule.getProperty() === property).map((rule: Rule) => rule.getForbiddenValue());
+            return fullPool.filter((value: string) => !forbiddenToday.includes(value));
+        }
+
         if (!isProblematic) {
-            const safeRegions = ["campo", "montaña", "ciudad", "playa"];
+            const allRegions = ["playa", "ciudad", "rio", "bosque", "montana", "via lactea"];
+            const allStamps = this.#stamps.map((stamp: any) => stamp.color);
+
+            const safeRegions = withoutForbiddenToday(allRegions, "region");
+            const safeStamps = withoutForbiddenToday(allStamps, "sello");
+            const safeSpecies = withoutForbiddenToday(this.#species, "especieProhibida");
+
             const region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
-            const safeStamps = ["dorado", "rojo"];
-            const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)]
-            const declaredSpecie = this.#species[Math.floor(Math.random() * this.#species.length)];
+            const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)];
+            const declaredSpecie = safeSpecies[Math.floor(Math.random() * safeSpecies.length)];
             const passport = new Passport(name, region, declaredSpecie, stamp);
             return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
 
         }
 
-        const activeRules = this.#days[this.#dayNumber - 1].getActiveRules();
-        const targetRule = activeRules[Math.floor(Math.random() * activeRules.length)];
+        // se elige primero la CATEGORIA (propiedad) y recien despues una regla puntual
+        // dentro de ella - si se eligiera directo entre reglas individuales, un dia con
+        // varias reglas de la misma propiedad activas a la vez (ver "especieProhibida",
+        // 4 entradas el mismo dia, o "sello" con 2 desde el dia 6) pesaria de mas esa
+        // categoria frente al resto, sin que problematicRatio lo haya contemplado.
+        const activeProperties = activeRules
+            .map((rule: Rule) => rule.getProperty())
+            .filter((property: string, index: number, properties: string[]) => properties.indexOf(property) === index);
+        const targetProperty = activeProperties[Math.floor(Math.random() * activeProperties.length)];
+        const rulesForProperty = activeRules.filter((rule: Rule) => rule.getProperty() === targetProperty);
+        const targetRule = rulesForProperty[Math.floor(Math.random() * rulesForProperty.length)];
 
         let yokaiType = "oni";
         let declaredSpecie = "";
@@ -117,28 +140,44 @@ export class Game{
 
         if (property === "tieneCuernos") {
         yokaiType = "oni";
-        declaredSpecie = "oni";};
+        }
 
         if (property === "ojosAmarillos") {
         yokaiType = "kitsune";
-        declaredSpecie = "kitsune";};
+        }
 
         if (property === "region") {
         yokaiType = "kappa";
-        declaredSpecie = "kappa";
-        region = "rio";};
-        
-        if (property === "mintioSobreEspecie") {
-        yokaiType = ["oni", "kitsune", "kappa"][Math.floor(Math.random() * 3)];
-        declaredSpecie = "humano"; // la mentira
-        if (yokaiType === "kappa") {
-            region = "rio";
+        region = "rio";
         }
+
+        // un Yokai generado por su rasgo fisico (tieneCuernos/ojosAmarillos/region) jamas
+        // reconoce su propia especie en el pasaporte - SIEMPRE miente sobre eso, no "a veces
+        // por estadistica" (si se sorteara con probabilidad iria a coincidir alguna vez).
+        // Antes del dia 4 esto no tiene consecuencia (la especie declarada todavia no se
+        // revisa), pero el personaje ya miente igual - es asi de nacimiento, no algo que
+        // empiece a hacer recien cuando hay una regla. Ademas, tambien evita por sorteo
+        // cualquier otra palabra que YA este en la lista negra hoy - si no, cualquiera de
+        // estos Yokai violaria SIEMPRE (no solo con la chance del combo de mas abajo) su
+        // regla fisica Y especieProhibida a la vez, volviendo a esta ultima redundante con
+        // las de los dias 1-3. El combo de mas abajo sigue siendo la UNICA via intencional
+        // para que le toque una palabra prohibida ademas de su rasgo fisico.
+        if (property === "tieneCuernos" || property === "ojosAmarillos" || property === "region") {
+        const especieProhibidaHoy = activeRules.filter((rule: Rule) => rule.getProperty() === "especieProhibida").map((rule: Rule) => rule.getForbiddenValue());
+        const lieOptions = this.#species.filter((specie: string) => specie !== yokaiType && !especieProhibidaHoy.includes(specie));
+        declaredSpecie = lieOptions[Math.floor(Math.random() * lieOptions.length)];
         }
 
         if (property === "sello") {
         declaredSpecie = "humano";
         stamp = targetRule.getForbiddenValue();
+        }
+
+        // lista negra de especies (dia 4): no depende de ningun rasgo fisico, asi que
+        // no hace falta generar un Yokai - alcanza con que el pasaporte declare una de
+        // las especies prohibidas (ver mas abajo, se devuelve un Human igual que "sello")
+        if (property === "especieProhibida") {
+        declaredSpecie = targetRule.getForbiddenValue();
         }
 
         // rasgos combinados: ademas del rasgo principal de arriba (el de targetRule), un visitante
@@ -148,6 +187,7 @@ export class Game{
         const EXTRA_TRAIT_CHANCE = 0.35;
 
         const stampRules = activeRules.filter((rule: Rule) => rule.getProperty() === "sello");
+        const bannedSpecieRules = activeRules.filter((rule: Rule) => rule.getProperty() === "especieProhibida");
 
         const extraTraitOptions: string[] = [];
         const regionRuleActive = activeRules.some((rule: Rule) => rule.getProperty() === "region");
@@ -156,6 +196,9 @@ export class Game{
         }
         if (property !== "sello" && stampRules.length > 0) {
         extraTraitOptions.push("sello");
+        }
+        if (property !== "especieProhibida" && bannedSpecieRules.length > 0) {
+        extraTraitOptions.push("especieProhibida");
         }
 
         if (extraTraitOptions.length > 0 && Math.random() < EXTRA_TRAIT_CHANCE) {
@@ -167,31 +210,21 @@ export class Game{
         const extraStampRule = stampRules[Math.floor(Math.random() * stampRules.length)];
         stamp = extraStampRule.getForbiddenValue();
         }
+        if (extraTrait === "especieProhibida") {
+        const extraBannedSpecieRule = bannedSpecieRules[Math.floor(Math.random() * bannedSpecieRules.length)];
+        declaredSpecie = extraBannedSpecieRule.getForbiddenValue();
         }
-
-        // desde el dia 4, ningun Yokai reconoce su especie real - declara cualquier otra cosa del
-        // array (puede ser "humano", otra especie de Yokai, o directamente una tonteria), sin
-        // importar que regla lo genero. La unica forma de descubrirlo es mirar sus rasgos reales.
-        if (this.#dayNumber >= 4 && property !== "sello") {
-        const lieOptions = this.#species.filter((specie: string) => specie !== yokaiType);
-        declaredSpecie = lieOptions[Math.floor(Math.random() * lieOptions.length)];
         }
 
         const passport = new Passport(name, region, declaredSpecie, stamp);
 
-        if (targetRule.getProperty() === "sello" ) {
+        if (targetRule.getProperty() === "sello" || targetRule.getProperty() === "especieProhibida") {
         return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
         }
         return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
     }
 
-    // los visitantes problematicos tienen mas chance de decir una frase con pista (no siempre);
-    // los honestos tienen una chance chica de decir una tambien, para que la pista no sea 100% confiable.
-    #pickPhrase(isProblematic: boolean): string {
-        const suspiciousChance = isProblematic ? 0.5 : 0.12;
-        if (Math.random() < suspiciousChance) {
-            return this.#suspiciousPhrases[Math.floor(Math.random() * this.#suspiciousPhrases.length)];
-        }
+    #pickPhrase(): string {
         return this.#phrases[Math.floor(Math.random() * this.#phrases.length)];
     }
 
