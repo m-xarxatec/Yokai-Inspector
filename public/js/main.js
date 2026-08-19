@@ -872,7 +872,6 @@ function resolveDecision(accept) {
                     }
                     else {
                         streak += 1;
-                        accept ? soundManager.playAccept() : soundManager.playReject();
                     }
                     // el dia vencio mientras se animaba esta decision (ver startDayTimer()):
                     // recien ahora, con el visitante que el jugador realmente vio ya
@@ -975,6 +974,8 @@ function setupStampDrag(id, accept) {
         const droppedNearPassport = isNearPassport(event.clientX, event.clientY);
         returnToRest();
         if (droppedNearPassport) {
+            // sonido del sello al soltarlo sobre el pasaporte: verde = aceptar, rojo = rechazar
+            accept ? soundManager.playAccept() : soundManager.playReject();
             resolveDecision(accept);
         }
     });
