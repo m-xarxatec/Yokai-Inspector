@@ -4,6 +4,7 @@ const HISTORY_LIMIT = 3;
 const PLAYER_NAME_KEY = "yokaiInspector_playerName";
 const CREDITS_KEY = "yokaiInspector_credits";
 const DAY_STREAKS_KEY = "yokaiInspector_dayStreaks";
+const RESULT_STREAK_KEY = "yokaiInspector_resultStreak";
 export function saveCurrentGame(data) {
     localStorage.setItem(CURRENT_GAME_KEY, JSON.stringify(data));
 }
@@ -60,6 +61,32 @@ export function loadDayStreaks() {
     const rawData = localStorage.getItem(DAY_STREAKS_KEY);
     if (rawData === null) {
         return [];
+    }
+    return JSON.parse(rawData);
+}
+// cuantas partidas SEGUIDAS terminaron con el mismo resultado (no confundir con
+// saveDayStreaks, que es la racha de aciertos DENTRO de una partida). La usan los
+// finales que dependen de haber ganado o perdido 3 veces consecutivas, ver
+// ENDING_* en main.ts. Se llama una sola vez por partida terminada, desde Game.
+export function addResultToStreak(result) {
+    const previous = getResultStreak();
+    const count = previous.result === result ? previous.count + 1 : 1;
+    localStorage.setItem(RESULT_STREAK_KEY, JSON.stringify({ result: result, count: count }));
+    return count;
+}
+// borra todo lo guardado de partidas: el historial, la partida en curso y las
+// dos rachas. NO toca los creditos acumulados por jugador, que son un ranking
+// aparte y no una "partida guardada". Lo usa el final de convertirse en yokai.
+export function clearSavedGames() {
+    localStorage.removeItem(CURRENT_GAME_KEY);
+    localStorage.removeItem(HISTORY_KEY);
+    localStorage.removeItem(DAY_STREAKS_KEY);
+    localStorage.removeItem(RESULT_STREAK_KEY);
+}
+export function getResultStreak() {
+    const rawData = localStorage.getItem(RESULT_STREAK_KEY);
+    if (rawData === null) {
+        return { result: "", count: 0 };
     }
     return JSON.parse(rawData);
 }

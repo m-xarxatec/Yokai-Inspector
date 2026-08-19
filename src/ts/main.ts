@@ -1,5 +1,5 @@
 import { Game } from "./classes/Game.js";
-import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits, saveDayStreaks, loadDayStreaks } from "./Storage.js";
+import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits, saveDayStreaks, loadDayStreaks, getResultStreak, clearSavedGames } from "./Storage.js";
 
 let game: Game | null = null;
 let currentState: string = "menu";
@@ -418,7 +418,8 @@ function resetElementOffscreen(element: SlidableElement): void {
 function setDecisionStampsEnabled(enabled: boolean): void {
   const acceptBtn = document.querySelector("#accept-btn") as HTMLElement | null;
   const rejectBtn = document.querySelector("#reject-btn") as HTMLElement | null;
-  [acceptBtn, rejectBtn].forEach(el => {
+  const alienBtn = document.querySelector("#alien-btn") as HTMLElement | null;
+  [acceptBtn, rejectBtn, alienBtn].forEach(el => {
     if (el !== null) {
       el.setAttribute("aria-disabled", enabled ? "false" : "true");
     }
@@ -760,13 +761,21 @@ function renderVisitor(): void {
   // listener de click de #passport-object) - no se puede decidir a ciegas
   setDecisionStampsEnabled(false);
 
+  // el sello azul no existe sobre el escritorio hasta el dia en que empieza a
+  // hacer falta (ver reglas.json, propiedad "selloAlien") - antes de eso ni
+  // siquiera se ve, para no confundir con una tercera opcion que no aplica
+  const alienStampEl = document.querySelector("#alien-btn") as HTMLElement | null;
+  if (alienStampEl !== null) {
+    alienStampEl.classList.toggle("hidden", !game.alienStampRuleActive());
+  }
+
   const visitor = game.currentVisitor;
   const passport = visitor.obtainPassport;
 
   const passportEl = document.querySelector("#passport-object") as HTMLElement | null;
   const decisionStampEl = document.querySelector("#decision-stamp") as HTMLElement | null;
   if (decisionStampEl !== null) {
-    decisionStampEl.classList.remove("show", "approved", "rejected");
+    decisionStampEl.classList.remove("show", "approved", "rejected", "alien");
   }
   if (passportEl !== null) {
     // se esconde del todo (todavia no lo "lanzo") - nada de dejarlo chiquito
@@ -940,7 +949,9 @@ function showErrorReaction(accept: boolean, errorNumber: number): void {
   changeState("day-result");
 }
 
-function resolveDecision(accept: boolean): void {
+// usedAlienStamp = se aprobo con el sello AZUL (el de los alien, desde el dia 6)
+// en vez del verde de siempre - ver Game.decide() y setupStampDrag()
+function resolveDecision(accept: boolean, usedAlienStamp: boolean = false): void {
   if (game === null) {
     return;
   }
@@ -958,7 +969,11 @@ function resolveDecision(accept: boolean): void {
 
   const decisionStampEl = document.querySelector("#decision-stamp") as HTMLElement | null;
   if (decisionStampEl !== null) {
-    decisionStampEl.className = "show " + (accept ? "approved" : "rejected");
+    let stampLook = accept ? "approved" : "rejected";
+    if (usedAlienStamp) {
+      stampLook = "alien";
+    }
+    decisionStampEl.className = "show " + stampLook;
   }
 
   const passportEl = document.querySelector("#passport-object") as HTMLElement | null;
@@ -970,7 +985,7 @@ function resolveDecision(accept: boolean): void {
   // personaje sale por separado, con el mecanismo de siempre.
   window.setTimeout(() => {
     if (decisionStampEl !== null) {
-      decisionStampEl.classList.remove("show", "approved", "rejected");
+      decisionStampEl.classList.remove("show", "approved", "rejected", "alien");
     }
     if (passportEl !== null) {
       // vuelve a pasaporte.png (saca la variante "en la mesa" si tenia una):
@@ -997,7 +1012,7 @@ function resolveDecision(accept: boolean): void {
           if (game === null) {
             return;
           }
-          game.decide(accept);
+          game.decide(accept, usedAlienStamp);
 
           const justErred = game.errors > errorsBefore;
           if (justErred) {
@@ -1043,7 +1058,12 @@ function resolveDecision(accept: boolean): void {
 // hace solo la transicion de left/top/height de .stamp-drag en style.css en
 // cuanto se saca la clase .arrastrando (que la apaga durante el arrastre para
 // que siga al mouse sin retraso).
+// OJO: estos valores tienen que coincidir con el "left"/"top" que cada sello
+// tiene en style.css - el CSS los coloca al cargar la pagina, y returnToRest()
+// los vuelve a poner despues de cada arrastre. Si se cambia uno solo, el sello
+// aparece en un lado y "vuelve" a otro (paso con el azul al moverlo a 29%).
 const STAMP_REST_POSITION: Record<string, { left: number; top: number }> = {
+  "alien-btn": { left: 29, top: 78 },
   "reject-btn": { left: 80, top: 78 },
   "accept-btn": { left: 91, top: 78 },
 };
@@ -1067,7 +1087,10 @@ function isNearPassport(clientX: number, clientY: number): boolean {
   );
 }
 
-function setupStampDrag(id: string, accept: boolean): void {
+// usedAlienStamp: true solo para el sello azul, el que aprueba a los alien desde
+// el dia 6 (ver Game.decide()). Los otros dos lo dejan en false y se comportan
+// exactamente igual que antes.
+function setupStampDrag(id: string, accept: boolean, usedAlienStamp: boolean = false): void {
   const stampEl = document.querySelector("#" + id) as HTMLElement | null;
   const sceneEl = document.querySelector("#character-scene") as HTMLElement | null;
   const rest = STAMP_REST_POSITION[id];
@@ -1119,7 +1142,7 @@ function setupStampDrag(id: string, accept: boolean): void {
     const droppedNearPassport = isNearPassport(event.clientX, event.clientY);
     returnToRest();
     if (droppedNearPassport) {
-      resolveDecision(accept);
+      resolveDecision(accept, usedAlienStamp);
     }
   });
 
@@ -1133,13 +1156,14 @@ function setupStampDrag(id: string, accept: boolean): void {
     }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      resolveDecision(accept);
+      resolveDecision(accept, usedAlienStamp);
     }
   });
 }
 
 setupStampDrag("reject-btn", false);
 setupStampDrag("accept-btn", true);
+setupStampDrag("alien-btn", true, true);
 
 // el pasaporte no se abre solo: el jugador tiene que clickearlo una vez que el
 // personaje ya se lo entrego (clase "delivered", ver renderVisitor()); recien
@@ -1226,31 +1250,91 @@ document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
 
 // --- Final screen ---
 //
-// 3 finales posibles, elegidos segun isWon()/isLost() y la cantidad total de
-// errores acumulados (game.errors, ya congelado en el momento de ganar - el
-// jugador no sigue jugando despues del ultimo dia):
-// - derrota (siempre igual, sin cambios de esta ronda)
-// - victoria con 2 o 3 errores ("regular"): 2 cuadros, backgroundWin1 solo
-//   texto y despues protaDepre sobre la oficina desenfocada
-// - victoria con 0 o 1 errores ("especial"): 1 solo cuadro, jefaTeAma sobre
-//   la oficina desenfocada
-// Cada cuadro define que clase le pone a #final-backdrop y a #final-portrait
-// (null = sin personaje encima, solo el backdrop) - #final-continue-btn solo
-// se muestra si todavia queda otro cuadro despues del actual.
-type EndingBeat = { backdrop: string; portrait: string | null; text: string };
+// Cada cuadro ("beat") define que clase le pone a #final-backdrop, a
+// #final-portrait (null = sin personaje encima, solo el backdrop) y a
+// #final-award (null = no es un premio) - #final-continue-btn solo se muestra
+// si todavia queda otro cuadro despues del actual.
+//
+// La partida termina con: un final (uno solo, ver renderFinalScreen()) seguido
+// de los premios que se haya ganado, de a uno (ver buildAwardBeats()).
+type EndingBeat = { backdrop: string; portrait: string | null; award: string | null; text: string };
 
 const ENDING_DEFEAT: EndingBeat[] = [
-  { backdrop: "defeat", portrait: null, text: "Te despiden en el acto y el apocalipsis Yokai se desata sobre la Tierra — nadie más tenía la vista tan fina como la tuya para este trabajo." },
+  { backdrop: "defeat", portrait: null, award: null, text: "Te despiden en el acto y el apocalipsis Yokai se desata sobre la Tierra — nadie más tenía la vista tan fina como la tuya para este trabajo." },
 ];
 
 const ENDING_WIN_REGULAR: EndingBeat[] = [
-  { backdrop: "win-regular", portrait: null, text: "Tu desempeño ha sido regular en la agencia, pero lo suficientemente bueno para ser ascendido y obtener una oficina nueva sin ventanas, aunque crees que te pagarán más, solo es mucho papeleo por la misma paga." },
-  { backdrop: "blurred-office", portrait: "protaDepre", text: "Aunque lograste salvar al mundo y eso debería ser suficiente... felicitaciones, supongo..." },
+  { backdrop: "win-regular", portrait: null, award: null, text: "Tu desempeño ha sido regular en la agencia, pero lo suficientemente bueno para ser ascendido y obtener una oficina nueva sin ventanas, aunque crees que te pagarán más, solo es mucho papeleo por la misma paga." },
+  { backdrop: "blurred-office", portrait: "protaDepre", award: null, text: "Aunque lograste salvar al mundo y eso debería ser suficiente... felicitaciones, supongo..." },
 ];
 
 const ENDING_WIN_SPECIAL: EndingBeat[] = [
-  { backdrop: "blurred-office", portrait: "jefaTeAma", text: "Has hecho un trabajo tan eficiente que la jefa se ha enamorado de ti... ella y la agencia han ganado mucho dinero por tu desempeño, eres tan bueno que no puedes ser ascendido y deciden quedarse solo contigo y despedir a los otros trabajadores... recibes un aumento de 2 monedas más al mes... felicidades...." },
+  { backdrop: "blurred-office", portrait: "jefaTeAma", award: null, text: "Has hecho un trabajo tan eficiente que la jefa se ha enamorado de ti... ella y la agencia han ganado mucho dinero por tu desempeño, eres tan bueno que no puedes ser ascendido y deciden quedarse solo contigo y despedir a los otros trabajadores... recibes un aumento de 2 monedas más al mes... felicidades...." },
 ];
+
+// perder 3 partidas SEGUIDAS (ver addResultToStreak en Storage.ts): las dos
+// primeras derrotas muestran el final normal, la tercera este
+const ENDING_YOKAI: EndingBeat[] = [
+  { backdrop: "yokai", portrait: null, award: null, text: "Has perdido demasiadas veces consecutivas, te conviertes en yokai y eres tú quien desata el apocalipsis... la jefa llora porque te amaba en secreto... GAME OVER" },
+  { backdrop: "yokai", portrait: null, award: null, text: "Del otro lado del mostrador ya no queda nada tuyo: la agencia borró tu expediente completo. Se eliminaron TODAS las partidas guardadas." },
+];
+
+// ganar 3 partidas SEGUIDAS
+const ENDING_BOSS: EndingBeat[] = [
+  { backdrop: "boss", portrait: null, award: null, text: "Has ascendido a jefe... a la inspectora la han degradado a tu puesto... finalmente la vida te sonríe." },
+  { backdrop: "boss-worried", portrait: null, award: null, text: "La antigua jefa no puede mantener su lujoso estilo de vida con su nuevo sueldo.... FIN" },
+];
+
+// ganar con mucho dinero acumulado (ver RICH_BOSS_MONEY)
+const ENDING_RICH_BOSS: EndingBeat[] = [
+  { backdrop: "rich-boss", portrait: null, award: null, text: "Lo has hecho muy bien... Tan bien que la jefa ahora gana mucho dinero y puede permitirse la vida que siempre soñó!... a ti... te dan un pequeño bono al final del año... siempre tienes hambre... FIN?" },
+];
+
+// cuantas partidas seguidas con el mismo resultado hacen falta para los finales
+// de "te convertiste en yokai" / "sos el jefe"
+const CONSECUTIVE_FOR_SPECIAL_ENDING = 3;
+
+// PENDIENTE DE DEFINIR (Mike): cuanto dinero hay que terminar la partida para el
+// final de la jefa millonaria. Por ahora una cifra absurda a proposito, para que
+// no salga por accidente mientras se decide el numero real - con +2 por acierto,
+// una partida normal de 7 dias ronda las 100-200 monedas.
+const RICH_BOSS_MONEY = 9999;
+
+// premios de fin de partida: se muestran de a uno despues del final, gane o
+// pierda. La imagen es la clase de #final-award (ver public/img/animaciones/).
+function awardBeat(award: string, text: string): EndingBeat {
+  return { backdrop: "blurred-office", portrait: null, award: award, text: text };
+}
+
+// los tres premios de "no se te paso ninguno" piden ademas haber llegado al dia
+// en que esa criatura empieza a aparecer (Oni dia 1, Kitsune dia 2, Kappa dia
+// 3): sin eso los ganaria de arriba cualquiera que pierda el primer dia, porque
+// nunca vio uno.
+function buildAwardBeats(): EndingBeat[] {
+  if (game === null) {
+    return [];
+  }
+  const beats: EndingBeat[] = [];
+  if (game.daysCompleted >= 3) {
+    beats.push(awardBeat("premioInspector", "Premio Inspector: alcanzaste con éxito el día 3."));
+  }
+  if (game.daysCompleted >= 6) {
+    beats.push(awardBeat("premioBurocracia", "Premio Burocracia: alcanzaste con éxito el día 6."));
+  }
+  if (game.daysCompleted >= 3 && !game.letThroughKappa) {
+    beats.push(awardBeat("premioKappa", "Premio Kappa: no se te pasó ni un solo kappa."));
+  }
+  if (game.daysCompleted >= 2 && !game.letThroughKitsune) {
+    beats.push(awardBeat("premioKitsune", "Premio Kitsune: no se te pasó ni un solo kitsune."));
+  }
+  if (game.daysCompleted >= 1 && !game.letThroughOni) {
+    beats.push(awardBeat("premioOni", "Premio Oni: no se te pasó ningún cuernudo."));
+  }
+  if (game.bestDayVisitors > 15) {
+    beats.push(awardBeat("premioVelocidad", "Premio Velocidad: atendiste a " + game.bestDayVisitors + " personas en un solo día (día " + game.bestDayNumber + ")."));
+  }
+  return beats;
+}
 
 let endingBeats: EndingBeat[] = ENDING_DEFEAT;
 let endingBeatIndex = 0;
@@ -1262,6 +1346,17 @@ function renderEndingBeat(): void {
 
   const portraitEl = document.querySelector("#final-portrait");
   if (portraitEl !== null) portraitEl.className = beat.portrait ?? "";
+
+  const awardEl = document.querySelector("#final-award") as HTMLElement | null;
+  if (awardEl !== null) {
+    awardEl.className = beat.award ?? "";
+    // reinicia las animaciones para que el giro coincida con la entrada de ESTE
+    // premio en vez de seguir la fase del anterior (el elemento no se recrea,
+    // solo le cambia la clase) - mismo truco de reflow que resetElementOffscreen()
+    awardEl.style.animation = "none";
+    void awardEl.offsetWidth;
+    awardEl.style.animation = "";
+  }
 
   typeDialogue(beat.text, "#final-message");
 
@@ -1277,13 +1372,33 @@ function renderFinalScreen(): void {
     return;
   }
 
+  // la racha ya viene actualizada con ESTA partida: Game la registra al guardar
+  // el resultado en el historial (ver decide()/endDay()), antes de llegar aca
+  const resultStreak = getResultStreak();
+  const repeatedResult = resultStreak.count >= CONSECUTIVE_FOR_SPECIAL_ENDING;
+
+  // orden de prioridad, de mas raro a mas comun: 3 seguidas manda sobre todo lo
+  // demas, despues el dinero, despues los errores
   if (!game.isWon()) {
-    endingBeats = ENDING_DEFEAT;
+    const seConvierteEnYokai = repeatedResult && resultStreak.result === "derrota";
+    endingBeats = seConvierteEnYokai ? ENDING_YOKAI : ENDING_DEFEAT;
+    if (seConvierteEnYokai) {
+      // lo que anuncia el segundo cuadro de ENDING_YOKAI: se borra historial,
+      // partida en curso y rachas (la de resultados incluida, asi el contador
+      // vuelve a cero y el final no se repite en la derrota siguiente)
+      clearSavedGames();
+    }
+  } else if (repeatedResult && resultStreak.result === "victoria") {
+    endingBeats = ENDING_BOSS;
+  } else if (game.money >= RICH_BOSS_MONEY) {
+    endingBeats = ENDING_RICH_BOSS;
   } else if (game.errors <= 1) {
     endingBeats = ENDING_WIN_SPECIAL;
   } else {
     endingBeats = ENDING_WIN_REGULAR;
   }
+  // concat, no push: los ENDING_* son constantes compartidas entre partidas
+  endingBeats = endingBeats.concat(buildAwardBeats());
   endingBeatIndex = 0;
   renderEndingBeat();
 }
@@ -1312,7 +1427,7 @@ function preloadCharacterImages(): void {
   fetch("data/partes.json")
     .then(r => r.json())
     .then(parts => {
-      const faceUrls = parts.rostro.map((name: string) => "img/baseCharacters/" + name + ".png");
+      const faceUrls = parts.rostro.concat(parts.alienes).map((name: string) => "img/baseCharacters/" + name + ".png");
       const eyesUrls = parts.ojos.map((name: string) => "img/eyes/" + name + ".png");
       const mouthUrls = parts.boca.map((name: string) => "img/mouth/" + name + ".png");
       preloadImages(faceUrls);

@@ -548,10 +548,18 @@ button:disabled {
   background-color: #2a2640;
 }
 
+/*
+  "contain" y no "cover": los fondos de final NO comparten proporcion entre si
+  (fondoPierdes/backgroundWin1 son 1.5, pero finalConvertidoYokai es cuadrado,
+  finalEresJefe 1.73, finalJefaMillonaria 1.23...). Con "cover" los que no son
+  1.5 se recortarian; asi entran enteros y el color de #final-scene hace de
+  marco. Para los dos de 1.5 el resultado es identico a "cover".
+*/
 #final-backdrop {
   position: absolute;
   inset: 0;
-  background-size: cover;
+  background-size: contain;
+  background-repeat: no-repeat;
   background-position: center;
 }
 
@@ -561,6 +569,25 @@ button:disabled {
 
 #final-backdrop.win-regular {
   background-image: url("../img/backgrounds/backgroundWin1.png");
+}
+
+/* perder 3 partidas seguidas */
+#final-backdrop.yokai {
+  background-image: url("../img/backgrounds/finalConvertidoYokai.png");
+}
+
+/* ganar 3 partidas seguidas (2 cuadros) */
+#final-backdrop.boss {
+  background-image: url("../img/backgrounds/finalEresJefe.png");
+}
+
+#final-backdrop.boss-worried {
+  background-image: url("../img/backgrounds/finaljefapreocupada.png");
+}
+
+/* ganar con mucho dinero (ver RICH_BOSS_MONEY en main.ts) */
+#final-backdrop.rich-boss {
+  background-image: url("../img/backgrounds/finalJefaMillonaria.png");
 }
 
 /* mismo truco que #jefa-background: oficina de fondo, desenfocada, para las
@@ -590,6 +617,48 @@ button:disabled {
 
 #final-portrait.protaDepre { display: block; background-image: url("../img/protagonista/protaDepre.png"); }
 #final-portrait.jefaTeAma { display: block; background-image: url("../img/jefa/jefaTeAma.png"); }
+
+/*
+  premio de fin de partida: la medalla/amuleto en el centro del cuadro, sobre la
+  oficina desenfocada. Mismo criterio que #final-portrait (oculto salvo que
+  tenga una clase), pero centrado en vez de apoyado abajo - son objetos, no
+  personajes. El aspect-ratio de cada uno sale del recorte real de su PNG.
+*/
+#final-award {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 42%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  /* dos animaciones a la vez: el brillo que late (mismo criterio que
+     passport-pulse, el del pasaporte esperando click) y un giro corto que
+     arranca al aparecer y se repite cada 3s. renderEndingBeat() las reinicia
+     en cada premio para que el giro coincida con su entrada. */
+  animation: award-glow 1.6s ease-in-out infinite, award-spin 3s ease-in-out infinite;
+}
+
+@keyframes award-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(242, 237, 227, 0)); }
+  50% { filter: drop-shadow(0 0 0.7rem rgba(242, 237, 227, 0.9)); }
+}
+
+/* el giro ocupa el primer cuarto del ciclo y despues queda quieto hasta que
+   vuelve a empezar - de ahi la sensacion de "gira y descansa 3 segundos" */
+@keyframes award-spin {
+  0% { transform: translate(-50%, -50%) perspective(700px) rotateY(0deg); }
+  25%, 100% { transform: translate(-50%, -50%) perspective(700px) rotateY(360deg); }
+}
+
+#final-award.premioInspector { display: block; aspect-ratio: 0.736; background-image: url("../img/animaciones/premioInspector.png"); }
+#final-award.premioBurocracia { display: block; aspect-ratio: 0.814; background-image: url("../img/animaciones/premioBurocracia.png"); }
+#final-award.premioKappa { display: block; aspect-ratio: 0.695; background-image: url("../img/animaciones/premioKappa.png"); }
+#final-award.premioKitsune { display: block; aspect-ratio: 0.618; background-image: url("../img/animaciones/premioKitsune.png"); }
+#final-award.premioOni { display: block; aspect-ratio: 0.825; background-image: url("../img/animaciones/premioOni.png"); }
+#final-award.premioVelocidad { display: block; aspect-ratio: 1.082; background-image: url("../img/animaciones/premioVelocidad.png"); }
 
 /* mismo estilo que el dialogo de los visitantes/la Jefa - se "habla" con typeDialogue() */
 #final-message {
@@ -1074,6 +1143,12 @@ button:disabled {
   background-image: url("../img/documentos/selloRechazado.png");
 }
 
+/* la que deja el sello azul: aprueba al alien, no es "aceptado" comun */
+#decision-stamp.alien {
+  aspect-ratio: 2017 / 2057;
+  background-image: url("../img/documentos/selloAliens.png");
+}
+
 /*
   sellos reales (reemplazan los botones Aceptar/Rechazar), esquina inferior
   derecha del escritorio - drag and drop real, ver setupStampDrag() en main.ts.
@@ -1131,6 +1206,11 @@ button:disabled {
   filter: drop-shadow(0 0.5rem 0.35rem rgba(0, 0, 0, 0.5));
 }
 
+/* a la izquierda del escritorio (que arranca en 21.2%): el pasaporte abierto
+   ocupa de 37.9% a 66.1% de ancho, asi que en 69% el sello azul en reposo se le
+   superponia por el costado. En 29% queda con margen de sobra de los dos lados:
+   no pisa el pasaporte ni se mete en la barra lateral (termina en 20%). */
+#alien-btn { left: 29%; }
 #reject-btn { left: 80%; }
 #accept-btn { left: 91%; }
 
@@ -1141,6 +1221,13 @@ button:disabled {
 .stamp-verde.pos1 { background-image: url("../img/sellos/selloVerdePosicion1.png"); aspect-ratio: 0.969; }
 .stamp-verde.pos2 { background-image: url("../img/sellos/selloVerdePosicion2.png"); aspect-ratio: 0.903; height: 15%; }
 .stamp-verde.pos3 { background-image: url("../img/sellos/selloVerdePosicion3.png"); aspect-ratio: 0.842; height: 17%; }
+
+/* alturas propias (mas que el 13/15/17% de rojo y verde): el sello azul es mas
+   angosto de proporcion, asi que a la misma altura se veia mas chico que los
+   otros dos - subidas hasta que los tres ocupan un ancho parecido en el escritorio */
+.stamp-azul.pos1 { background-image: url("../img/sellos/selloAzul1.png"); aspect-ratio: 0.875; height: 14.5%; }
+.stamp-azul.pos2 { background-image: url("../img/sellos/selloAzul2.png"); aspect-ratio: 1.0; height: 16.5%; }
+.stamp-azul.pos3 { background-image: url("../img/sellos/selloAzul3.png"); aspect-ratio: 1.468; height: 18.5%; }
 
 /*
   ancho achicado respecto de la caja vieja (30.4% -> 20%, medida sobre
@@ -1211,6 +1298,42 @@ button:disabled {
 .part-face.rostro-22 { background-image: url("../img/baseCharacters/rostro-22.png"); }
 .part-face.rostro-23 { background-image: url("../img/baseCharacters/rostro-23.png"); }
 .part-face.rostro-24 { background-image: url("../img/baseCharacters/rostro-24.png"); }
+.part-face.rostro-25 { background-image: url("../img/baseCharacters/rostro-25.png"); }
+.part-face.rostro-26 { background-image: url("../img/baseCharacters/rostro-26.png"); }
+.part-face.rostro-27 { background-image: url("../img/baseCharacters/rostro-27.png"); }
+.part-face.rostro-28 { background-image: url("../img/baseCharacters/rostro-28.png"); }
+.part-face.rostro-29 { background-image: url("../img/baseCharacters/rostro-29.png"); }
+.part-face.rostro-30 { background-image: url("../img/baseCharacters/rostro-30.png"); }
+.part-face.rostro-31 { background-image: url("../img/baseCharacters/rostro-31.png"); }
+.part-face.rostro-32 { background-image: url("../img/baseCharacters/rostro-32.png"); }
+.part-face.rostro-33 { background-image: url("../img/baseCharacters/rostro-33.png"); }
+.part-face.rostro-34 { background-image: url("../img/baseCharacters/rostro-34.png"); }
+.part-face.rostro-35 { background-image: url("../img/baseCharacters/rostro-35.png"); }
+.part-face.rostro-36 { background-image: url("../img/baseCharacters/rostro-36.png"); }
+.part-face.rostro-37 { background-image: url("../img/baseCharacters/rostro-37.png"); }
+.part-face.rostro-38 { background-image: url("../img/baseCharacters/rostro-38.png"); }
+.part-face.rostro-39 { background-image: url("../img/baseCharacters/rostro-39.png"); }
+.part-face.rostro-40 { background-image: url("../img/baseCharacters/rostro-40.png"); }
+.part-face.rostro-41 { background-image: url("../img/baseCharacters/rostro-41.png"); }
+.part-face.rostro-42 { background-image: url("../img/baseCharacters/rostro-42.png"); }
+.part-face.rostro-43 { background-image: url("../img/baseCharacters/rostro-43.png"); }
+.part-face.rostro-44 { background-image: url("../img/baseCharacters/rostro-44.png"); }
+.part-face.rostro-45 { background-image: url("../img/baseCharacters/rostro-45.png"); }
+.part-face.rostro-46 { background-image: url("../img/baseCharacters/rostro-46.png"); }
+.part-face.rostro-47 { background-image: url("../img/baseCharacters/rostro-47.png"); }
+.part-face.rostro-48 { background-image: url("../img/baseCharacters/rostro-48.png"); }
+
+/* rostros de alien (partes.json -> "alienes"): mismo tamano y encuadre que los
+   rostro-N, pero se sortean de un pool aparte porque su pasaporte es fijo
+   ("via lactea"/"alien", ver Game#generateVisitor) */
+.part-face.alien1 { background-image: url("../img/baseCharacters/alien1.png"); }
+.part-face.alien2 { background-image: url("../img/baseCharacters/alien2.png"); }
+.part-face.alien3 { background-image: url("../img/baseCharacters/alien3.png"); }
+.part-face.alien4 { background-image: url("../img/baseCharacters/alien4.png"); }
+.part-face.alien5 { background-image: url("../img/baseCharacters/alien5.png"); }
+.part-face.alien6 { background-image: url("../img/baseCharacters/alien6.png"); }
+.part-face.alien7 { background-image: url("../img/baseCharacters/alien7.png"); }
+.part-face.alien8 { background-image: url("../img/baseCharacters/alien8.png"); }
 
 /*
   ojos: son imagenes de canvas completo (mismo tamaño que rostro-N), dibujadas ya
@@ -1290,16 +1413,27 @@ button:disabled {
   Mike va a agrandar el arte de horns-1..4.png directamente (para que se
   vean mas sin tener que agrandar el recuadro por CSS, ver diario.md).
 */
+/*
+  ancla por "bottom" y no por "top": los 3 diseños nuevos tienen proporciones muy
+  distintas entre si (1.06, 1.60, 2.65), asi que con el ancho fijo en 22% cada uno
+  sale con una altura distinta. Con "top" fijo eso hacia que los mas altos
+  colgaran hacia abajo y taparan los ojos; anclados por la base, los tres apoyan
+  el arranque del cuerno en el mismo punto de la cabeza, midan lo que midan.
+  72% = justo sobre el pelo (medido componiendo rostro+ojos+boca+cuernos con la
+  misma matematica del CSS, ver diario.md). "width" y "left" quedan como los
+  habia dejado ajustados Mike.
+*/
 .part-horns {
   width: 22%;
-  top: 32%;
+  bottom: 72%;
   left: 38%;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
 }
-.part-horns.horns-4 { background-image: url("../img/cuernos/horns-4.png"); aspect-ratio: 4.281; }
-.part-horns.horns-5 { background-image: url("../img/cuernos/horns-5.png"); aspect-ratio: 6.37; }
+.part-horns.horns-1 { background-image: url("../img/cuernos/horns-1.png"); aspect-ratio: 1.599; }
+.part-horns.horns-2 { background-image: url("../img/cuernos/horns-2.png"); aspect-ratio: 2.648; }
+.part-horns.horns-3 { background-image: url("../img/cuernos/horns-3.png"); aspect-ratio: 1.059; }
 
 /* sombrero: el cabello ya viene dibujado dentro de cada rostro - esta capa queda
    disponible para un accesorio futuro (gorro/sombrero encima), oculta por ahora

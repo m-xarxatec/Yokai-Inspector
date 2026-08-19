@@ -45,6 +45,13 @@ export class Rule {
                 return character.obtainPassport.obtainStamp === __classPrivateFieldGet(this, _Rule_forbiddenValue, "f");
             case "especieProhibida":
                 return character.obtainPassport.obtainDeclaredSpecie === __classPrivateFieldGet(this, _Rule_forbiddenValue, "f");
+            case "selloAlien":
+                // OJO: esta regla NUNCA se viola, y esta bien que asi sea. Las demas dicen
+                // A QUIEN hay que rechazar; esta dice COMO hay que aprobar (a los alien se
+                // los deja pasar con el sello azul en vez del verde, ver Game.decide()).
+                // Vive igual en reglas.json/dias.json para activarse el dia que corresponde
+                // y para que su descripcion salga en la lista de reglas activas del dia.
+                return false;
             default:
                 return false;
         }

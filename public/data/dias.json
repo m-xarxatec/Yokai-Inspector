@@ -32,13 +32,13 @@
   {
     "dia": 6,
     "objetivoVisitantes": 8,
-    "reglasActivas": [1, 2, 3, 4, 5],
-    "mensajeIntro": "Sin reglas nuevas hoy — la agencia todavía no encontró nada raro que agregar. Pero ojo: NINGUNA de las reglas anteriores se cae nunca, se acumulan todas, así que hoy toca aplicar las cinco a la vez con más visitantes en menos tiempo. Que la calma de hoy no te confíe."
+    "reglasActivas": [1, 2, 3, 4, 5, 7],
+    "mensajeIntro": "Tratado interestelar firmado anoche: desde hoy los visitantes de la vía láctea (los alien) necesitan su propio sello. Si un alien está en regla y lo vas a dejar pasar, NO uses el sello verde de siempre — usá el SELLO AZUL que te dejaron en el escritorio. El azul es solo para ellos: usarlo con cualquier otro visitante también cuenta como error. Ojo, esto no reemplaza nada: si el alien rompe alguna de las cinco reglas anteriores, se rechaza igual que todos."
   },
   {
     "dia": 7,
     "objetivoVisitantes": 8,
-    "reglasActivas": [1, 2, 3, 4, 5, 6],
-    "mensajeIntro": "Nuevo memo de la agencia: apareció un sello plateado, falsificación de una aduana rival. Se suma a la lista de sellos prohibidos. El resto de las reglas se mantiene igual."
+    "reglasActivas": [1, 2, 3, 4, 5, 6, 7],
+    "mensajeIntro": "Nuevo memo de la agencia: apareció un sello plateado, falsificación de una aduana rival. Se suma a la lista de sellos prohibidos. El resto de las reglas se mantiene igual, incluido el sello azul de los alien."
   }
 ]

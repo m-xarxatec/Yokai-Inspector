@@ -1,4 +1,4 @@
-import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, getHistory, addCredits } from "../Storage.js";
+import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, getHistory, addCredits, addResultToStreak } from "../Storage.js";
 import { Passport } from "./Passport.js";
 import { Character } from "./Character.js";
 import { Human } from "./Human.js";
@@ -23,6 +23,14 @@ export class Game{
     #stamps: any[];
     #species: string[];
     #playerName: string;
+    // datos que solo se usan para los premios de fin de partida (ver main.ts,
+    // AWARD_BEATS): que tipo de visitante dejo pasar el jugador alguna vez, y cual
+    // fue su dia con mas visitantes atendidos
+    #letThroughOni: boolean;
+    #letThroughKitsune: boolean;
+    #letThroughKappa: boolean;
+    #bestDayVisitors: number;
+    #bestDayNumber: number;
 
     constructor(playerName: string = "Jugador"){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
@@ -38,6 +46,11 @@ export class Game{
         this.#phrases = [];
         this.#stamps = [];
         this.#species = [];
+        this.#letThroughOni = false;
+        this.#letThroughKitsune = false;
+        this.#letThroughKappa = false;
+        this.#bestDayVisitors = 0;
+        this.#bestDayNumber = 0;
     }
 
     loadData(onComplete: () => void): void {
@@ -84,7 +97,7 @@ export class Game{
         const isProblematic = Math.random() < problematicRatio;
         const name = this.#names[Math.floor(Math.random() * this.#names.length)];
         const phrase = this.#pickPhrase();
-        const face = this.#parts.rostro[Math.floor(Math.random() * this.#parts.rostro.length)];
+        let face = this.#parts.rostro[Math.floor(Math.random() * this.#parts.rostro.length)];
         const eyesShape = this.#parts.ojos[Math.floor(Math.random() * this.#parts.ojos.length)];
         const mouth = this.#parts.boca[Math.floor(Math.random() * this.#parts.boca.length)];
         const horns = this.#parts.cuernos[Math.floor(Math.random() * this.#parts.cuernos.length)];
@@ -103,17 +116,40 @@ export class Game{
             return fullPool.filter((value: string) => !forbiddenToday.includes(value));
         }
 
+        // cada cuanto sale un alien en vez de un rostro comun. Un alien NO es una
+        // especie de Yokai: es un rostro aparte (partes.json -> "alienes") que
+        // siempre viaja con el mismo pasaporte, ver #applyAlienPassport().
+        const ALIEN_CHANCE = 0.18;
+
         if (!isProblematic) {
-            const allRegions = ["playa", "ciudad", "rio", "bosque", "montana", "via lactea"];
+            // "via lactea"/"alien" quedan fuera del sorteo comun a proposito: son los
+            // datos propios de los alien y no los puede declarar nadie mas que lo sea
+            // de verdad. Si no, un visitante con rostro humano podia salir declarando
+            // "alien" y "via lactea" sin serlo, y con la regla del sello azul en juego
+            // eso es confuso de leer: el pasaporte dice alien pero corresponde el sello
+            // verde. (Un Yokai mintiendo SI puede declararse "alien" - ver lieOptions
+            // mas abajo - pero ese siempre viola alguna regla, asi que igual se rechaza.)
+            const allRegions = ["playa", "ciudad", "rio", "bosque", "montana"];
             const allStamps = this.#stamps.map((stamp: any) => stamp.color);
 
             const safeRegions = withoutForbiddenToday(allRegions, "region");
             const safeStamps = withoutForbiddenToday(allStamps, "sello");
-            const safeSpecies = withoutForbiddenToday(this.#species, "especieProhibida");
+            const safeSpecies = withoutForbiddenToday(this.#species, "especieProhibida").filter((specie: string) => specie !== "alien");
 
-            const region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
+            let region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
             const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)];
-            const declaredSpecie = safeSpecies[Math.floor(Math.random() * safeSpecies.length)];
+            let declaredSpecie = safeSpecies[Math.floor(Math.random() * safeSpecies.length)];
+
+            // un alien "en regla": ni "via lactea" ni "alien" estan prohibidos por
+            // ninguna regla, asi que sigue siendo un visitante seguro - lo unico
+            // distinto es que desde el dia 6 hay que aprobarlo con el sello azul
+            // (eso no lo decide el pasaporte, lo decide el jugador, ver decide())
+            if (Math.random() < ALIEN_CHANCE) {
+                face = this.#pickAlienFace();
+                region = "via lactea";
+                declaredSpecie = "alien";
+            }
+
             const passport = new Passport(name, region, declaredSpecie, stamp);
             return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
 
@@ -124,9 +160,14 @@ export class Game{
         // varias reglas de la misma propiedad activas a la vez (ver "especieProhibida",
         // 4 entradas el mismo dia, o "sello" con 2 desde el dia 6) pesaria de mas esa
         // categoria frente al resto, sin que problematicRatio lo haya contemplado.
+        // "selloAlien" queda afuera a proposito: no es una regla de rechazo (ver
+        // Rule.isViolated()), asi que no sirve para fabricar un visitante problematico -
+        // si se la eligiera como categoria, el visitante saldria sin ningun rasgo que
+        // violar y contaria como problematico igual, corriendo problematicRatio.
         const activeProperties = activeRules
             .map((rule: Rule) => rule.getProperty())
-            .filter((property: string, index: number, properties: string[]) => properties.indexOf(property) === index);
+            .filter((property: string, index: number, properties: string[]) => properties.indexOf(property) === index)
+            .filter((property: string) => property !== "selloAlien");
         const targetProperty = activeProperties[Math.floor(Math.random() * activeProperties.length)];
         const rulesForProperty = activeRules.filter((rule: Rule) => rule.getProperty() === targetProperty);
         const targetRule = rulesForProperty[Math.floor(Math.random() * rulesForProperty.length)];
@@ -137,6 +178,18 @@ export class Game{
         let stamp = "dorado";
 
         const property = targetRule.getProperty();
+
+        // el rostro de alien solo se puede usar cuando el rasgo que vuelve problematico
+        // al visitante NO vive en el pasaporte: con "region" haria falta declarar "rio"
+        // y con "especieProhibida" una palabra de la lista negra, y el pasaporte fijo
+        // del alien ("via lactea"/"alien") pisaria justo ese rasgo, dejandolo limpio.
+        // Con cuernos, ojos amarillos o sello prohibido no hay conflicto: el rasgo
+        // sobrevive igual al pasaporte forzado.
+        const canBeAlien = property !== "region" && property !== "especieProhibida";
+        const isAlien = canBeAlien && Math.random() < ALIEN_CHANCE;
+        if (isAlien) {
+            face = this.#pickAlienFace();
+        }
 
         if (property === "tieneCuernos") {
         yokaiType = "oni";
@@ -216,6 +269,15 @@ export class Game{
         }
         }
 
+        // va DESPUES de los rasgos combinados a proposito: el pasaporte del alien es
+        // fijo y pisa lo que hubiera sorteado el rasgo extra (region/especie). El rasgo
+        // PRINCIPAL nunca se pierde - los tres que pueden tocarle a un alien viven
+        // fuera del pasaporte (cuernos, ojos amarillos) o en el sello, que no se toca.
+        if (isAlien) {
+            region = "via lactea";
+            declaredSpecie = "alien";
+        }
+
         const passport = new Passport(name, region, declaredSpecie, stamp);
 
         if (targetRule.getProperty() === "sello" || targetRule.getProperty() === "especieProhibida") {
@@ -228,11 +290,58 @@ export class Game{
         return this.#phrases[Math.floor(Math.random() * this.#phrases.length)];
     }
 
-    decide(accept: boolean): void {
+    #pickAlienFace(): string {
+        return this.#parts.alienes[Math.floor(Math.random() * this.#parts.alienes.length)];
+    }
+
+    // guarda el dia con mas visitantes atendidos (premio de velocidad). Se llama
+    // justo antes de que el contador del dia se reinicie o de que la partida termine,
+    // nunca despues de tocar #dayNumber.
+    #recordDayVisitors(): void {
+        if (this.#visitorsSeenToday > this.#bestDayVisitors) {
+            this.#bestDayVisitors = this.#visitorsSeenToday;
+            this.#bestDayNumber = this.#dayNumber;
+        }
+    }
+
+    // anota que tipo de visitante dejo pasar el jugador (premios de "no se te paso
+    // ninguno"). Solo cuenta al aceptar: rechazarlo es justamente no dejarlo pasar.
+    #recordLetThrough(visitor: Character): void {
+        if (visitor.obtainHaveHorns) {
+            this.#letThroughOni = true;
+        }
+        if (visitor instanceof Yokai && visitor.obtainYokaiType === "kitsune") {
+            this.#letThroughKitsune = true;
+        }
+        if (visitor instanceof Yokai && visitor.obtainYokaiType === "kappa") {
+            this.#letThroughKappa = true;
+        }
+    }
+
+    // true si hoy rige la regla del sello azul (reglas.json, propiedad "selloAlien").
+    // La usa decide() y tambien main.ts, para mostrar el sello azul en el escritorio
+    // recien el dia en que empieza a hacer falta.
+    alienStampRuleActive(): boolean {
+        return this.currentDay.getActiveRules().some((rule: Rule) => rule.getProperty() === "selloAlien");
+    }
+
+    // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
+    // opcional para no romper a quien llame decide(accept) a secas (los tests, y
+    // todo el codigo anterior al dia 6).
+    decide(accept: boolean, usedAlienStamp: boolean = false): void {
     const currentDay = this.#days[this.#dayNumber - 1];
-    const violatedRule = currentDay.evaluateCharacter(this.#currentVisitor as Character);
+    const visitor = this.#currentVisitor as Character;
+    const violatedRule = currentDay.evaluateCharacter(visitor);
     const shouldReject = violatedRule !== null; //si se esta violando una regla, el personaje actual debe ser rechazado
-    const wasCorrect = (accept && !shouldReject) || (!accept && shouldReject);
+
+    // desde el dia en que rige la regla del sello azul, dejar pasar a un alien exige
+    // sellarlo con el AZUL, y el azul no vale para nadie mas. Ojo: esto solo cambia
+    // COMO se aprueba - a quien hay que rechazar no cambia en absoluto, un alien que
+    // viola cualquiera de las otras reglas se rechaza igual que el resto.
+    const needsAlienStamp = this.alienStampRuleActive() && visitor.isAlien();
+    const rightStamp = usedAlienStamp === needsAlienStamp;
+
+    const wasCorrect = (accept && !shouldReject && rightStamp) || (!accept && shouldReject);
 
     if (wasCorrect) {
         this.#money += 2; // antes 10 - se achico porque ahora, con dia por tiempo, se pueden ver muchos mas visitantes que antes
@@ -242,10 +351,15 @@ export class Game{
     }
 
     this.#visitorsSeenToday += 1;
+    if (accept) {
+        this.#recordLetThrough(visitor);
+    }
 
     if (this.isLost()) {
+        this.#recordDayVisitors();
         saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota", name: this.#playerName });
         addCredits(this.#playerName, this.#money);
+        addResultToStreak("derrota");
         deleteCurrentGame();
         return;
     }
@@ -257,10 +371,12 @@ export class Game{
     // acaba el temporizador del dia. Antes vivia adentro de decide(), atado a
     // visitorsSeenToday >= currentDay.getVisitorGoal().
     endDay(): void {
+    this.#recordDayVisitors(); // antes de tocar #dayNumber: el conteo es del dia que se cierra
     this.#dayNumber += 1;
     if (this.isWon()) {
         saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName });
         addCredits(this.#playerName, this.#money);
+        addResultToStreak("victoria");
         deleteCurrentGame();
         return;
     }
@@ -292,6 +408,27 @@ export class Game{
     }
     get playerName(): string {
         return this.#playerName;
+    }
+    // --- datos para los premios de fin de partida (ver AWARD_BEATS en main.ts) ---
+    get letThroughOni(): boolean {
+        return this.#letThroughOni;
+    }
+    get letThroughKitsune(): boolean {
+        return this.#letThroughKitsune;
+    }
+    get letThroughKappa(): boolean {
+        return this.#letThroughKappa;
+    }
+    get bestDayVisitors(): number {
+        return this.#bestDayVisitors;
+    }
+    get bestDayNumber(): number {
+        return this.#bestDayNumber;
+    }
+    // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
+    // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
+    get daysCompleted(): number {
+        return this.#dayNumber - 1;
     }
 
     loadProgress(): boolean {
