@@ -1,7 +1,9 @@
 import { Game } from "./classes/Game.js";
 import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits, saveDayStreaks, loadDayStreaks, getResultStreak, clearSavedGames } from "./Storage.js";
+import { SoundManager } from "./classes/SoundManager.js";
 let game = null;
 let currentState = "menu";
+const soundManager = new SoundManager();
 // racha con la que termino cada dia de la partida en curso - se guarda en
 // localStorage al cerrar cada dia (ver afterDecision()), todavia sin usarse
 // para nada mas (queda preparada para una idea a futuro, ver docs/ideas.md)
@@ -880,6 +882,7 @@ function resolveDecision(accept, usedAlienStamp = false) {
                     const justErred = game.errors > errorsBefore;
                     if (justErred) {
                         streak = 0;
+                        soundManager.playWrong();
                     }
                     else {
                         streak += 1;
@@ -993,6 +996,8 @@ function setupStampDrag(id, accept, usedAlienStamp = false) {
         const droppedNearPassport = isNearPassport(event.clientX, event.clientY);
         returnToRest();
         if (droppedNearPassport) {
+            // sonido del sello al soltarlo sobre el pasaporte: verde = aceptar, rojo = rechazar
+            accept ? soundManager.playAccept() : soundManager.playReject();
             resolveDecision(accept, usedAlienStamp);
         }
     });
