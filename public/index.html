@@ -163,6 +163,9 @@
       <div id="decision-buttons">
         <div id="reject-btn" class="stamp-drag stamp-rojo pos1" role="button" tabindex="0" aria-label="Rechazar" aria-disabled="true"></div>
         <div id="accept-btn" class="stamp-drag stamp-verde pos1" role="button" tabindex="0" aria-label="Aceptar" aria-disabled="true"></div>
+        <!-- el azul aprueba SOLO a los alien, y recien aparece el dia en que se
+             activa esa regla (ver renderVisitor() en main.ts) -->
+        <div id="alien-btn" class="stamp-drag stamp-azul pos1 hidden" role="button" tabindex="0" aria-label="Aprobar alien" aria-disabled="true"></div>
       </div>
 
       <p id="dialogue-bubble"></p>
@@ -185,6 +188,8 @@
     <div id="final-scene">
       <div id="final-backdrop"></div>
       <div id="final-portrait"></div>
+      <!-- premios de fin de partida, de a uno (ver buildAwardBeats() en main.ts) -->
+      <div id="final-award"></div>
     </div>
     <p id="final-message"></p>
     <!-- solo visible cuando el final tiene mas de un cuadro (ver ENDING_* en

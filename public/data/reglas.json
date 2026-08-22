@@ -52,5 +52,11 @@
     "descripcion": "Rechazar a cualquier visitante con sello plateado en el pasaporte: es la falsificación de una aduana rival que la agencia acaba de detectar. El resto de las reglas se mantiene igual, sin excepciones.",
     "propiedad": "sello",
     "valorProhibido": "plateado"
+  },
+  {
+    "dia": 7,
+    "descripcion": "A los visitantes de la vía láctea (alien) ya no alcanza con dejarlos pasar: hay que sellarles el pasaporte con el sello AZUL. El sello verde de siempre no vale para ellos, y el azul no vale para nadie más.",
+    "propiedad": "selloAlien",
+    "valorProhibido": null
   }
 ]

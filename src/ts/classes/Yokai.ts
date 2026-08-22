@@ -17,4 +17,10 @@ export class Yokai extends Character{
 
             this.#yokaiType = yokaiType;
         }
+
+    // tipo REAL del Yokai ("oni"/"kitsune"/"kappa"), no el que declara el pasaporte -
+    // lo usa Game para los premios de fin de partida ("no se te paso ni un solo kappa")
+    get obtainYokaiType(): string{
+        return this.#yokaiType;
+    }
 }

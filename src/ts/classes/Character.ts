@@ -63,4 +63,14 @@ export abstract class Character{
         return this.#phrase;
     }
 
+    // los rostros de alien se llaman "alien1".."alienN" en partes.json (y asi se
+    // llaman los archivos en public/img/baseCharacters/) - ese es el unico rasgo
+    // REAL que los identifica, igual que obtainHaveHorns identifica a un Oni. La
+    // especie declarada del pasaporte NO sirve para esto: "alien" tambien esta en
+    // species.json, asi que cualquier Yokai puede declararla al mentir sin ser un
+    // alien de verdad.
+    isAlien(): boolean{
+        return this.#face.startsWith("alien");
+    }
+
 }
