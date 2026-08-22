@@ -252,6 +252,7 @@ document.querySelectorAll(".back-link").forEach(button => {
 document.querySelectorAll(".exit-to-menu-btn").forEach(button => {
     button.addEventListener("click", () => {
         soundManager.playNextButton(); // sonido de click del boton
+        soundManager.stopWrite(); // corta el sonido de escritura si todavia estaba sonando
         clearDayTimer();
         if (dialogueIntervalId !== null) {
             clearInterval(dialogueIntervalId);
@@ -910,6 +911,7 @@ function showErrorReaction(accept, errorNumber) {
         return;
     }
     setNoticeType("error");
+    soundManager.playWrite(); // sonido de escritura mientras aparece el texto de la jefa por error
     renderJefaBeat(accept ? reactions.throughReaction : reactions.rejectedReaction);
     errorReactionPending = true;
     pauseDayTimer();
@@ -1154,6 +1156,7 @@ function renderDayResultScreen(showSummary = true) {
 // normal entre dias (arranca el dia nuevo con su propio temporizador).
 document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
+    soundManager.stopWrite(); // corta el sonido de escritura si todavia estaba sonando
     if (introBeatIndex !== null) {
         introBeatIndex += 1;
         if (introBeatIndex < DAY_ONE_INTRO_BEATS.length) {

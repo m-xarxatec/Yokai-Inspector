@@ -6,6 +6,8 @@ export class SoundManager {
     #nextPleaseSound: HTMLAudioElement; // sonido de "siguiente por favor" al llamar al pasajero
     #victorySound: HTMLAudioElement; // sonido cuando el usuario gana la partida
     #loseSound: HTMLAudioElement; // sonido cuando el usuario pierde la partida
+    #writeSound: HTMLAudioElement; // sonido de escritura cuando aparece el texto de error de la jefa
+    #writeClone: HTMLAudioElement | null; // el clon de "escribir" que esta sonando ahora, para poder cortarlo
     #muted: boolean; // true = todos los efectos de sonido estan silenciados
 
     constructor() {
@@ -16,6 +18,8 @@ export class SoundManager {
         this.#nextPleaseSound = new Audio("sounds/nextPlease.mp3"); // carga el archivo de "siguiente por favor"
         this.#victorySound = new Audio("sounds/victorySound.mp3"); // carga el archivo de victoria
         this.#loseSound = new Audio("sounds/loseSound.mp3"); // carga el archivo de derrota
+        this.#writeSound = new Audio("sounds/write.mp3"); // carga el archivo de escritura
+        this.#writeClone = null; // todavia no sono ninguno
         this.#muted = false; // arranca con el sonido activado
     }
 
@@ -69,5 +73,30 @@ export class SoundManager {
 
     playLose(): void {
         this.#playClone(this.#loseSound); // reproduce el sonido de derrota
+    }
+
+    // este sonido NO usa #playClone: se guarda el clon aparte para poder
+    // apagarlo antes con stopWrite() (al apretar "Siguiente" o "Volver al
+    // menu"), y ademas se corta solo a los 1500ms por si el jugador tarda en
+    // clickear - el archivo original es mas largo que eso
+    playWrite(): void {
+        if (this.#muted) {
+            return; // silenciado: no reproduce nada
+        }
+        const clone = this.#writeSound.cloneNode() as HTMLAudioElement; // copia independiente del audio
+        this.#writeClone = clone;
+        clone.play().catch(() => {}); // evita que un error de reproduccion quede sin manejar
+        window.setTimeout(() => {
+            clone.pause(); // corta el sonido aunque el archivo original sea mas largo
+        }, 1500);
+    }
+
+    // corta de una el sonido de escritura si todavia esta sonando (se llama
+    // al apretar "Siguiente", para que no se siga escuchando en la pantalla siguiente)
+    stopWrite(): void {
+        if (this.#writeClone !== null) {
+            this.#writeClone.pause();
+            this.#writeClone = null;
+        }
     }
 }

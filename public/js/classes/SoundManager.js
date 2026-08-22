@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _SoundManager_instances, _SoundManager_stampSound, _SoundManager_wrongSound, _SoundManager_nextButtonSound, _SoundManager_paperFlipSound, _SoundManager_nextPleaseSound, _SoundManager_victorySound, _SoundManager_loseSound, _SoundManager_muted, _SoundManager_playClone;
+var _SoundManager_instances, _SoundManager_stampSound, _SoundManager_wrongSound, _SoundManager_nextButtonSound, _SoundManager_paperFlipSound, _SoundManager_nextPleaseSound, _SoundManager_victorySound, _SoundManager_loseSound, _SoundManager_writeSound, _SoundManager_writeClone, _SoundManager_muted, _SoundManager_playClone;
 export class SoundManager {
     constructor() {
         _SoundManager_instances.add(this);
@@ -20,6 +20,8 @@ export class SoundManager {
         _SoundManager_nextPleaseSound.set(this, void 0); // sonido de "siguiente por favor" al llamar al pasajero
         _SoundManager_victorySound.set(this, void 0); // sonido cuando el usuario gana la partida
         _SoundManager_loseSound.set(this, void 0); // sonido cuando el usuario pierde la partida
+        _SoundManager_writeSound.set(this, void 0); // sonido de escritura cuando aparece el texto de error de la jefa
+        _SoundManager_writeClone.set(this, void 0); // el clon de "escribir" que esta sonando ahora, para poder cortarlo
         _SoundManager_muted.set(this, void 0); // true = todos los efectos de sonido estan silenciados
         __classPrivateFieldSet(this, _SoundManager_stampSound, new Audio("sounds/stamp.mp3"), "f");
         __classPrivateFieldSet(this, _SoundManager_wrongSound, new Audio("sounds/wrong.wav"), "f");
@@ -28,6 +30,8 @@ export class SoundManager {
         __classPrivateFieldSet(this, _SoundManager_nextPleaseSound, new Audio("sounds/nextPlease.mp3"), "f"); // carga el archivo de "siguiente por favor"
         __classPrivateFieldSet(this, _SoundManager_victorySound, new Audio("sounds/victorySound.mp3"), "f"); // carga el archivo de victoria
         __classPrivateFieldSet(this, _SoundManager_loseSound, new Audio("sounds/loseSound.mp3"), "f"); // carga el archivo de derrota
+        __classPrivateFieldSet(this, _SoundManager_writeSound, new Audio("sounds/write.mp3"), "f"); // carga el archivo de escritura
+        __classPrivateFieldSet(this, _SoundManager_writeClone, null, "f"); // todavia no sono ninguno
         __classPrivateFieldSet(this, _SoundManager_muted, false, "f"); // arranca con el sonido activado
     }
     // activa o desactiva TODOS los efectos de sonido, incluidos los que se
@@ -62,8 +66,31 @@ export class SoundManager {
     playLose() {
         __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_loseSound, "f")); // reproduce el sonido de derrota
     }
+    // este sonido NO usa #playClone: se guarda el clon aparte para poder
+    // apagarlo antes con stopWrite() (al apretar "Siguiente" o "Volver al
+    // menu"), y ademas se corta solo a los 1500ms por si el jugador tarda en
+    // clickear - el archivo original es mas largo que eso
+    playWrite() {
+        if (__classPrivateFieldGet(this, _SoundManager_muted, "f")) {
+            return; // silenciado: no reproduce nada
+        }
+        const clone = __classPrivateFieldGet(this, _SoundManager_writeSound, "f").cloneNode(); // copia independiente del audio
+        __classPrivateFieldSet(this, _SoundManager_writeClone, clone, "f");
+        clone.play().catch(() => { }); // evita que un error de reproduccion quede sin manejar
+        window.setTimeout(() => {
+            clone.pause(); // corta el sonido aunque el archivo original sea mas largo
+        }, 1500);
+    }
+    // corta de una el sonido de escritura si todavia esta sonando (se llama
+    // al apretar "Siguiente", para que no se siga escuchando en la pantalla siguiente)
+    stopWrite() {
+        if (__classPrivateFieldGet(this, _SoundManager_writeClone, "f") !== null) {
+            __classPrivateFieldGet(this, _SoundManager_writeClone, "f").pause();
+            __classPrivateFieldSet(this, _SoundManager_writeClone, null, "f");
+        }
+    }
 }
-_SoundManager_stampSound = new WeakMap(), _SoundManager_wrongSound = new WeakMap(), _SoundManager_nextButtonSound = new WeakMap(), _SoundManager_paperFlipSound = new WeakMap(), _SoundManager_nextPleaseSound = new WeakMap(), _SoundManager_victorySound = new WeakMap(), _SoundManager_loseSound = new WeakMap(), _SoundManager_muted = new WeakMap(), _SoundManager_instances = new WeakSet(), _SoundManager_playClone = function _SoundManager_playClone(sound) {
+_SoundManager_stampSound = new WeakMap(), _SoundManager_wrongSound = new WeakMap(), _SoundManager_nextButtonSound = new WeakMap(), _SoundManager_paperFlipSound = new WeakMap(), _SoundManager_nextPleaseSound = new WeakMap(), _SoundManager_victorySound = new WeakMap(), _SoundManager_loseSound = new WeakMap(), _SoundManager_writeSound = new WeakMap(), _SoundManager_writeClone = new WeakMap(), _SoundManager_muted = new WeakMap(), _SoundManager_instances = new WeakSet(), _SoundManager_playClone = function _SoundManager_playClone(sound) {
     if (__classPrivateFieldGet(this, _SoundManager_muted, "f")) {
         return; // silenciado: no reproduce nada
     }
