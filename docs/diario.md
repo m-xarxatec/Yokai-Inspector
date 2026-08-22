@@ -398,3 +398,49 @@ Ambas correcciones se verificaron componiendo las imágenes con la misma matemá
 **Sin usar todavía**: `animaciones/maldicion.png` entró en la tanda pero Mike no dijo para qué es, así que quedó en el repo sin referenciar, esperando definición.
 
 Verificado con `npm run build`, los 10 tests, y un chequeo cruzado automático de que toda imagen referenciada desde el CSS existe, toda entrada de `partes.json` tiene archivo Y regla CSS, y toda clase/id nuevo que usa `main.ts` tiene su selector real — el mismo chequeo que la vez pasada destapó el bug del pasaporte invisible.
+
+---
+
+2026-08-19/21 — sonido en los sellos, primera vez (Iralys, rama `actualIralys`):
+
+Iralys creó `SoundManager`, la primera clase de audio del juego: dos sonidos (`stamp.mp3` para sellar, `wrong.wav` para error), reproducidos clonando el `Audio` en cada `.play()` (`#playClone()`) para que clicks rápidos seguidos no se corten entre sí. Enganchado en 2 puntos de `main.ts`: al soltar un sello sobre el pasaporte (verde=aceptar/rojo=rechazar, mismo sonido para los dos) y al cometer un error.
+
+
+---
+
+2026-08-22 (parte 1) — música de fondo y el resto de los efectos (Iralys, rama `actualIralys`):
+
+Segunda tanda de audio de Iralys: `MusicManager` (música de menú en loop, con reintento en el primer click/tecla porque los navegadores bloquean el autoplay con sonido hasta la primera interacción) y `SoundManager` ampliado con 6 sonidos más — click de botón, abrir el pasaporte, llamar al siguiente pasajero ("siguiente por favor"), victoria, derrota, y un sonido de escritura para el texto de la Jefa (con `stopWrite()` para cortarlo si se cambia de pantalla antes de que termine). Sumó también un botón de silenciar (on/off) y uno de pantalla completa en Opciones, y 2 fixes de CSS (fondo correcto en modo pantalla completa, y que arrastrar el sello ya no dispare selección de texto/cursor parpadeando).
+
+---
+
+2026-08-22 (parte 2) — pausa real, volumen, zoom, y duración/días de partida configurables:
+
+Mike pidió que el botón ⏸ del HUD dejara de ir directo al menú y pasara a pausar de verdad, con un menú propio. Se reusó `pauseDayTimer()`/`resumeDayTimer()` (ya existían, los usaba la reacción de la Jefa por error) — el botón de pausa pasó a tener su propio `id` y quedó excluido del handler compartido de `.exit-to-menu-btn` (`:not(#pause-btn)`) para no ir directo a menú. Pantalla nueva (`#pause-screen`) con 3 botones: Continuar, Opciones, Salir al menú (el tercero se agregó de más — sin él no había forma de volver a jugar sin salir del todo).
+
+**Opciones reusa el mismo botón según de dónde se entra**: se agregó `backLinkTarget`, una variable que el handler compartido de `.back-link` lee en vez de tener `"menu"` fijo — se setea a `"pause"` justo antes de abrir Opciones desde la pausa, y a `"menu"` en los otros 3 puntos de entrada (menú, créditos, salir). Mismo criterio se usó después para ocultar/mostrar el bloque de opciones que solo tienen sentido antes de una partida nueva (ver más abajo): un simple toggle de clase en esos mismos 2 handlers.
+
+**El mute on/off se reemplazó por una barra de volumen**, un solo control para música y efectos juntos. `SoundManager`/`MusicManager` cambiaron de `#muted: boolean` a `#volume: number` — importante: como `#playClone()` clona el `Audio` en cada reproducción, el `.volume` hay que reasignárselo a mano a cada clon (no es un atributo HTML, `cloneNode()` no lo copia). El slider aplica además una curva cuadrática (`raw * raw`) antes de mandarlo, porque el oído percibe el volumen de forma logarítmica y un mapeo lineal seguía sonando fuerte en el extremo bajo. Mike probó y la música de fondo — se le agregó a `MusicManager.setVolume()` un tope fijo del 50% (`volume * 0.5`), solo a la música, los efectos quedaron igual.
+
+**Zoom de la pantalla de juego**: otra barra, esta vez sobre una variable CSS (`--scene-zoom`, multiplicando la fórmula de `width` de `#character-scene`). Como todo lo de adentro (HUD, pasaporte, diálogo, sellos, personaje) ya estaba en `%`/`cqw` gracias al trabajo de `container-type` de una sesión anterior, agrandar esta única caja reescala el resto solo, sin tocar ningún otro selector.
+
+**Duración del día y días de partida, elegibles solo desde el menú principal** (no durante la pausa de una partida en curso, cambiarlos a mitad de partida no tendría sentido): `DAY_DURATION_MS` pasó de `const` a `let` con una barra de 4 posiciones (30/60/90/120s). Para los días de partida (5/6/7), `Game` ya tenía el mecanismo preparado sin saberlo (`Math.min(dayNumber, totalDays)` en `currentDay`, `isWon()` comparando contra `totalDays`) — solo hacía falta poder pasarlo desde afuera: `constructor(playerName, totalDays = 7)`, guardado en la partida en curso y en el historial (con `?? 7` de respaldo para partidas guardadas de antes de este cambio), y los 3 lugares que mostraban "/ 7" fijo pasaron a mostrar el valor real.
+
+---
+
+2026-08-22 (parte 3) — música solo en el menú, panel de historial más grande, y 2 pantallas nuevas entre días:
+
+**La música ahora suena únicamente en el menú principal** — antes seguía sonando en nombre/historia/intro del día 1, a pedido de Mike se acotó a un solo estado (`newState === "menu"` en `changeState()`).
+
+**Resumen narrativo + estadísticas al terminar cada día** (`#day-summary-screen`, se muestra ANTES de que la Jefa explique la regla nueva): un texto distinto por día (7 variantes escritas por Mike, redactadas acá a oración completa manteniendo la idea) más 5 estadísticas — aceptados, rechazados, errores, racha máxima y dinero ganado, todos DEL DÍA, no acumulados. Esto exigió tracking nuevo en `Game.ts`: contadores del día en curso (resetados en `#startDay()`, igual que ya hacía `#visitorsSeenToday`) más una "foto" del último día cerrado (`#lastDayAccepted` y compañía) — necesaria porque `endDay()` ya llama a `#startDay()`, que resetea los contadores, ANTES de que `main.ts` llegue a leerlos. La racha máxima del día se trackea aparte en `main.ts` (`maxStreakToday`), porque `streak` sola no alcanza: si hubo un error a mitad de día, `streak` al final puede ser menor al pico real alcanzado. Al ganar el día 7 también se pasa por este resumen antes de ir a la pantalla final (antes iba directo).
+
+**Pantalla de reglas activas + "Empezar día"** (`#day-start-screen`, se muestra DESPUÉS de la explicación de la Jefa, tanto en el día 1 como en cualquier día siguiente): lista las reglas activas del día con `Rule.getDescription()` — el comentario de la regla `selloAlien` en `Rule.ts` hasta menciona que esa descripción ya estaba pensada "para que salga en la lista de reglas activas del día", así que este getter estaba preparado para esto desde antes sin usarse todavía.
+
+Las dos pantallas nuevas reusan el patrón `.screen-panel` (mismo que Opciones/Créditos) y la lista `.styled-list` (renombrada de `#credits-list`, que la usaba sola, para poder compartirla entre las 3).
+
+**Se sacó el sonido "siguiente por favor"** de todos los puntos donde sonaba (al sellar, al arrancar partida, al arrancar día) — Mike lo pidió primero solo para el de sellar, después confirmó que también de los otros 2. Como quedó sin ningún uso, se borró el método de `SoundManager`, el campo, y el archivo `nextPlease.mp3`.
+
+**Panel de "últimas partidas" más grande**: `#menu-sidebar` más ancho (`min(58%, 680px)`, antes `min(50%, 560px)`) y un escalón más de tamaño de letra en título/encabezados/filas de la tabla.
+
+
+Verificado con `npm run build` + los 28 tests de `docs/test-temporal.mjs` después de cada tanda de cambios — todo en verde. No se probó en el navegador en ninguna de las 3 partes de esta sesión (Mike lo prueba siempre él).
