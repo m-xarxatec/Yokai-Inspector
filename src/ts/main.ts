@@ -1420,11 +1420,10 @@ const ENDING_RICH_BOSS: EndingBeat[] = [
 // de "te convertiste en yokai" / "sos el jefe"
 const CONSECUTIVE_FOR_SPECIAL_ENDING = 3;
 
-// PENDIENTE DE DEFINIR (Mike): cuanto dinero hay que terminar la partida para el
-// final de la jefa millonaria. Por ahora una cifra absurda a proposito, para que
-// no salga por accidente mientras se decide el numero real - con +2 por acierto,
-// una partida normal de 7 dias ronda las 100-200 monedas.
-const RICH_BOSS_MONEY = 9999;
+// cuanto dinero hay que terminar la partida para el final de la jefa millonaria -
+// bien por encima de una partida normal de 7 dias (100-200 monedas con +2 por
+// acierto), para que haga falta jugar rapido y arriesgado de verdad.
+const RICH_BOSS_MONEY = 300;
 
 // premios de fin de partida: se muestran de a uno despues del final, gane o
 // pierda. La imagen es la clase de #final-award (ver public/img/animaciones/).
