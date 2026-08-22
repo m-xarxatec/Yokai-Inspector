@@ -1,11 +1,24 @@
 import { Game } from "./classes/Game.js";
 import { loadCurrentGame, getHistory, savePlayerName, loadPlayerName, getAllCredits, saveDayStreaks, loadDayStreaks } from "./Storage.js";
 import { SoundManager } from "./classes/SoundManager.js";
+import { MusicManager } from "./classes/MusicManager.js";
 
 
 let game: Game | null = null;
 let currentState: string = "menu";
 const soundManager = new SoundManager();
+const musicManager = new MusicManager();
+
+// el menu ya esta visible por defecto en el HTML (arranca en "menu" sin pasar
+// por changeState()), y los navegadores bloquean el audio hasta la primera
+// interaccion del usuario: se intenta reproducir de una, y si el navegador lo
+// bloquea, se reintenta en el primer click/tecla que haga en cualquier parte
+musicManager.playMenu();
+document.addEventListener("pointerdown", () => {
+  if (currentState === "menu") {
+    musicManager.playMenu();
+  }
+}, { once: true });
 
 
 // racha con la que termino cada dia de la partida en curso - se guarda en
@@ -113,6 +126,24 @@ function changeState(newState: string): void {
     section.classList.add("hidden");
   });
   document.querySelector(`#${newState}-screen`)?.classList.remove("hidden");
+
+  // la musica del menu sigue sonando sin cortes desde que arranca el juego
+  // (menu) hasta que la jefa termina de explicar las reglas: pasa por
+  // name-entry (nombre del jugador), story (bienvenida) y day-result mientras
+  // todavia se estan mostrando los cuadros de la intro del dia 1
+  // (introBeatIndex !== null). Cuando la intro termina, introBeatIndex vuelve
+  // a null ANTES de cambiar a "game", asi que ahi ya no entra en esta lista.
+  const sigueLaMusicaDelMenu =
+    newState === "menu" ||
+    newState === "name-entry" ||
+    newState === "story" ||
+    (newState === "day-result" && introBeatIndex !== null);
+
+  if (sigueLaMusicaDelMenu) {
+    musicManager.playMenu();
+  } else {
+    musicManager.stop();
+  }
 }
 
 // --- Menu screen ---
@@ -151,6 +182,7 @@ function updateTimerToggleButton(): void {
 }
 
 document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   timerEnabled = !timerEnabled;
   updateTimerToggleButton();
 });
@@ -159,6 +191,7 @@ document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
 // hacia el click de "Nueva partida" directamente)
 document.querySelector("#player-name-form")?.addEventListener("submit", (event) => {
   event.preventDefault();
+  soundManager.playNextButton(); // sonido de click del boton
   const input = document.querySelector("#player-name-input") as HTMLInputElement | null;
   const name = input?.value.trim() ?? "";
   savePlayerName(name);
@@ -179,6 +212,7 @@ document.querySelector("#player-name-form")?.addEventListener("submit", (event) 
 
 document.querySelectorAll(".back-link").forEach(button => {
   button.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
     changeState("menu");
   });
 });
@@ -189,6 +223,7 @@ document.querySelectorAll(".back-link").forEach(button => {
 // disponible para "Continuar partida" desde donde arranco el dia).
 document.querySelectorAll(".exit-to-menu-btn").forEach(button => {
   button.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
     clearDayTimer();
     if (dialogueIntervalId !== null) {
       clearInterval(dialogueIntervalId);
@@ -207,14 +242,17 @@ document.querySelectorAll(".exit-to-menu-btn").forEach(button => {
 });
 
 document.querySelector("#options-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   changeState("options");
 });
 
 document.querySelector("#exit-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   changeState("exit");
 });
 
 document.querySelector("#credits-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   renderCreditsScreen();
   changeState("credits");
 });
@@ -286,6 +324,7 @@ function renderHistoryTable(): void {
 }
 
 document.querySelector("#new-game-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   changeState("name-entry");
 });
 
@@ -336,16 +375,21 @@ function setNoticeType(type: string): void {
   screenEl.classList.remove("notice-rule", "notice-error");
   screenEl.classList.add(type === "rule" ? "notice-rule" : "notice-error");
   kickerEl.textContent = type === "rule" ? "NUEVA REGLA" : "¡ERROR!";
+  if (type === "rule") {
+    musicManager.playMenu(); // pantalla de la jefa explicando reglas: mismo sonido que el menu principal
+  }
 }
 
 document.querySelector("#story-next-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   introBeatIndex = 0;
+  changeState("day-result"); // primero cambia de pantalla para que no corte el audio de abajo
   setNoticeType("rule");
   renderJefaBeat(DAY_ONE_INTRO_BEATS[0]);
-  changeState("day-result");
 });
 
 document.querySelector("#continue-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   game = new Game(loadPlayerName());
   streak = 0;
   dayStreaks = loadDayStreaks();
@@ -355,6 +399,7 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
     }
     game.loadProgress();
     changeState("game");
+    soundManager.playNextPlease(); // llama al primer pasajero de la partida
     renderVisitor();
     startDayTimer();
   });
@@ -903,8 +948,8 @@ function afterDecision(dayBefore: number): void {
     dayStreaks.push(streak);
     saveDayStreaks(dayStreaks);
     streak = 0; // la racha arranca de nuevo en cada dia (ver docs/ideas.md)
+    changeState("day-result"); // primero cambia de pantalla para que no corte el audio de abajo
     renderDayResultScreen();
-    changeState("day-result");
     return;
   }
 
@@ -1006,9 +1051,14 @@ function resolveDecision(accept: boolean): void {
           const justErred = game.errors > errorsBefore;
           if (justErred) {
             streak = 0;
-            soundManager.playWrong();
+            // si este error hace perder la partida, NO suena el error: solo
+            // el sonido de derrota (ver playLose() en renderFinalScreen())
+            if (!game.isLost()) {
+              soundManager.playWrong();
+            }
           } else {
             streak += 1;
+            soundManager.playNextPlease(); // cuño correcto: llama al proximo pasajero
           }
 
           // el dia vencio mientras se animaba esta decision (ver startDayTimer()):
@@ -1159,6 +1209,7 @@ document.querySelector("#passport-object")?.addEventListener("click", () => {
   if (!passportEl.classList.contains("closed") || !passportEl.classList.contains("delivered")) {
     return;
   }
+  soundManager.playPaperFlip(); // sonido de hoja al abrir el pasaporte
   passportEl.classList.remove("delivered");
   window.setTimeout(() => {
     passportEl.classList.remove("closed");
@@ -1204,6 +1255,7 @@ function renderDayResultScreen(showSummary: boolean = true): void {
 // dia - sigue corriendo igual que durante resolveDecision()), o el paso
 // normal entre dias (arranca el dia nuevo con su propio temporizador).
 document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   if (introBeatIndex !== null) {
     introBeatIndex += 1;
     if (introBeatIndex < DAY_ONE_INTRO_BEATS.length) {
@@ -1213,6 +1265,7 @@ document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
     }
     introBeatIndex = null;
     changeState("game");
+    soundManager.playNextPlease(); // llama al primer pasajero del dia 1
     renderVisitor();
     startDayTimer();
     return;
@@ -1227,6 +1280,7 @@ document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
   }
 
   changeState("game");
+  soundManager.playNextPlease(); // llama al primer pasajero del nuevo dia
   renderVisitor();
   startDayTimer();
 });
@@ -1286,21 +1340,26 @@ function renderFinalScreen(): void {
 
   if (!game.isWon()) {
     endingBeats = ENDING_DEFEAT;
+    soundManager.playLose(); // sonido de derrota
   } else if (game.errors <= 1) {
     endingBeats = ENDING_WIN_SPECIAL;
+    soundManager.playVictory(); // sonido de victoria
   } else {
     endingBeats = ENDING_WIN_REGULAR;
+    soundManager.playVictory(); // sonido de victoria
   }
   endingBeatIndex = 0;
   renderEndingBeat();
 }
 
 document.querySelector("#final-continue-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   endingBeatIndex += 1;
   renderEndingBeat();
 });
 
 document.querySelector("#back-to-menu-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
   changeState("menu");
   renderHistoryTable();
   updateContinueButton();
