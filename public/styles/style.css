@@ -105,6 +105,10 @@ section {
   margin: 0;
   padding: 0;
   background: #140c24;
+  /* sin esto, arrastrar el sello (o cualquier drag con el mouse) dispara una
+     seleccion de texto nativa del navegador y aparece un cursor de texto
+     parpadeando - se hereda a todo lo de adentro (escena, pasaporte, sellos) */
+  user-select: none;
 }
 
 button {

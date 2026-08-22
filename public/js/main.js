@@ -102,6 +102,13 @@ const JEFA_EXPLICA_VARIANTS = ["jefaExplica-1", "jefaExplica-2", "jefaExplica-3"
 const COIN_SPIN_FRAMES = ["moneda-1", "moneda-2", "moneda-3", "moneda-4", "moneda-3", "moneda-2"];
 function changeState(newState) {
     currentState = newState;
+    // saca el foco de lo que este enfocado (por ejemplo el input del nombre)
+    // antes de cambiar de pantalla, asi no queda un cursor de texto parpadeando
+    // "pegado" en una pantalla donde ya no corresponde
+    const focusedEl = document.activeElement;
+    if (focusedEl instanceof HTMLElement) {
+        focusedEl.blur();
+    }
     document.querySelectorAll("section").forEach(section => {
         section.classList.add("hidden");
     });
@@ -216,6 +223,7 @@ document.querySelector("#player-name-form")?.addEventListener("submit", (event) 
     event.preventDefault();
     soundManager.playNextButton(); // sonido de click del boton
     const input = document.querySelector("#player-name-input");
+    input?.blur(); // saca el foco del input ya mismo (la carga de datos de abajo es async y tarda)
     const name = input?.value.trim() ?? "";
     savePlayerName(name);
     game = new Game(name);
