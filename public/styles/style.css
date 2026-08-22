@@ -34,6 +34,8 @@
 :root {
   --font-display: "Jersey 10", "Press Start 2P", "Pixelify Sans", system-ui, sans-serif;
   --font-body: "Jersey 10", "Pixelify Sans", system-ui, sans-serif;
+  /* zoom de #character-scene (barra en #options-screen) - 1 = tamaño normal */
+  --scene-zoom: 1;
 }
 
 * {
@@ -51,6 +53,19 @@ body {
   padding: 1.5rem;
   background: #1e1b2e;
   color: #f2ede3;
+}
+
+/* el navegador pinta un fondo negro propio (::backdrop) detras del elemento
+   en pantalla completa, y algunos tambien recolorean el elemento mismo
+   (:fullscreen) - se fuerzan los dos al mismo fondo del body para que no
+   cambie de color al activar el modo pantalla completa */
+body:fullscreen,
+body:-webkit-full-screen {
+  background: #1e1b2e;
+}
+
+body::backdrop {
+  background: #1e1b2e;
 }
 
 .hidden {
@@ -77,6 +92,10 @@ section {
   margin: 0;
   padding: 0;
   background: #140c24;
+  /* sin esto, arrastrar el sello (o cualquier drag con el mouse) dispara una
+     seleccion de texto nativa del navegador y aparece un cursor de texto
+     parpadeando - se hereda a todo lo de adentro (escena, pasaporte, sellos) */
+  user-select: none;
 }
 
 button {
@@ -228,7 +247,7 @@ button:disabled {
   position: absolute;
   right: 3%;
   bottom: 4%;
-  width: min(50%, 560px);
+  width: min(58%, 680px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -249,7 +268,7 @@ button:disabled {
 
 #history-panel h2 {
   margin: 0 0 0.4rem;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 400;
   color: #f2ede3;
 }
@@ -322,7 +341,30 @@ button:disabled {
   margin: 0;
 }
 
-#credits-list {
+/* fila de label + <input type="range"> (volumen, zoom de la pantalla de
+   juego) dentro de .screen-panel - mismo ancho que los botones de al lado */
+.slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+}
+
+/* agrupa los 2 sliders que solo tienen sentido antes de arrancar una
+   partida nueva (duracion del dia, dias de la partida) - ver #new-game-options */
+#new-game-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.slider-row input[type="range"] {
+  width: 100%;
+}
+
+/* lista generica de .screen-panel: creditos, reglas activas del dia, y
+   estadisticas del resumen de fin de dia (ver #day-start-rules/#day-summary-stats) */
+.styled-list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -331,7 +373,7 @@ button:disabled {
   text-align: left;
 }
 
-#credits-list li {
+.styled-list li {
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #4a4658;
 }
@@ -358,7 +400,7 @@ button:disabled {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   margin-top: 0;
 }
 
@@ -367,7 +409,7 @@ button:disabled {
   padding: 0.3rem 0.8rem 0.3rem 0.25rem;
   color: rgba(242, 237, 227, 0.55);
   font-weight: 400;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   border-bottom: 1px solid rgba(242, 237, 227, 0.15);
@@ -378,7 +420,7 @@ button:disabled {
   background: transparent;
   padding: 0.35rem 0.8rem 0.35rem 0.25rem;
   text-align: left;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   border-bottom: 1px solid rgba(242, 237, 227, 0.08);
   white-space: nowrap;
 }
@@ -907,7 +949,7 @@ button:disabled {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(80vw, calc(70vh * 3670 / 2446));
+  width: calc(min(80vw, calc(70vh * 3670 / 2446)) * var(--scene-zoom));
   aspect-ratio: 3670 / 2446;
   border-radius: 8px;
   overflow: hidden;

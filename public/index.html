@@ -55,7 +55,41 @@
     <div class="screen-panel">
       <h2>Opciones</h2>
       <button id="timer-toggle-btn">Desactivar temporizador</button>
+      <!-- controla el volumen de la musica y los efectos de sonido juntos -->
+      <div class="slider-row">
+        <label for="volume-slider">Volumen</label>
+        <input type="range" id="volume-slider" min="0" max="100" value="100">
+      </div>
+      <!-- controla el tamano de la pantalla de juego (que tan cerca se ve) -->
+      <div class="slider-row">
+        <label for="zoom-slider">Tamaño de la pantalla de juego</label>
+        <input type="range" id="zoom-slider" min="100" max="140" value="100">
+      </div>
+      <!-- boton para activar/salir del modo pantalla completa del navegador -->
+      <button id="fullscreen-toggle-btn">Pantalla completa</button>
+      <!-- solo tiene sentido antes de arrancar una partida nueva - oculto si
+           se entra a Opciones desde la pausa de una partida en curso (ver
+           #pause-options-btn/#options-btn en main.ts) -->
+      <div id="new-game-options">
+        <div class="slider-row">
+          <label for="day-duration-slider">Duración del día: <span id="day-duration-value">90s</span></label>
+          <input type="range" id="day-duration-slider" min="0" max="3" step="1" value="2">
+        </div>
+        <div class="slider-row">
+          <label for="total-days-slider">Días de la partida: <span id="total-days-value">7</span></label>
+          <input type="range" id="total-days-slider" min="5" max="7" step="1" value="7">
+        </div>
+      </div>
       <button id="back-to-menu-from-options-btn" class="back-link">Volver al menú</button>
+    </div>
+  </section>
+
+  <section id="pause-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Pausa</h2>
+      <button id="pause-continue-btn">Continuar</button>
+      <button id="pause-options-btn">Opciones</button>
+      <button class="exit-to-menu-btn">Salir al menú</button>
     </div>
   </section>
 
@@ -63,7 +97,7 @@
     <div class="screen-panel">
       <h2>Créditos acumulados</h2>
       <p class="screen-subtitle">Dinero total ganado por cada inspector a lo largo de sus partidas.</p>
-      <ul id="credits-list"></ul>
+      <ul id="credits-list" class="styled-list"></ul>
       <button id="back-to-menu-from-credits-btn" class="back-link">Volver al menú</button>
     </div>
   </section>
@@ -110,7 +144,7 @@
         <span id="day-counter">-</span>
         <span id="error-counter">-</span>
         <span id="streak-counter">0</span>
-        <button class="exit-to-menu-btn">⏸</button>
+        <button id="pause-btn" class="exit-to-menu-btn">⏸</button>
       </div>
 
       <div id="character-portrait">
@@ -165,6 +199,16 @@
     </div>
   </section>
 
+  <section id="day-summary-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Día <span id="day-summary-number"></span> terminado</h2>
+      <p id="day-summary-text"></p>
+      <ul id="day-summary-stats" class="styled-list"></ul>
+      <button id="day-summary-continue-btn">Siguiente día</button>
+      <button class="exit-to-menu-btn">Volver al menú</button>
+    </div>
+  </section>
+
   <section id="day-result-screen" class="hidden">
     <div id="jefa-scene">
       <div id="jefa-background"></div>
@@ -175,6 +219,15 @@
     <p id="next-day-message"></p>
     <button id="continue-day-btn">Continuar</button>
     <button class="exit-to-menu-btn">Volver al menú</button>
+  </section>
+
+  <section id="day-start-screen" class="hidden">
+    <div class="screen-panel">
+      <h2>Día <span id="day-start-number"></span></h2>
+      <ul id="day-start-rules" class="styled-list"></ul>
+      <button id="day-start-continue-btn">Empezar día</button>
+      <button class="exit-to-menu-btn">Volver al menú</button>
+    </div>
   </section>
 
   <section id="final-screen" class="hidden">
