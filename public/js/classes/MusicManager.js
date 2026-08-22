@@ -16,6 +16,11 @@ export class MusicManager {
         __classPrivateFieldSet(this, _MusicManager_menuMusic, new Audio("sounds/menu.mp3"), "f");
         __classPrivateFieldGet(this, _MusicManager_menuMusic, "f").loop = true;
     }
+    // silencia o reactiva la musica de fondo. Aca si se puede usar "muted"
+    // directo porque la musica NUNCA se clona (es un solo audio en loop)
+    setMuted(muted) {
+        __classPrivateFieldGet(this, _MusicManager_menuMusic, "f").muted = muted;
+    }
     playMenu() {
         __classPrivateFieldGet(this, _MusicManager_menuMusic, "f").play().catch(() => { });
     }

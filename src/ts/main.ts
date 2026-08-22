@@ -187,6 +187,60 @@ document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
   updateTimerToggleButton();
 });
 
+// --- silenciar audio: apaga/prende TODA la musica y TODOS los efectos, ---
+// --- incluidos los que se reproduzcan despues (ver setMuted en las dos clases) ---
+let audioMuted: boolean = false; // arranca con el sonido activado
+
+function updateMuteButton(): void {
+  const button = document.querySelector("#mute-toggle-btn");
+  if (button === null) {
+    return;
+  }
+  if (audioMuted) {
+    button.textContent = "Sonido: OFF";
+  } else {
+    button.textContent = "Sonido: ON";
+  }
+}
+
+document.querySelector("#mute-toggle-btn")?.addEventListener("click", () => {
+  audioMuted = !audioMuted; // invierte el estado actual
+  soundManager.setMuted(audioMuted); // aplica el silencio a los efectos
+  musicManager.setMuted(audioMuted); // aplica el silencio a la musica
+  updateMuteButton();
+  if (!audioMuted) {
+    soundManager.playNextButton(); // sonido de click, solo si sigue sonando
+  }
+});
+
+// --- pantalla completa: usa la Fullscreen API nativa del navegador sobre ---
+// --- document.body (no hay un contenedor #app aparte, todo cuelga de body) ---
+function updateFullscreenButton(): void {
+  const button = document.querySelector("#fullscreen-toggle-btn");
+  if (button === null) {
+    return;
+  }
+  if (document.fullscreenElement === null) {
+    button.textContent = "Pantalla completa";
+  } else {
+    button.textContent = "Salir de pantalla completa";
+  }
+}
+
+// tambien se actualiza si el usuario sale con la tecla Esc, no solo con el boton
+document.addEventListener("fullscreenchange", () => {
+  updateFullscreenButton();
+});
+
+document.querySelector("#fullscreen-toggle-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  if (document.fullscreenElement === null) {
+    document.body.requestFullscreen().catch(() => {}); // activa pantalla completa
+  } else {
+    document.exitFullscreen().catch(() => {}); // sale de pantalla completa
+  }
+});
+
 // al confirmar el nombre arranca la partida nueva (esto reemplaza lo que antes
 // hacia el click de "Nueva partida" directamente)
 document.querySelector("#player-name-form")?.addEventListener("submit", (event) => {

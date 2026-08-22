@@ -68,6 +68,19 @@ body {
   color: #f2ede3;
 }
 
+/* el navegador pinta un fondo negro propio (::backdrop) detras del elemento
+   en pantalla completa, y algunos tambien recolorean el elemento mismo
+   (:fullscreen) - se fuerzan los dos al mismo fondo del body para que no
+   cambie de color al activar el modo pantalla completa */
+body:fullscreen,
+body:-webkit-full-screen {
+  background: #1e1b2e;
+}
+
+body::backdrop {
+  background: #1e1b2e;
+}
+
 .hidden {
   display: none;
 }
