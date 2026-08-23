@@ -551,3 +551,22 @@ Iralys notó que Opciones se ve distinto en `develop` que en su rama y pidió de
 Verificado con Playwright: los 4 sliders aparecen y se ven bien en Opciones, `#mute-toggle-btn` ya no existe en ningún lado del código. Se corrió también toda la suite de `docs/test-temporal.mjs` (52 tests, sin relación directa pero por las dudas) — sigue en verde.
 
 **Pendiente, no relacionado con Opciones pero encontrado de paso**: `index.html` todavía trae el `<link>` viejo a Google Fonts (Jost/Marcellus) en el `<head>`, que `develop` ya no tiene (se sacó cuando se decidió alojar las tipografías localmente, ver sesión del 2026-08-15). Es el mismo leftover que ya se había detectado y dejado afuera A PROPÓSITO en un merge anterior hacia `objetosMike` (ver entrada del 2026-08-17), pero nunca se limpió en `actualIralys` misma. No se tocó en esta sesión porque no fue lo que Iralys pidió arreglar.
+
+---
+
+2026-08-23 (parte 10) — auditoría completa contra `develop`: 3 bugs reales más, encontrados y corregidos:
+
+Iralys pidió específicamente: "todo lo que encuentres en develop que no esté en mi rama, incorporalo" — no solo Opciones. Se comparó archivo por archivo (`git diff -w origin/develop HEAD`, y `comm` sobre versiones ordenadas para los archivos de texto largos) para separar 3 categorías: (a) cosas que sí faltan de verdad, (b) diferencias que son solo evolución propia de esta rama que `develop` todavía no tiene (no hay que "corregir" eso, sería un retroceso), y (c) archivos que existen solo en esta rama sin que sea un problema (assets viejos, propuestas, etc.).
+
+**Encontrados y corregidos (categoría a)**:
+1. El `<link>` a Google Fonts (Jost/Marcellus) en el `<head>` de `index.html` — el mismo leftover que ya se había anotado como pendiente en la parte 9, ahora sí se sacó.
+2. El selector `*` en `style.css` todavía tenía `font-family: 'Jost', sans-serif` a mano, en vez de `var(--font-body)` (que ya apunta a Jersey 10 con sus fallbacks locales) — mismo problema que el punto 1, en otro lugar del archivo.
+3. **Bloque `@font-face` de "Jersey 10" duplicado dos veces seguidas** en `style.css`, cada uno con su propio comentario (uno de cuando la fuente era solo para el mensaje de la Jefa, otro de cuando pasó a ser la fuente única) - puro leftover del merge grande, sin ningún efecto funcional (el navegador ignora el duplicado) pero confuso de leer. Se dejó uno solo.
+
+**Revisado y dejado como está a propósito (categoría b, no tocar)**: `body` en `develop` todavía tiene `margin:0; padding:1.5rem;` y `#menu-bg-img` usa `object-fit: cover` con `#menu-stage` en `border-radius:10px` — en esta rama esos tres ya están cambiados (sin margin/padding, `object-fit: contain`, `border-radius:0` + color de fondo de relleno) como parte de un rediseño ya hecho acá para que el fondo del menú se vea completo sin recortarse en cualquier proporción de pantalla. Copiar la versión de `develop` ahí habría sido un retroceso, no una corrección - se dejó como está.
+
+**Revisado y no es un problema (categoría c)**: `especificaciones-economia.md`, `public/img/tienda/florHud.png`, `.opencode/agents/YOKAI_INSPECTOR_REPOSITORY_REVIEW_AGENT.md`, `public/img/backgrounds/Fondopersonaje.png` y `public/sounds/nextPlease.mp3` existen solo en esta rama y no en `develop` — los primeros dos son trabajo propio todavía no fusionado a `develop`; los últimos tres son archivos viejos de sesiones anteriores de Iralys (`Fondopersonaje.png` ya se había decidido dejar afuera de otro merge, ver entrada del 2026-08-15; `nextPlease.mp3` quedó sin borrar de esta rama aunque el código que lo usaba ya se sacó en la parte 3). Ninguno rompe nada estando presente, así que no se tocaron - no era lo que se pidió arreglar hoy.
+
+También se confirmó explícitamente (con `comm` sobre las versiones ordenadas línea por línea) que `docs/diario.md` y `docs/test-temporal.mjs` ya contienen el 100% del contenido de sus versiones en `develop` - nada faltante ahí. Mismo chequeo con `git diff -w` para `Game.ts`/`main.ts`: las únicas líneas que parecían faltar resultaron ser evolución propia de esta rama (el `wasRushed` nuevo en `decide()`, `RICH_BOSS_MONEY` ya en 300) que el diff mostraba raro por el reordenamiento de líneas cercanas, no omisiones reales.
+
+Verificado con `npm run build` + los 52 tests de `docs/test-temporal.mjs` (sin relación directa, cambios de CSS/HTML, pero por las dudas) y con Playwright (captura del menú, confirmando `getComputedStyle(body).fontFamily` ya no depende de Google Fonts) — todo en verde.

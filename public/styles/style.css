@@ -31,17 +31,6 @@
   font-display: swap;
 }
 
-/* pixel-art redondeada, mas moderna que Press Start 2P/Pixelify Sans,
-   pensada para los parrafos largos que tipea la Jefa en #next-day-message
-   (ver --font-jefa) */
-@font-face {
-  font-family: "Jersey 10";
-  src: url("../fonts/jersey-10-latin.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   /* Jersey 10 es la fuente unica del juego (ver comentario en @font-face
      arriba); Press Start 2P/Pixelify Sans quedan como fallback si no carga */
@@ -56,7 +45,7 @@
 
 * {
   box-sizing: border-box;
-  font-family: 'Jost', sans-serif;
+  font-family: var(--font-body);
 }
 
 h1, h2, #menu-buttons h1, .screen-panel h2 {
