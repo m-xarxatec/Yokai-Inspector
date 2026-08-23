@@ -14,6 +14,11 @@ const RUSH_PENALTY = 1;
 // compras, porque no garantiza nada si el visitante esta limpio
 const HINT_COST = 3;
 
+// costo del tiempo extra de la tienda (ver buyExtraTime()) - los segundos que
+// suma los pone main.ts (EXTRA_TIME_MS), Game.ts solo controla el dinero y el
+// limite de una vez por dia
+const EXTRA_TIME_COST = 5;
+
 export class Game{
 
     #dayNumber: number;
@@ -61,6 +66,9 @@ export class Game{
     #lastDayMoney: number;
     #lastDayCharge: number;
     #lastDayRushPenalty: number;
+    // tienda: limite de 1 tiempo extra comprado por dia (ver buyExtraTime()) -
+    // se resetea en #startDay(), no sobrevive al dia siguiente
+    #usedExtraTimeToday: boolean;
 
     constructor(playerName: string = "Jugador", totalDays: number = 7){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
@@ -93,6 +101,7 @@ export class Game{
         this.#lastDayMoney = 0;
         this.#lastDayCharge = 0;
         this.#lastDayRushPenalty = 0;
+        this.#usedExtraTimeToday = false;
     }
 
     loadData(onComplete: () => void): void {
@@ -131,6 +140,7 @@ export class Game{
         this.#dayErrors = 0;
         this.#dayMoney = 0;
         this.#dayRushPenalty = 0;
+        this.#usedExtraTimeToday = false;
         this.#currentVisitor = this.#generateVisitor();
         saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays})
     }
@@ -400,6 +410,26 @@ export class Game{
         const visitor = this.#currentVisitor as Character;
         const violatedRule = this.currentDay.evaluateCharacter(visitor);
         return violatedRule === null ? null : violatedRule.getProperty();
+    }
+
+    get extraTimeCost(): number {
+        return EXTRA_TIME_COST;
+    }
+    get usedExtraTimeToday(): boolean {
+        return this.#usedExtraTimeToday;
+    }
+
+    // tienda: cuantos segundos sumar al reloj del dia los pone main.ts
+    // (EXTRA_TIME_MS) - aca solo se controla el dinero y el limite de una vez
+    // por dia (si no, el reloj de arena, que es la presion central del juego,
+    // dejaria de importar)
+    buyExtraTime(): boolean {
+        if (this.#money < EXTRA_TIME_COST || this.#usedExtraTimeToday) {
+            return false;
+        }
+        this.#money -= EXTRA_TIME_COST;
+        this.#usedExtraTimeToday = true;
+        return true;
     }
 
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es

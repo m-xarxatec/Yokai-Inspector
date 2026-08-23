@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_playerName, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_dayCharge, _Game_dayRushPenalty, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_lastDayCharge, _Game_lastDayRushPenalty, _Game_startDay, _Game_generateVisitor, _Game_chargeDailyCost, _Game_pickPhrase, _Game_pickAlienFace, _Game_recordDayVisitors, _Game_recordLetThrough;
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_playerName, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_dayCharge, _Game_dayRushPenalty, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_lastDayCharge, _Game_lastDayRushPenalty, _Game_usedExtraTimeToday, _Game_startDay, _Game_generateVisitor, _Game_chargeDailyCost, _Game_pickPhrase, _Game_pickAlienFace, _Game_recordDayVisitors, _Game_recordLetThrough;
 import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, addCredits, addResultToStreak } from "../Storage.js";
 import { Passport } from "./Passport.js";
 import { Human } from "./Human.js";
@@ -22,6 +22,10 @@ const RUSH_PENALTY = 1;
 // costo de la pista de la tienda (ver buyHint()) - la mas barata de las 3
 // compras, porque no garantiza nada si el visitante esta limpio
 const HINT_COST = 3;
+// costo del tiempo extra de la tienda (ver buyExtraTime()) - los segundos que
+// suma los pone main.ts (EXTRA_TIME_MS), Game.ts solo controla el dinero y el
+// limite de una vez por dia
+const EXTRA_TIME_COST = 5;
 export class Game {
     constructor(playerName = "Jugador", totalDays = 7) {
         _Game_instances.add(this);
@@ -70,6 +74,9 @@ export class Game {
         _Game_lastDayMoney.set(this, void 0);
         _Game_lastDayCharge.set(this, void 0);
         _Game_lastDayRushPenalty.set(this, void 0);
+        // tienda: limite de 1 tiempo extra comprado por dia (ver buyExtraTime()) -
+        // se resetea en #startDay(), no sobrevive al dia siguiente
+        _Game_usedExtraTimeToday.set(this, void 0);
         __classPrivateFieldSet(this, _Game_playerName, playerName.trim() !== "" ? playerName : "Jugador", "f");
         __classPrivateFieldSet(this, _Game_dayNumber, 1, "f");
         __classPrivateFieldSet(this, _Game_errors, 0, "f");
@@ -100,6 +107,7 @@ export class Game {
         __classPrivateFieldSet(this, _Game_lastDayMoney, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayCharge, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayRushPenalty, 0, "f");
+        __classPrivateFieldSet(this, _Game_usedExtraTimeToday, false, "f");
     }
     loadData(onComplete) {
         Promise.all([
@@ -153,6 +161,24 @@ export class Game {
         const visitor = __classPrivateFieldGet(this, _Game_currentVisitor, "f");
         const violatedRule = this.currentDay.evaluateCharacter(visitor);
         return violatedRule === null ? null : violatedRule.getProperty();
+    }
+    get extraTimeCost() {
+        return EXTRA_TIME_COST;
+    }
+    get usedExtraTimeToday() {
+        return __classPrivateFieldGet(this, _Game_usedExtraTimeToday, "f");
+    }
+    // tienda: cuantos segundos sumar al reloj del dia los pone main.ts
+    // (EXTRA_TIME_MS) - aca solo se controla el dinero y el limite de una vez
+    // por dia (si no, el reloj de arena, que es la presion central del juego,
+    // dejaria de importar)
+    buyExtraTime() {
+        if (__classPrivateFieldGet(this, _Game_money, "f") < EXTRA_TIME_COST || __classPrivateFieldGet(this, _Game_usedExtraTimeToday, "f")) {
+            return false;
+        }
+        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - EXTRA_TIME_COST, "f");
+        __classPrivateFieldSet(this, _Game_usedExtraTimeToday, true, "f");
+        return true;
     }
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
     // opcional para no romper a quien llame decide(accept) a secas (los tests, y
@@ -310,13 +336,14 @@ export class Game {
         return true;
     }
 }
-_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_playerName = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_dayCharge = new WeakMap(), _Game_dayRushPenalty = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_lastDayCharge = new WeakMap(), _Game_lastDayRushPenalty = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
+_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_playerName = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_dayCharge = new WeakMap(), _Game_dayRushPenalty = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_lastDayCharge = new WeakMap(), _Game_lastDayRushPenalty = new WeakMap(), _Game_usedExtraTimeToday = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
     __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
     __classPrivateFieldSet(this, _Game_dayAccepted, 0, "f");
     __classPrivateFieldSet(this, _Game_dayRejected, 0, "f");
     __classPrivateFieldSet(this, _Game_dayErrors, 0, "f");
     __classPrivateFieldSet(this, _Game_dayMoney, 0, "f");
     __classPrivateFieldSet(this, _Game_dayRushPenalty, 0, "f");
+    __classPrivateFieldSet(this, _Game_usedExtraTimeToday, false, "f");
     __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_instances, "m", _Game_generateVisitor).call(this), "f");
     saveCurrentGame({ dayNumber: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
 }, _Game_generateVisitor = function _Game_generateVisitor() {

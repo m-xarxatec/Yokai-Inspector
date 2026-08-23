@@ -349,6 +349,7 @@ document.querySelector("#shop-continue-btn")?.addEventListener("click", () => {
 });
 
 const HINT_HIGHLIGHT_MS = 2500;
+const EXTRA_TIME_MS = 15000;
 
 // traduce la propiedad de la regla violada (ver Rule.getProperty()) al elemento
 // que hay que resaltar - los rasgos fisicos (cuernos/ojos amarillos) se ven en
@@ -387,6 +388,10 @@ function updateShopScreen(): void {
   if (hintBtn !== null) {
     hintBtn.disabled = game.money < game.hintCost;
   }
+  const extraTimeBtn = document.querySelector("#shop-extra-time-btn") as HTMLButtonElement | null;
+  if (extraTimeBtn !== null) {
+    extraTimeBtn.disabled = game.money < game.extraTimeCost || game.usedExtraTimeToday;
+  }
 }
 
 document.querySelector("#shop-hint-btn")?.addEventListener("click", () => {
@@ -415,6 +420,28 @@ document.querySelector("#shop-hint-btn")?.addEventListener("click", () => {
   window.setTimeout(() => {
     targetEl.classList.remove("hint-highlight");
   }, HINT_HIGHLIGHT_MS);
+});
+
+document.querySelector("#shop-extra-time-btn")?.addEventListener("click", () => {
+  if (game === null) {
+    return;
+  }
+  soundManager.playNextButton(); // sonido de click del boton
+  const bought = game.buyExtraTime();
+  if (!bought) {
+    return;
+  }
+  // la tienda esta abierta con el dia en pausa (ver pauseDayTimer() en el
+  // listener de #shop-btn) - restar del tiempo ya transcurrido equivale a
+  // sumarle tiempo al reloj, y resumeDayTimer() (al cerrar la tienda) va a
+  // reprogramar el cierre del dia con el tiempo real que queda
+  dayElapsedMs = Math.max(dayElapsedMs - EXTRA_TIME_MS, 0);
+  updateDayClock();
+  updateShopScreen();
+  const moneyCounterEl = document.querySelector("#money-counter");
+  if (moneyCounterEl !== null) {
+    moneyCounterEl.textContent = "Dinero: " + game.money;
+  }
 });
 
 document.querySelector("#pause-options-btn")?.addEventListener("click", () => {

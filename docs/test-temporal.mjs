@@ -505,3 +505,36 @@ const dineroAntesQ = gameQ.money;
 const pistaSinFondos = gameQ.buyHint();
 console.log("pista sin fondos:", pistaSinFondos, "| dinero sin cambios:", gameQ.money === dineroAntesQ,
   pistaSinFondos === null && gameQ.money === dineroAntesQ ? "[OK: no cobra si no alcanza]" : "[FALLO]");
+
+// ================= TEST 14: tienda - tiempo extra (buyExtraTime) =================
+console.log("\n========== TEST 14: tiempo extra cobra una vez por dia, se niega la segunda vez y sin fondos ==========");
+const gameR = new Game();
+await loadDataAsync(gameR);
+gameR.startNewGame();
+const dineroAntesR = gameR.money;
+const primeraCompra = gameR.buyExtraTime();
+console.log("primera compra:", primeraCompra, "| dinero descontado:", dineroAntesR - gameR.money, "(esperado " + gameR.extraTimeCost + ")",
+  primeraCompra === true && dineroAntesR - gameR.money === gameR.extraTimeCost ? "[OK]" : "[FALLO]");
+const dineroTrasPrimera = gameR.money;
+const segundaCompra = gameR.buyExtraTime();
+console.log("segunda compra el mismo dia:", segundaCompra, "| dinero sin cambios:", gameR.money === dineroTrasPrimera,
+  segundaCompra === false && gameR.money === dineroTrasPrimera ? "[OK: solo se puede comprar una vez por dia]" : "[FALLO]");
+gameR.endDay(); // el cobro diario del dia 2 se suma encima de lo que quedaba tras comprar tiempo extra
+console.log("limite reseteado al dia siguiente:", gameR.usedExtraTimeToday, gameR.usedExtraTimeToday === false ? "[OK]" : "[FALLO]");
+for (let i = 0; i < 5; i++) {
+  decidirBien(gameR); // asegura dinero suficiente antes de probar la compra de nuevo
+}
+const terceraCompra = gameR.buyExtraTime();
+console.log("compra al dia siguiente (con dinero):", terceraCompra, terceraCompra === true ? "[OK: el limite se resetea cada dia]" : "[FALLO]");
+
+const gameS = new Game();
+await loadDataAsync(gameS);
+gameS.startNewGame();
+for (let i = 0; i < 3; i++) {
+  const violation = gameS.currentDay.evaluateCharacter(gameS.currentVisitor);
+  gameS.decide(violation !== null); // fuerza la respuesta incorrecta, para vaciar el dinero
+}
+const dineroAntesS = gameS.money;
+const compraSinFondos = gameS.buyExtraTime();
+console.log("tiempo extra sin fondos:", compraSinFondos, "| dinero sin cambios:", gameS.money === dineroAntesS,
+  compraSinFondos === false && gameS.money === dineroAntesS ? "[OK: no cobra si no alcanza]" : "[FALLO]");

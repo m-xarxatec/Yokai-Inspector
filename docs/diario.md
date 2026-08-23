@@ -485,3 +485,15 @@ Tercera pieza del documento de especificaciones. Antes de escribir código se de
 **Test 13 nuevo** en `docs/test-temporal.mjs`: confirma que la pista devuelve la propiedad correcta sobre un visitante sucio, que cobra igual sobre uno limpio sin devolver nada, y que no cobra nada si no alcanza el dinero. Encontró y corrigió un problema del propio test (no del código): `partidaEnDia(4)` decide sobre un solo visitante por día para llegar rápido al día 4, así que el cobro diario acumulado (4+5+9=18) puede dejar el dinero en negativo antes de probar la pista — se agregaron decisiones de más antes de buscar al visitante de prueba, para no confundir "no alcanza el dinero" con un fallo real de `buyHint()`.
 
 Verificado con `npm run build` + los 40 tests de `docs/test-temporal.mjs` (35 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.
+
+---
+
+2026-08-23 (parte 5) — segunda compra de la tienda: tiempo extra:
+
+**`Game.ts#buyExtraTime()`**: cobra `EXTRA_TIME_COST = 5` y devuelve `true`/`false` según si se pudo comprar - `false` tanto si no alcanza el dinero como si ya se usó el tiempo extra ese día (`#usedExtraTimeToday`, se resetea en `#startDay()`, igual que los demás contadores del día en curso). Los segundos que suma quedan del lado de `main.ts` (`EXTRA_TIME_MS = 15000`) — `Game.ts` no sabe nada de timers, solo controla el dinero y el límite.
+
+**Cómo se suman los 15 segundos sin tocar el timer directamente**: la tienda ya se abre con el día pausado (`pauseDayTimer()`, igual que Opciones). Mientras está pausado, `dayElapsedMs` guarda cuánto tiempo real ya pasó — restarle `EXTRA_TIME_MS` a esa variable equivale a sumarle tiempo al reloj, sin necesidad de tocar `dayTimeoutId` a mano: `resumeDayTimer()` (al cerrar la tienda) ya recalcula el tiempo restante a partir de `dayElapsedMs` y reprograma el cierre del día con el valor correcto.
+
+**Test 14 nuevo** en `docs/test-temporal.mjs`: la primera compra del día cobra y funciona, la segunda se niega sin cobrar de más, el límite se resetea al día siguiente, y sin dinero suficiente tampoco cobra. Mismo cuidado que el test 13: hubo que agregar decisiones de más antes de probar la compra en el día siguiente, porque el cobro diario ya había dejado el dinero por debajo del costo.
+
+Verificado con `npm run build` + los 45 tests de `docs/test-temporal.mjs` (40 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.
