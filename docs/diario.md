@@ -570,3 +570,17 @@ Iralys pidió específicamente: "todo lo que encuentres en develop que no esté 
 También se confirmó explícitamente (con `comm` sobre las versiones ordenadas línea por línea) que `docs/diario.md` y `docs/test-temporal.mjs` ya contienen el 100% del contenido de sus versiones en `develop` - nada faltante ahí. Mismo chequeo con `git diff -w` para `Game.ts`/`main.ts`: las únicas líneas que parecían faltar resultaron ser evolución propia de esta rama (el `wasRushed` nuevo en `decide()`, `RICH_BOSS_MONEY` ya en 300) que el diff mostraba raro por el reordenamiento de líneas cercanas, no omisiones reales.
 
 Verificado con `npm run build` + los 52 tests de `docs/test-temporal.mjs` (sin relación directa, cambios de CSS/HTML, pero por las dudas) y con Playwright (captura del menú, confirmando `getComputedStyle(body).fontFamily` ya no depende de Google Fonts) — todo en verde.
+
+---
+
+2026-08-23 (parte 11) — documento de documentación técnica del proyecto entero:
+
+Se usó el agente `.opencode/agents/generar-documentacion-html.md` para generar `documentacion-proyecto.html` (raíz del repo): un mapa completo del código pensado para alguien que no lo escribió — un profesor evaluando, un compañero nuevo, o el propio equipo repasando más adelante. Se hizo sobre esta rama (`actualIralys`) en vez de clonar `develop` aparte, porque a esta altura `actualIralys` ya contiene el 100% de `develop` (confirmado en la parte 10) más el sistema económico/tienda que todavía no llegó a `develop` — documentar desde acá da un mapa más completo y más real.
+
+**Cómo se armó**: se releyó a fondo cada clase (`Passport`, `Character`, `Human`, `Yokai`, `Rule`, `Day`, `Storage`, `Game`, `SoundManager`, `MusicManager`), `main.ts` completo (función por función, vía un listado de todas las declaraciones de nivel superior), `index.html`, varios archivos de `public/data/`, y `docs/convenciones.md`/`GDD.md`/`diario.md` como contexto de decisiones ya tomadas — sin copiar nada tal cual, redactado con palabras propias y verificado contra el código real.
+
+**Hallazgo de paso, no un bug**: `reglas.json` usa el campo `"dia"` como un ID de regla, no como el día calendario en que se activa — es `dias.json` (campo `reglasActivas`) el que remapea esos ids a un día real. Por eso la regla de "sello plateado" tiene `"dia": 6` en `reglas.json` pero en el juego se activa recién el día 7, y la del sello azul de los alien (`"dia": 7` en el archivo) se activa el día 6. Quedó explicado en el documento (sección de persistencia y datos) porque es fácil de leer al revés si alguien mira `reglas.json` suelto sin cruzarlo con `dias.json`.
+
+**4 diagramas Mermaid** (clases, flujo de una partida, secuencia de una decisión, flujo de trabajo del equipo), con código de color para Grupo A/Grupo B, verificados en el navegador con Playwright: los 4 renderizan como SVG sin errores de consola. El de flujo de trabajo del equipo usa un `flowchart` en vez de un `gitGraph` literal — el historial real tiene demasiados merges/ramas como para que un `gitGraph` fiel se leyera bien, así que se resume el patrón (cada quien en su rama, integrando contra `develop`) más 3 bugs de integración reales documentados en el diario, incluido el de la pantalla de Opciones de esta misma sesión (parte 9).
+
+No se modificó ningún archivo de código del proyecto — el agente es de solo lectura, como indica su propia definición.

@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yokai Inspector — Documentación del proyecto</title>
+<style>
+  :root {
+    --bg: #16121f;
+    --bg-panel: #201a30;
+    --bg-code: #120e1c;
+    --border: #3a3450;
+    --text: #ede8f5;
+    --text-dim: #a89fc2;
+    --accent: #c98bd8;
+    --accent-2: #ffd166;
+    --groupA: #6fb8ff;
+    --groupA-bg: rgba(111, 184, 255, 0.12);
+    --groupB: #ff8fb1;
+    --groupB-bg: rgba(255, 143, 177, 0.12);
+    --shared: #8ee6b0;
+    --shared-bg: rgba(142, 230, 176, 0.12);
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: var(--accent); }
+  h1, h2, h3, h4 {
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.25;
+    color: #fff;
+  }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); }
+  h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+  h3 { font-size: 1.2rem; color: var(--accent); }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  code.inline {
+    background: var(--bg-code);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+  }
+  pre code { color: #d8d2ea; }
+
+  /* layout */
+  #layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  #sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 1rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  #sidebar h2 { font-size: 1rem; border: none; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1.5rem;}
+  #sidebar nav ul { list-style: none; padding: 0; margin: 0.3rem 0; }
+  #sidebar nav a {
+    display: block;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.92rem;
+  }
+  #sidebar nav a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  #sidebar .brand { font-family: Georgia, serif; font-size: 1.3rem; color: #fff; }
+
+  main {
+    flex: 1;
+    min-width: 0;
+    padding: 2.5rem 3rem 6rem;
+    max-width: 980px;
+  }
+  section { margin-bottom: 3.5rem; scroll-margin-top: 1rem; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin: 1rem 0 2rem;
+  }
+  .legend span {
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .tag-a { background: var(--groupA-bg); color: var(--groupA); border: 1px solid var(--groupA); }
+  .tag-b { background: var(--groupB-bg); color: var(--groupB); border: 1px solid var(--groupB); }
+  .tag-shared { background: var(--shared-bg); color: var(--shared); border: 1px solid var(--shared); }
+
+  .card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem 1.5rem;
+    margin: 1.2rem 0;
+  }
+  .card.groupA { border-left: 4px solid var(--groupA); }
+  .card.groupB { border-left: 4px solid var(--groupB); }
+  .card.shared { border-left: 4px solid var(--shared); }
+  .card h3 { margin-top: 0; }
+  .card .owner {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.6rem;
+  }
+  .owner.a { background: var(--groupA-bg); color: var(--groupA); }
+  .owner.b { background: var(--groupB-bg); color: var(--groupB); }
+  .owner.shared { background: var(--shared-bg); color: var(--shared); }
+
+  .diagram {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+  .diagram .mermaid { display: flex; justify-content: center; }
+
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--border); padding: 0.5rem 0.7rem; text-align: left; }
+  th { background: var(--bg-panel); color: var(--text-dim); }
+
+  .callout {
+    background: rgba(255, 209, 102, 0.08);
+    border: 1px solid var(--accent-2);
+    border-left: 4px solid var(--accent-2);
+    border-radius: 8px;
+    padding: 0.9rem 1.2rem;
+    margin: 1.2rem 0;
+    font-size: 0.95rem;
+  }
+  .callout strong { color: var(--accent-2); }
+
+  dl.glossary dt { font-weight: 700; color: #fff; margin-top: 1rem; }
+  dl.glossary dd { margin-left: 0; color: var(--text-dim); }
+
+  footer {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+  }
+
+  @media (max-width: 800px) {
+    #layout { flex-direction: column; }
+    #sidebar { width: 100%; height: auto; position: relative; }
+    main { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="layout">
+  <aside id="sidebar">
+    <div class="brand">妖怪検査官<br>Yokai Inspector</div>
+    <nav>
+      <h2>Índice</h2>
+      <ul>
+        <li><a href="#vision-general">1. Visión general</a></li>
+        <li><a href="#flujo-partida">2. Flujo de una partida</a></li>
+        <li><a href="#anatomia-decision">3. Anatomía de una decisión</a></li>
+        <li><a href="#grupo-a">4. Código — Grupo A (Mike)</a></li>
+        <li><a href="#grupo-b">5. Código — Grupo B (Iralys)</a></li>
+        <li><a href="#persistencia">6. Persistencia y datos</a></li>
+        <li><a href="#trabajo-equipo">7. Flujo de trabajo del equipo</a></li>
+        <li><a href="#glosario">8. Glosario</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main>
+
+    <h1>Yokai Inspector</h1>
+    <p>Juego web de decisiones estilo <em>Papers, Please</em>: sos un inspector recién contratado en la Agencia de Aduana Espiritual y tenés que revisar pasaportes de visitantes — algunos son Yokai disfrazados — y decidir a quién dejar pasar, según reglas que la agencia va sumando día a día. Hecho en TypeScript vanilla (sin frameworks, sin librerías de UI), compilado a JavaScript plano con <code class="inline">tsc</code>.</p>
+
+    <div class="legend">
+      <span class="tag-a">■ Grupo A (Mike) — personajes, arte, drag &amp; drop</span>
+      <span class="tag-b">■ Grupo B (Iralys) — reglas, estado del juego, audio, economía</span>
+      <span class="tag-shared">■ Compartido — <code class="inline">main.ts</code>, HTML/CSS</span>
+    </div>
+
+    <p class="callout"><strong>Nota sobre autoría:</strong> la división de trabajo de más abajo sale de <code class="inline">docs/convenciones.md</code> y del historial de commits/diario del proyecto. <code class="inline">main.ts</code> en particular lo tocan los dos todo el tiempo (Iralys arma la mayoría de las pantallas y la lógica de temporizador/tienda, Mike el drag&amp;drop de los sellos y las animaciones de personaje/pasaporte) — donde no hay certeza absoluta, se aclara en el texto en vez de inventar.</p>
+
+    <!-- ============================================================ -->
+    <section id="vision-general">
+      <h2>1. Visión general de la arquitectura</h2>
+
+      <p>El proyecto separa <strong>datos de dominio</strong> (personajes, reglas, pasaportes) de <strong>estado de la partida</strong> (<code class="inline">Game</code>) y de <strong>interfaz</strong> (<code class="inline">main.ts</code> + HTML/CSS). Ninguna clase de dominio toca el DOM ni <code class="inline">localStorage</code> directamente — eso es a propósito: permite testear <code class="inline">Game.ts</code> completo desde la terminal (<code class="inline">docs/test-temporal.mjs</code>), simulando partidas enteras sin abrir un navegador.</p>
+
+      <div class="diagram">
+        <pre class="mermaid">
+classDiagram
+    class Passport {
+        -name string
+        -region string
+        -declaredSpecie string
+        -stamp string
+        +obtainName
+        +obtainRegion
+        +obtainDeclaredSpecie
+        +obtainStamp
+    }
+    class Character {
+        &lt;&lt;abstract&gt;&gt;
+        -passport Passport
+        -face string
+        -haveHorns boolean
+        -yellowEyes boolean
+        +obtainPassport
+        +dialogueLine() string
+        +isAlien() boolean
+    }
+    class Human {
+    }
+    class Yokai {
+        -yokaiType string
+        +obtainYokaiType
+    }
+    class Rule {
+        -day number
+        -property string
+        -forbiddenValue any
+        +isViolated(Character) boolean
+        +getDescription() string
+    }
+    class Day {
+        -activeRules Rule[]
+        +evaluateCharacter(Character) Rule
+        +getActiveRules() Rule[]
+    }
+    class Game {
+        -money number
+        -errors number
+        -currentVisitor Character
+        -days Day[]
+        +decide(accept, usedAlienStamp, wasRushed)
+        +endDay()
+        +buyHint() string
+        +buyExtraTime() boolean
+        +buyInsurance() boolean
+    }
+    class SoundManager {
+        -volume number
+        +playAccept()
+        +setVolume(number)
+    }
+    class MusicManager {
+        +playMenu()
+        +setVolume(number)
+    }
+
+    Character &lt;|-- Human
+    Character &lt;|-- Yokai
+    Character *-- Passport : compone, no hereda
+    Day o-- Rule : reglas activas hoy
+    Game *-- Day : calendario de 7 dias
+    Game o-- Character : visitante actual
+    Rule ..&gt; Character : evalua
+
+    style Passport fill:#6fb8ff33,stroke:#6fb8ff
+    style Character fill:#6fb8ff33,stroke:#6fb8ff
+    style Human fill:#6fb8ff33,stroke:#6fb8ff
+    style Yokai fill:#6fb8ff33,stroke:#6fb8ff
+    style Rule fill:#ff8fb133,stroke:#ff8fb1
+    style Day fill:#ff8fb133,stroke:#ff8fb1
+    style Game fill:#ff8fb133,stroke:#ff8fb1
+    style SoundManager fill:#ff8fb133,stroke:#ff8fb1
+    style MusicManager fill:#ff8fb133,stroke:#ff8fb1
+        </pre>
+      </div>
+      <p style="font-size:0.85rem;color:var(--text-dim)">Azul = Grupo A (Mike). Rosa = Grupo B (Iralys).</p>
+
+      <h3>Composición, no herencia</h3>
+      <p><code class="inline">Passport</code> no es una superclase de <code class="inline">Character</code>: un personaje <em>tiene</em> un pasaporte, no <em>es</em> un pasaporte (relación "tiene-un", no "es-un"). Lo mismo con los tipos de Yokai: <code class="inline">oni</code>/<code class="inline">kitsune</code>/<code class="inline">kappa</code> no son subclases de <code class="inline">Yokai</code>, son un campo de texto (<code class="inline">#yokaiType</code>) — la única herencia real del proyecto es <code class="inline">Character</code> (abstracta) → <code class="inline">Human</code> / <code class="inline">Yokai</code>, y ni siquiera <code class="inline">Human</code> le agrega nada propio: existe solo para que <code class="inline">Game</code> pueda distinguir "esto es una persona normal" de "esto es un Yokai" con <code class="inline">instanceof</code>.</p>
+
+      <h3>El DOM es solo salida</h3>
+      <p><code class="inline">Game.ts</code> no importa nada de <code class="inline">main.ts</code> ni sabe qué es un navegador: recibe datos ya parseados (vía <code class="inline">loadData()</code>, que sí usa <code class="inline">fetch</code> para traer los <code class="inline">.json</code> de <code class="inline">public/data/</code>) y expone su estado con getters simples (<code class="inline">game.money</code>, <code class="inline">game.currentVisitor</code>, etc.). Es <code class="inline">main.ts</code> el que lee esos getters después de cada acción y actualiza el HTML a mano. Esto es lo que permite que <code class="inline">docs/test-temporal.mjs</code> juegue partidas completas simulando <code class="inline">fetch</code>/<code class="inline">localStorage</code> con mocks, sin ningún navegador de por medio.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="flujo-partida">
+      <h2>2. El flujo completo de una partida</h2>
+
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart TD
+    A[Menú principal] --> B[Nombre del inspector]
+    B --> C[Intro narrada del día 1<br/>la Jefa explica la primera regla]
+    C --> D{Día N en curso}
+    D --> E[Llega un visitante nuevo]
+    E --> F[Jugador abre el pasaporte]
+    F --> G[Jugador arrastra un sello<br/>verde / rojo / azul]
+    G --> H[Game.decide evalúa<br/>reglas activas del día]
+    H -->|Acierto| I[+2 dinero, sube la racha]
+    H -->|Error| J["-5 dinero, +1 error<br/>(salvo indulto activo)"]
+    I --> K{¿Se acabó el<br/>tiempo del día?}
+    J --> L{"¿4 errores<br/>acumulados?"}
+    L -->|Sí| M[DERROTA]
+    L -->|No| K
+    K -->|No| E
+    K -->|Sí| N[endDay: cobro diario<br/>+ resumen del día]
+    N --> O{"¿Día 7<br/>completado?"}
+    O -->|No| P[La Jefa explica<br/>la regla nueva] --> D
+    O -->|Sí| Q[VICTORIA]
+    M --> R[Pantalla final<br/>+ premios]
+    Q --> R
+        </pre>
+      </div>
+
+      <h3>Menú → nombre → historia</h3>
+      <p>El menú (<code class="inline">#menu-screen</code>) ya está visible por defecto en el HTML — es la única pantalla que no pasa por <code class="inline">changeState()</code> al arrancar. <code class="inline">Nueva partida</code> pide el nombre del inspector (persistido en <code class="inline">localStorage</code> vía <code class="inline">Storage.savePlayerName()</code>, no hace falta volver a escribirlo cada vez) y crea un <code class="inline">Game</code> nuevo con la duración de día y cantidad de días elegidas en Opciones.</p>
+
+      <h3>El ciclo de un día</h3>
+      <p>Desde 2026-08-16 el día <strong>dura por tiempo, no por cantidad de visitantes</strong> (<code class="inline">DAY_DURATION_MS</code>, configurable desde Opciones: 30/60/90/120s). Mientras el reloj corre, <code class="inline">Game.#generateVisitor()</code> arma un visitante nuevo apenas se decide el anterior — la proporción de visitantes "problemáticos" (que violan alguna regla) sube con el número de día. Cuando el temporizador llega a cero, <code class="inline">endDay()</code> cierra el día: cobra el gasto fijo del día siguiente (ver sección 5), guarda el progreso, y muestra el resumen antes de pasar al día que sigue.</p>
+
+      <h3>Condiciones de fin de partida</h3>
+      <ul>
+        <li><strong>Derrota:</strong> <code class="inline">Game.isLost()</code> — 4 errores acumulados, sin importar el día. Corta la partida al instante, ni siquiera espera a que termine el día en curso.</li>
+        <li><strong>Victoria:</strong> <code class="inline">Game.isWon()</code> — completar todos los días configurados (5, 6 o 7) sin llegar a 4 errores.</li>
+      </ul>
+      <p>La pantalla final no es una sola: hay finales alternativos según el dinero final (<code class="inline">RICH_BOSS_MONEY</code>), si ganaste/perdiste 3 veces seguidas, o si terminaste con 0-1 errores — más un final oculto ("te convertís en Yokai") si perdés 3 veces al hilo, que borra todas las partidas guardadas.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="anatomia-decision">
+      <h2>3. Anatomía de una decisión (el corazón del juego)</h2>
+
+      <p>Esto es lo que pasa, paso a paso, desde que el jugador suelta un sello hasta que la pantalla se actualiza. Es también el punto exacto donde se cruzan el código de Mike (arrastre y animación) y el de Iralys (reglas y estado):</p>
+
+      <div class="diagram">
+        <pre class="mermaid">
+sequenceDiagram
+    actor J as Jugador
+    participant UI as main.ts
+    participant Game as Game.ts
+    participant Rule as Rule.ts
+
+    J-&gt;&gt;UI: click en el pasaporte cerrado
+    Note over UI: setDecisionStampsEnabled(true)<br/>guarda passportOpenedAt
+    J-&gt;&gt;UI: arrastra un sello (pointerdown/move/up)
+    Note over UI: setupStampDrag — Grupo A
+    UI-&gt;&gt;UI: ¿se soltó cerca del pasaporte?
+    UI-&gt;&gt;UI: resolveDecision()<br/>calcula wasRushed (menos de 700ms)
+    Note over UI: animación del sello + arco<br/>de vuelta del pasaporte (~1.5s)
+    UI-&gt;&gt;Game: game.decide(accept, usedAlienStamp, wasRushed)
+    Game-&gt;&gt;Rule: currentDay.evaluateCharacter(visitante)
+    Rule--&gt;&gt;Game: regla violada, o null si está limpio
+    Game-&gt;&gt;Game: compara contra la decisión,<br/>actualiza dinero/errores/indulto
+    Game--&gt;&gt;UI: nuevo estado (game.errors, game.money, ...)
+    UI-&gt;&gt;UI: actualiza HUD, sonido de acierto/error
+    alt fue un error nuevo (1ro a 3ro)
+        UI-&gt;&gt;J: reacción de la Jefa
+    else
+        UI-&gt;&gt;UI: renderVisitor() del siguiente
+    end
+        </pre>
+      </div>
+
+      <h3>Cómo se decide si un visitante es sospechoso</h3>
+      <p><code class="inline">Rule.isViolated(character)</code> compara UN rasgo del personaje contra el valor prohibido de esa regla puntual — no sabe nada de las demás reglas. <code class="inline">Day.evaluateCharacter()</code> es quien recorre TODAS las reglas activas ese día y devuelve la primera que se viola (o <code class="inline">null</code> si el visitante está limpio):</p>
+      <pre><code>evaluateCharacter(character: Character): Rule | null {
+  const violatedRule = this.#activeRules.find((rule: Rule) =&gt; rule.isViolated(character));
+  if (violatedRule === undefined) {
+    return null;
+  }
+  return violatedRule;
+}</code></pre>
+
+      <div class="callout"><strong>Ojo con el nombre:</strong> <code class="inline">Rule.isViolated()</code> devuelve <code class="inline">true</code> cuando la regla se <em>incumple</em> (o sea, cuando HAY que rechazar al visitante) — es un nombre un poco contraintuitivo, ya detectado por el equipo y documentado en <code class="inline">docs/convenciones.md</code>, no un bug.</p></div>
+
+      <h3>El sello azul es un caso especial</h3>
+      <p>Desde el día en que rige la regla <code class="inline">selloAlien</code>, dejar pasar a un visitante alien no alcanza con aceptarlo: hay que usar el sello AZUL, no el verde. Esta regla nunca "se viola" en el sentido de <code class="inline">isViolated()</code> (siempre devuelve <code class="inline">false</code>) porque no dice a quién rechazar, dice <em>cómo</em> aprobar — esa comparación vive aparte, directamente en <code class="inline">Game.decide()</code>:</p>
+      <pre><code>const needsAlienStamp = this.alienStampRuleActive() &amp;&amp; visitor.isAlien();
+const rightStamp = usedAlienStamp === needsAlienStamp;
+const wasCorrect = (accept &amp;&amp; !shouldReject &amp;&amp; rightStamp) || (!accept &amp;&amp; shouldReject);</code></pre>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="grupo-a">
+      <h2>4. Código del Grupo A (Mike) en detalle</h2>
+
+      <div class="card groupA">
+        <span class="owner a">Grupo A</span>
+        <h3>Passport.ts</h3>
+        <p>La clase más simple del proyecto: 4 campos privados (nombre, región, especie declarada, sello) con sus getters. Sin lógica propia — es puro dato. <code class="inline">Character</code> la compone (le pertenece un <code class="inline">Passport</code>), nunca la extiende.</p>
+      </div>
+
+      <div class="card groupA">
+        <span class="owner a">Grupo A</span>
+        <h3>Character.ts (abstracta)</h3>
+        <p>Todo lo que cualquier visitante tiene en común: nombre, pasaporte, capas visuales (rostro, ojos, boca, cuernos, pelo) y una frase de diálogo. El único método con lógica real es <code class="inline">isAlien()</code>, que mira si el nombre del rostro empieza con <code class="inline">"alien"</code> — es el único rasgo que identifica de verdad a un alien (la especie declarada del pasaporte no sirve: cualquier Yokai mintiendo puede declararse "alien" sin serlo).</p>
+      </div>
+
+      <div class="card groupA">
+        <span class="owner a">Grupo A</span>
+        <h3>Human.ts / Yokai.ts</h3>
+        <p><code class="inline">Human</code> no agrega nada — existe solo para poder distinguir con <code class="inline">instanceof</code>. <code class="inline">Yokai</code> agrega el campo <code class="inline">#yokaiType</code> ("oni"/"kitsune"/"kappa") y, en el constructor, decide automáticamente si ese tipo tiene cuernos visibles (oni) u ojos amarillos (kitsune) — el rasgo físico real nace ligado al tipo, no se sortea aparte.</p>
+      </div>
+
+      <div class="card groupA">
+        <span class="owner a">Grupo A</span>
+        <h3>El sello, drag &amp; drop real</h3>
+        <p>Los sellos de aceptar/rechazar/alien no son <code class="inline">&lt;button&gt;</code>: son <code class="inline">&lt;div role="button"&gt;</code> arrastrables con eventos de puntero (<code class="inline">pointerdown</code>/<code class="inline">pointermove</code>/<code class="inline">pointerup</code>), implementados en <code class="inline">setupStampDrag()</code> dentro de <code class="inline">main.ts</code>. Cada sello tiene 3 imágenes (reposo / arrastrando / cerca del pasaporte) y vuelve solo a su posición de reposo al soltar en cualquier lado — soltarlo <em>cerca</em> del pasaporte (con un margen generoso de 60px) es lo único que dispara <code class="inline">resolveDecision()</code>.</p>
+        <pre><code>function isNearPassport(clientX: number, clientY: number): boolean {
+  const rect = passportEl.getBoundingClientRect();
+  return (
+    clientX &gt;= rect.left - STAMP_DROP_MARGIN_PX &amp;&amp;
+    clientX &lt;= rect.right + STAMP_DROP_MARGIN_PX &amp;&amp;
+    clientY &gt;= rect.top - STAMP_DROP_MARGIN_PX &amp;&amp;
+    clientY &lt;= rect.bottom + STAMP_DROP_MARGIN_PX
+  );
+}</code></pre>
+        <p>También soporta teclado (Enter/Espacio decide sin arrastrar), necesario porque <code class="inline">pointerdown</code> no dispara con el teclado.</p>
+      </div>
+
+      <div class="card groupA">
+        <span class="owner a">Grupo A</span>
+        <h3>Animación del pasaporte y el personaje</h3>
+        <p>El pasaporte viaja en un arco parabólico propio (<code class="inline">animatePassportAlongArc()</code>) desde la base del personaje hasta el escritorio y de vuelta, con easing de desaceleración a mano (<code class="inline">createCubicBezierEasing()</code>, sin ninguna librería de animación). El personaje entra/sale deslizándose por fuera de pantalla (<code class="inline">resetElementOffscreen()</code>/<code class="inline">slideOutSlidingElements()</code>). Todo el arte real (rostros, ojos, bocas, fondos, sellos, la Jefa) y la mayoría del CSS de capas visuales también es trabajo de Mike.</p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="grupo-b">
+      <h2>5. Código del Grupo B (Iralys) en detalle</h2>
+
+      <div class="card groupB">
+        <span class="owner b">Grupo B</span>
+        <h3>Rule.ts</h3>
+        <p>Compara UNA propiedad del personaje contra un valor prohibido. La propiedad a comparar (<code class="inline">"tieneCuernos"</code>, <code class="inline">"ojosAmarillos"</code>, <code class="inline">"region"</code>, <code class="inline">"sello"</code>, <code class="inline">"especieProhibida"</code>, <code class="inline">"selloAlien"</code>) es un string que decide, con una cadena de <code class="inline">if</code> en <code class="inline">isViolated()</code>, qué getter de <code class="inline">Character</code>/<code class="inline">Passport</code> mirar. Es la única clase del proyecto con <code class="inline">switch</code> (excepción documentada a las convenciones del equipo).</p>
+      </div>
+
+      <div class="card groupB">
+        <span class="owner b">Grupo B</span>
+        <h3>Day.ts</h3>
+        <p>Agrupa las reglas activas de un día puntual, el objetivo de visitantes (usado solo como referencia para calibrar la proporción de problemáticos, ya no como límite real) y el mensaje introductorio que dice la Jefa. <code class="inline">evaluateCharacter()</code> es el único método con lógica.</p>
+      </div>
+
+      <div class="card groupB">
+        <span class="owner b">Grupo B</span>
+        <h3>Storage.ts</h3>
+        <p>Funciones sueltas (no una clase) sobre <code class="inline">localStorage</code>: partida en curso, historial (últimos 3 resultados), nombre del jugador, créditos acumulados por nombre (ranking entre partidas), racha de días y racha de resultados consecutivos (para los finales especiales de 3 victorias/derrotas seguidas).</p>
+      </div>
+
+      <div class="card groupB">
+        <span class="owner b">Grupo B</span>
+        <h3>Game.ts — el orquestador</h3>
+        <p>La clase más grande del proyecto. Carga los <code class="inline">.json</code>, genera visitantes (con toda la lógica de qué rasgos combinar según las reglas activas del día — la parte más intrincada del código), resuelve decisiones, cobra el gasto diario, controla las 3 compras de la tienda, y decide victoria/derrota. Nunca toca el DOM ni sabe cuánto tiempo real pasó — todo lo que necesita se lo pasa <code class="inline">main.ts</code> por parámetro (por ejemplo, si el jugador tardó menos de 700ms en decidir se lo dice <code class="inline">decide(accept, usedAlienStamp, wasRushed)</code>, <code class="inline">Game</code> no mide tiempo por su cuenta).</p>
+        <h4>El sistema económico</h4>
+        <table>
+          <thead><tr><th>Evento</th><th>Efecto</th><th>Dónde</th></tr></thead>
+          <tbody>
+            <tr><td>Decisión correcta</td><td>+2 dinero</td><td><code class="inline">decide()</code></td></tr>
+            <tr><td>Decisión incorrecta</td><td>-5 dinero, +1 error (salvo indulto activo)</td><td><code class="inline">decide()</code></td></tr>
+            <tr><td>Decidir en menos de 700ms</td><td>-1 dinero extra, NO cuenta como error</td><td><code class="inline">decide()</code>, parámetro <code class="inline">wasRushed</code></td></tr>
+            <tr><td>Cobro diario (vivir el día)</td><td>-(2 + reglas activas ese día), día 1 gratis</td><td><code class="inline">#chargeDailyCost()</code>, dentro de <code class="inline">endDay()</code></td></tr>
+            <tr><td>Tienda: revisar pasaporte</td><td>-3, revela el campo problemático del visitante actual</td><td><code class="inline">buyHint()</code></td></tr>
+            <tr><td>Tienda: +15 segundos</td><td>-5, una vez por día</td><td><code class="inline">buyExtraTime()</code></td></tr>
+            <tr><td>Tienda: indulto</td><td>-8, el próximo error no cuenta (pero sigue restando dinero)</td><td><code class="inline">buyInsurance()</code></td></tr>
+          </tbody>
+        </table>
+        <p>El cobro diario solo se dispara desde <code class="inline">endDay()</code>, nunca desde <code class="inline">loadProgress()</code> — si viviera en el método que arranca cada día (<code class="inline">#startDay()</code>, que también llama <code class="inline">loadProgress()</code> al recargar la página), cobraría de nuevo cada vez que el jugador refresca el navegador a mitad de partida.</p>
+      </div>
+
+      <div class="card groupB">
+        <span class="owner b">Grupo B</span>
+        <h3>Audio: SoundManager / MusicManager</h3>
+        <p><code class="inline">SoundManager</code> maneja los efectos puntuales (sellos, error, escritura, victoria/derrota) clonando el <code class="inline">Audio</code> en cada reproducción (<code class="inline">#playClone()</code>) — necesario porque, sin clonar, una segunda reproducción rápida interrumpe a la primera (<code class="inline">AbortError</code>) y el sonido se pierde en silencio. <code class="inline">MusicManager</code> maneja la música de fondo del menú (un solo <code class="inline">Audio</code> en loop, nunca se clona). Ambos comparten el mismo control de volumen (0 a 1, con la música con un tope fijo del 50% porque el archivo está mezclado más alto).</p>
+      </div>
+
+      <div class="card shared">
+        <span class="owner shared">Compartido (mayoría Iralys)</span>
+        <h3>main.ts</h3>
+        <p>El archivo más largo del proyecto (~1900 líneas): conecta <code class="inline">Game</code> con la interfaz. Máquina de estados simple (<code class="inline">changeState()</code> oculta todas las <code class="inline">&lt;section&gt;</code> y muestra <code class="inline">#{estado}-screen</code>), el temporizador del día (con pausa/reanudación real, ver <code class="inline">pauseDayTimer()</code>/<code class="inline">resumeDayTimer()</code>), el efecto de diálogo tipo subtítulo (<code class="inline">typeDialogue()</code>), las pantallas de tienda/opciones/pausa, y los 6 finales alternativos con sus premios. El drag &amp; drop de los sellos y las animaciones de personaje/pasaporte, en cambio, son de Mike (ver sección 4).</p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="persistencia">
+      <h2>6. Persistencia y datos</h2>
+      <p>Todo el contenido del juego (reglas, días, frases, nombres, partes visuales) vive en archivos <code class="inline">.json</code> sueltos en <code class="inline">public/data/</code>, cargados una sola vez con <code class="inline">Promise.all(...).then()</code> al arrancar la partida — nada de contenido hardcodeado en el TypeScript.</p>
+      <table>
+        <thead><tr><th>Archivo</th><th>Qué guarda</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">reglas.json</code></td><td>10 entradas (día 4 son 4 seguidas, la lista negra de especies). El campo <code class="inline">"dia"</code> es un <strong>id de regla</strong>, no el día calendario en que se activa — eso lo decide <code class="inline">dias.json</code> (ver glosario).</td></tr>
+          <tr><td><code class="inline">dias.json</code></td><td>Por cada día calendario: qué ids de <code class="inline">reglas.json</code> están activas y el mensaje introductorio de la Jefa.</td></tr>
+          <tr><td><code class="inline">species.json</code></td><td>Pool de especies declarables (3 de Yokai + humano + ~17 inventadas sin sentido) — tanto humanos como Yokai mintiendo sortean de esta misma lista.</td></tr>
+          <tr><td><code class="inline">sellos.json</code>, <code class="inline">partes.json</code>, <code class="inline">nombres.json</code>, <code class="inline">frases.json</code>, <code class="inline">yokais.json</code></td><td>Colores de sello válidos, capas visuales disponibles, nombres, frases de humor negro al llegar cada visitante, y el rasgo físico real de cada tipo de Yokai.</td></tr>
+        </tbody>
+      </table>
+      <p><code class="inline">Storage.ts</code> es la única capa que toca <code class="inline">localStorage</code>: partida en curso (se guarda solo al empezar cada día, así "Continuar partida" siempre retoma desde el inicio del día actual, nunca a mitad de un visitante), historial (últimos 3 resultados), nombre del jugador, y créditos acumulados por nombre (un ranking independiente de la partida actual, que solo crece).</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="trabajo-equipo">
+      <h2>7. Flujo de trabajo del equipo</h2>
+      <p>Basado en el historial real de <code class="inline">git</code> y en <code class="inline">docs/diario.md</code>: cada quien trabajó en su propia rama de feature (<code class="inline">objetosMike</code> / <code class="inline">objetosIralys</code> → luego <code class="inline">actualIralys</code>), integrando periódicamente contra <code class="inline">develop</code>.</p>
+
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+    subgraph Mike["Rama objetosMike"]
+      M1[Character/Human/Yokai/Passport]
+      M2[Arte real + CSS de capas]
+      M3[Drag &amp; drop de sellos]
+    end
+    subgraph Iralys["Rama objetosIralys / actualIralys"]
+      I1[Rule/Day/Storage]
+      I2[Game.ts]
+      I3[UI: main.ts, index.html, style.css]
+      I4[Audio + Economía + Tienda]
+    end
+    Mike --> D[develop]
+    Iralys --> D
+    D --> R[Revisión cruzada<br/>y correción de bugs de integración]
+        </pre>
+      </div>
+
+      <h3>3 bugs de integración reales, ya resueltos</h3>
+      <p>Cada vez que las dos partes se fusionaron aparecieron inconsistencias esperables entre código escrito por separado — documentadas en el diario para no repetirlas:</p>
+      <ol>
+        <li><strong>Nombres de método en dos idiomas:</strong> una versión temprana de <code class="inline">Rule.ts</code> llamaba a métodos en español (<code class="inline">tieneCuernosVisibles()</code>) sobre clases que ya usaban inglés (<code class="inline">obtainHaveHorns</code>) — se corrigió del lado de <code class="inline">Rule.ts</code> sin tocar las clases de personajes.</li>
+        <li><strong>Campos eliminados sin avisar:</strong> <code class="inline">main.ts</code> seguía usando <code class="inline">obtainNose</code>/<code class="inline">obtainEar</code>, campos que Mike ya había sacado al simplificar el arte (nariz/orejas fuera, boca en su lugar) — se corrigió para usar <code class="inline">obtainMouth</code>.</li>
+        <li><strong>Un merge "limpio" pero incorrecto (2026-08-22/23):</strong> al fusionar una rama grande, <code class="inline">index.html</code> quedó con la pantalla de Opciones vieja (sin marcadores de conflicto de Git, porque no hubo superposición línea por línea exacta) mientras la lógica nueva de <code class="inline">main.ts</code> (sliders de volumen/zoom/duración) ya estaba mergeada — el bug quedó invisible hasta que se comparó a mano contra <code class="inline">develop</code>. Lección: la ausencia de marcadores de conflicto no prueba que el auto-merge eligió el lado correcto.</li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="glosario">
+      <h2>8. Glosario rápido</h2>
+      <dl class="glossary">
+        <dt>Regla activa</dt>
+        <dd>Una entrada de <code class="inline">reglas.json</code> que aplica en el día calendario actual (ver <code class="inline">dias.json</code>). Las reglas nunca se "apagan" una vez activas — se acumulan día a día.</dd>
+
+        <dt>Visitante problemático</dt>
+        <dd>Un personaje generado a propósito para violar alguna regla activa (en contraposición a uno "seguro", que nunca viola nada). La proporción de problemáticos sube con el número de día.</dd>
+
+        <dt><code class="inline">Rule.isViolated() === true</code></dt>
+        <dd>Significa "hay que RECHAZAR a este visitante" — el nombre es contraintuitivo (uno esperaría que <code class="inline">true</code> signifique "está en regla"), pero es intencional y ya documentado.</dd>
+
+        <dt>Sello (verde/rojo/azul)</dt>
+        <dd>La decisión del jugador: verde = aceptar, rojo = rechazar, azul = aprobar específicamente a un visitante alien (obligatorio para ellos desde cierto día, inválido para cualquier otro tipo de visitante).</dd>
+
+        <dt>Cobro diario</dt>
+        <dd>Gasto fijo que se descuenta al empezar cada día (excepto el primero), proporcional a cuántas reglas están activas ese día — representa "el costo de vivir" y puede dejar el dinero en negativo sin que eso termine la partida.</dd>
+
+        <dt>Indulto</dt>
+        <dd>Compra de la tienda que hace que el próximo error no sume a los 4 que pierden la partida — igual resta el dinero normal de un error, solo perdona el contador.</dd>
+
+        <dt>Día por tiempo (no por visitante)</dt>
+        <dd>Desde una revisión de diseño de 2026-08-16, un día no termina tras N visitantes fijos: dura un tiempo configurable, y en ese lapso pasan tantos visitantes como el jugador llegue a procesar.</dd>
+      </dl>
+    </section>
+
+    <footer>
+      Documento generado a partir del código real del repositorio <code class="inline">m-xarxatec/Yokai-Inspector</code> (rama <code class="inline">actualIralys</code>, que al momento de generar este documento contiene todo lo fusionado desde <code class="inline">develop</code> más el sistema económico/tienda todavía no fusionado). No reemplaza al código como fuente de verdad — ante cualquier duda, el código manda.
+    </footer>
+
+  </main>
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "dark",
+    themeVariables: {
+      background: "#201a30",
+      primaryColor: "#2a2440",
+      primaryBorderColor: "#c98bd8",
+      primaryTextColor: "#ede8f5",
+      lineColor: "#a89fc2",
+      secondaryColor: "#332b4a",
+      tertiaryColor: "#201a30"
+    }
+  });
+</script>
+</body>
+</html>
