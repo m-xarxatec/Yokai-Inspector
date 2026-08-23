@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_playerName, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_startDay, _Game_generateVisitor, _Game_pickPhrase, _Game_pickAlienFace, _Game_recordDayVisitors, _Game_recordLetThrough;
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_playerName, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_dayCharge, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_lastDayCharge, _Game_startDay, _Game_generateVisitor, _Game_chargeDailyCost, _Game_pickPhrase, _Game_pickAlienFace, _Game_recordDayVisitors, _Game_recordLetThrough;
 import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, addCredits, addResultToStreak } from "../Storage.js";
 import { Passport } from "./Passport.js";
 import { Human } from "./Human.js";
@@ -49,10 +49,16 @@ export class Game {
         _Game_dayRejected.set(this, void 0);
         _Game_dayErrors.set(this, void 0);
         _Game_dayMoney.set(this, void 0);
+        // cobro diario (gastos fijos) que costo empezar el dia EN CURSO - se fija una
+        // sola vez en endDay() al entrar a un dia nuevo (0 el dia 1, que no cobra) y
+        // se congela en #lastDayCharge recien cuando ESE dia termina, igual que
+        // #dayMoney/#lastDayMoney
+        _Game_dayCharge.set(this, void 0);
         _Game_lastDayAccepted.set(this, void 0);
         _Game_lastDayRejected.set(this, void 0);
         _Game_lastDayErrors.set(this, void 0);
         _Game_lastDayMoney.set(this, void 0);
+        _Game_lastDayCharge.set(this, void 0);
         __classPrivateFieldSet(this, _Game_playerName, playerName.trim() !== "" ? playerName : "Jugador", "f");
         __classPrivateFieldSet(this, _Game_dayNumber, 1, "f");
         __classPrivateFieldSet(this, _Game_errors, 0, "f");
@@ -75,10 +81,12 @@ export class Game {
         __classPrivateFieldSet(this, _Game_dayRejected, 0, "f");
         __classPrivateFieldSet(this, _Game_dayErrors, 0, "f");
         __classPrivateFieldSet(this, _Game_dayMoney, 0, "f");
+        __classPrivateFieldSet(this, _Game_dayCharge, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayAccepted, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayRejected, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayErrors, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayMoney, 0, "f");
+        __classPrivateFieldSet(this, _Game_lastDayCharge, 0, "f");
     }
     loadData(onComplete) {
         Promise.all([
@@ -170,6 +178,7 @@ export class Game {
         __classPrivateFieldSet(this, _Game_lastDayRejected, __classPrivateFieldGet(this, _Game_dayRejected, "f"), "f");
         __classPrivateFieldSet(this, _Game_lastDayErrors, __classPrivateFieldGet(this, _Game_dayErrors, "f"), "f");
         __classPrivateFieldSet(this, _Game_lastDayMoney, __classPrivateFieldGet(this, _Game_dayMoney, "f"), "f");
+        __classPrivateFieldSet(this, _Game_lastDayCharge, __classPrivateFieldGet(this, _Game_dayCharge, "f"), "f");
         __classPrivateFieldSet(this, _Game_dayNumber, __classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, "f");
         if (this.isWon()) {
             saveToHistory({ day: __classPrivateFieldGet(this, _Game_totalDays, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "victoria", name: __classPrivateFieldGet(this, _Game_playerName, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
@@ -178,6 +187,7 @@ export class Game {
             deleteCurrentGame();
             return;
         }
+        __classPrivateFieldGet(this, _Game_instances, "m", _Game_chargeDailyCost).call(this);
         __classPrivateFieldGet(this, _Game_instances, "m", _Game_startDay).call(this);
     }
     isLost() {
@@ -236,6 +246,9 @@ export class Game {
     get lastDayMoney() {
         return __classPrivateFieldGet(this, _Game_lastDayMoney, "f");
     }
+    get lastDayCharge() {
+        return __classPrivateFieldGet(this, _Game_lastDayCharge, "f");
+    }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
     get daysCompleted() {
@@ -254,7 +267,7 @@ export class Game {
         return true;
     }
 }
-_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_playerName = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
+_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_playerName = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_dayCharge = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_lastDayCharge = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
     __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
     __classPrivateFieldSet(this, _Game_dayAccepted, 0, "f");
     __classPrivateFieldSet(this, _Game_dayRejected, 0, "f");
@@ -433,6 +446,11 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
         return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
     }
     return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
+}, _Game_chargeDailyCost = function _Game_chargeDailyCost() {
+    const activeRulesCount = this.currentDay.getActiveRules().length;
+    const cost = 2 + activeRulesCount;
+    __classPrivateFieldSet(this, _Game_dayCharge, cost, "f");
+    __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - cost, "f");
 }, _Game_pickPhrase = function _Game_pickPhrase() {
     return __classPrivateFieldGet(this, _Game_phrases, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_phrases, "f").length)];
 }, _Game_pickAlienFace = function _Game_pickAlienFace() {

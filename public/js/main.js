@@ -1212,6 +1212,7 @@ function renderDaySummaryScreen(dayNumber, maxStreak) {
     }
     statsEl.innerHTML = "";
     const money = game.lastDayMoney;
+    const charge = game.lastDayCharge;
     const stats = [
         "Aceptados: " + game.lastDayAccepted,
         "Rechazados: " + game.lastDayRejected,
@@ -1219,6 +1220,11 @@ function renderDaySummaryScreen(dayNumber, maxStreak) {
         "Racha máxima: " + maxStreak,
         "Dinero ganado: " + (money >= 0 ? "+" : "") + money,
     ];
+    // el dia 1 no tiene cobro diario (ver Game.#chargeDailyCost()), no mostrar la
+    // linea si no hubo cobro
+    if (charge > 0) {
+        stats.push("Cobro diario: -" + charge);
+    }
     stats.forEach(line => {
         const item = document.createElement("li");
         item.textContent = line;

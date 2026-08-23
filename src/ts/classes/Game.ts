@@ -39,10 +39,16 @@ export class Game{
     #dayRejected: number;
     #dayErrors: number;
     #dayMoney: number;
+    // cobro diario (gastos fijos) que costo empezar el dia EN CURSO - se fija una
+    // sola vez en endDay() al entrar a un dia nuevo (0 el dia 1, que no cobra) y
+    // se congela en #lastDayCharge recien cuando ESE dia termina, igual que
+    // #dayMoney/#lastDayMoney
+    #dayCharge: number;
     #lastDayAccepted: number;
     #lastDayRejected: number;
     #lastDayErrors: number;
     #lastDayMoney: number;
+    #lastDayCharge: number;
 
     constructor(playerName: string = "Jugador", totalDays: number = 7){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
@@ -67,10 +73,12 @@ export class Game{
         this.#dayRejected = 0;
         this.#dayErrors = 0;
         this.#dayMoney = 0;
+        this.#dayCharge = 0;
         this.#lastDayAccepted = 0;
         this.#lastDayRejected = 0;
         this.#lastDayErrors = 0;
         this.#lastDayMoney = 0;
+        this.#lastDayCharge = 0;
     }
 
     loadData(onComplete: () => void): void {
@@ -310,6 +318,17 @@ export class Game{
         return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
     }
 
+    // gastos fijos de vivir el dia que arranca: escala con la cantidad de reglas
+    // activas de ese dia (mas reglas, mas visitantes, mas presion economica) -
+    // ver especificaciones-economia.md. Puede dejar #money en negativo, eso no
+    // termina la partida por si solo (la unica condicion de derrota es isLost()).
+    #chargeDailyCost(): void {
+        const activeRulesCount = this.currentDay.getActiveRules().length;
+        const cost = 2 + activeRulesCount;
+        this.#dayCharge = cost;
+        this.#money -= cost;
+    }
+
     #pickPhrase(): string {
         return this.#phrases[Math.floor(Math.random() * this.#phrases.length)];
     }
@@ -408,6 +427,7 @@ export class Game{
     this.#lastDayRejected = this.#dayRejected;
     this.#lastDayErrors = this.#dayErrors;
     this.#lastDayMoney = this.#dayMoney;
+    this.#lastDayCharge = this.#dayCharge;
     this.#dayNumber += 1;
     if (this.isWon()) {
         saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName, totalDays: this.#totalDays });
@@ -416,6 +436,7 @@ export class Game{
         deleteCurrentGame();
         return;
     }
+    this.#chargeDailyCost();
     this.#startDay();
     }
 
@@ -476,6 +497,9 @@ export class Game{
     }
     get lastDayMoney(): number {
         return this.#lastDayMoney;
+    }
+    get lastDayCharge(): number {
+        return this.#lastDayCharge;
     }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7

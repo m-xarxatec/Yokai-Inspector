@@ -435,3 +435,19 @@ Se usó el agente `.opencode/agents/generar-specs-economia.md` para auditar qué
 **Propuestas nuevas que quedaron documentadas** (no implementadas): cobro diario fijo a partir del día 2, escalado con la cantidad de reglas activas del día (`2 + reglasActivas.length`); penalización chica por error de procedimiento sin sumar a `#errors`; y tres usos nuevos para gastar el dinero durante la partida (pista sobre la regla del día, tiempo extra en el reloj de arena, "seguro" contra el próximo error).
 
 **Decisiones ya tomadas para cuando se implemente**: el cobro diario puede dejar `#money` en negativo sin que eso sea una derrota nueva — la única condición de derrota sigue siendo `#errors >= #maxErrors`; las compras nuevas (pista/tiempo/seguro) irían en un botón nuevo del HUD junto al de pausa, no en Opciones; `RICH_BOSS_MONEY` se mantiene en 300 por ahora, a confirmar con playtesting una vez que el cobro diario esté implementado de verdad; y la pantalla de resumen de día (`#day-summary-screen`) mostraría el cobro diario como línea aparte del dinero ganado por decisiones.
+
+---
+
+2026-08-23 (parte 2) — se implementa el cobro diario:
+
+Primera pieza del documento de especificaciones que pasa de propuesta a código: el cobro diario (gastos fijos de vivir el día).
+
+**Dónde vive**: método privado nuevo `Game.#chargeDailyCost()`, con dos campos nuevos, `#dayCharge` (cobro del día en curso) y `#lastDayCharge` (foto congelada del día que se acaba de cerrar, mismo patrón que ya existía con `#dayMoney`/`#lastDayMoney`). Se decidió llamarlo únicamente desde `endDay()` (después de sumar 1 a `#dayNumber` y de confirmar que no se ganó la partida, antes de `#startDay()`) y NO desde `#startDay()` directamente — `#startDay()` también lo llama `loadProgress()` cada vez que se recarga la página a mitad de partida, y cobrar ahí habría cobrado de nuevo el mismo día cada vez que el jugador refrescara el navegador. Como consecuencia natural de este diseño, el día 1 nunca cobra (arranca por `startNewGame()`, que nunca pasa por `endDay()`).
+
+**El monto escala con la dificultad real del día**, no con el número que aparenta tener en `dias.json`: `costoDiario = 2 + Day.getActiveRules().length`. Al implementarlo se encontró que ese conteo real es más alto de lo que se había estimado a mano en el documento de especificaciones — `especieProhibida` expande a 4 reglas separadas desde el día 4 (kitsune/oni/kappa/poseído), así que la cantidad de reglas activas salta de 3 a 7 ese día, no de 3 a 4 como parecía leyendo solo el array `reglasActivas` de `dias.json`. Números reales por día (1 a 7): 1, 2, 3, 7, 8, 9, 10 reglas → cobro de 4, 5, 9, 10, 11 y 12 en los días 2 a 7 (51 en total en una partida completa, no ~39 como se había estimado). Se corrigió el documento de especificaciones con los números reales.
+
+**Se muestra en la pantalla de resumen de día** (`#day-summary-screen`, `main.ts`): línea nueva "Cobro diario: -N", oculta si `game.lastDayCharge` es 0 (día 1).
+
+**Test 11 nuevo** en `docs/test-temporal.mjs`: confirma que el día 1 no cobra, que el monto coincide con `2 + reglas activas` del día 2, y que forzar el dinero a negativo (con solo 3 errores, sin llegar a los 4 que pierden la partida) más el cobro diario deja el dinero todavía más negativo sin que `isLost()` se active — la decisión de que quedar en negativo no es motivo de derrota, tal como se había definido en la sesión anterior.
+
+Verificado con `npm run build` + los 31 tests de `docs/test-temporal.mjs` (26 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.

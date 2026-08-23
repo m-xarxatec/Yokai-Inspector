@@ -400,3 +400,33 @@ if (cuernudo === null) {
   gameJ.decide(true); // lo deja pasar
   console.log("tras aceptar un cuernudo -> letThroughOni:", gameJ.letThroughOni, gameJ.letThroughOni === true ? "[OK]" : "[FALLO]");
 }
+
+// ================= TEST 11: cobro diario (ver especificaciones-economia.md) =================
+console.log("\n========== TEST 11: cobro diario escala con la cantidad de reglas activas, y el dia 1 no cobra ==========");
+resetMocks();
+const gameK = new Game();
+await loadDataAsync(gameK);
+gameK.startNewGame();
+console.log("dia 1, antes de jugar nada -> dinero:", gameK.money, gameK.money === 10 ? "[OK: sin cobro todavia]" : "[FALLO]");
+gameK.endDay(); // cierra el dia 1 (nunca cobra) y ya cobro el dia 2 adentro de endDay()
+const reglasDia2 = gameK.currentDay.getActiveRules().length;
+const cobroEsperadoDia2 = 2 + reglasDia2;
+console.log("dia 1 -> resumen del dia que cerro, cobro diario:", gameK.lastDayCharge, gameK.lastDayCharge === 0 ? "[OK: el dia 1 no cobra]" : "[FALLO]");
+console.log("dia 2, reglas activas:", reglasDia2, "| dinero real:", gameK.money, "| dinero esperado (10 - cobro):", 10 - cobroEsperadoDia2,
+  gameK.money === 10 - cobroEsperadoDia2 ? "[OK]" : "[FALLO]");
+
+const gameL = new Game();
+await loadDataAsync(gameL);
+gameL.startNewGame();
+// fuerza el dinero bien negativo antes de que termine el dia 1, sin llegar a los 4
+// errores (isLost() corta la partida antes de eso)
+const patronL = [false, false, false];
+patronL.forEach((responderCorrecto) => {
+  const violation = gameL.currentDay.evaluateCharacter(gameL.currentVisitor);
+  const shouldAccept = violation === null;
+  gameL.decide(responderCorrecto ? shouldAccept : !shouldAccept);
+});
+gameL.endDay(); // el cobro diario se suma encima del dinero ya negativo
+console.log("dinero negativo antes del cobro:", 10 - 15, "| dinero real tras cobrar el dia 2:", gameL.money,
+  gameL.money < 0 ? "[OK: el cobro diario puede dejar el dinero mas negativo todavia]" : "[FALLO]");
+console.log("isLost() con 3 errores y dinero negativo:", gameL.isLost(), gameL.isLost() === false ? "[OK: quedar en negativo no es motivo de derrota]" : "[FALLO]");
