@@ -423,3 +423,15 @@ Sesión larga centrada en terminarle el sonido al juego (hasta ahora solo tenía
 - Verificado con `npm run build`, los 10 tests, y una partida jugada de punta a punta en el navegador (Playwright) sin errores de consola.
 
 **Umbral del final "Jefa Millonaria"**: `RICH_BOSS_MONEY` pasó del `9999` (placeholder absurdo a propósito, ver entrada del 2026-08-19) a **300** — por encima de lo que deja una partida normal de 7 días (100-200 monedas), pero alcanzable jugando rápido y arriesgado de verdad, sin requerir un ritmo imposible a mano.
+
+---
+
+2026-08-23 (Iralys) — documento de especificaciones del sistema económico:
+
+Se usó el agente `.opencode/agents/generar-specs-economia.md` para auditar qué tan armado está el sistema de dinero del juego antes de seguir extendiéndolo, sin escribir código todavía. Resultado guardado en `especificaciones-economia.md` (raíz del repo).
+
+**Lo que ya existía, sin que estuviera documentado en un solo lugar**: `#money` en `Game.ts` arranca en 10, suma 2 por decisión correcta y resta 5 por decisión incorrecta (`decide()`), se persiste en la partida guardada y en el historial, y se acumula entre partidas como ranking (`addCredits()`, pantalla de Créditos). El único uso real del dinero hoy, aparte de mostrarlo en el HUD, es disparar el final "Jefa Millonaria" al llegar a `RICH_BOSS_MONEY` (300). No hay cobro diario (renta) ni penalización de dinero por errores de procedimiento (dejar pasar a alguien peligroso sin que viole una regla activa todavía) — ninguno de los dos existe en el código.
+
+**Propuestas nuevas que quedaron documentadas** (no implementadas): cobro diario fijo a partir del día 2, escalado con la cantidad de reglas activas del día (`2 + reglasActivas.length`); penalización chica por error de procedimiento sin sumar a `#errors`; y tres usos nuevos para gastar el dinero durante la partida (pista sobre la regla del día, tiempo extra en el reloj de arena, "seguro" contra el próximo error).
+
+**Decisiones ya tomadas para cuando se implemente**: el cobro diario puede dejar `#money` en negativo sin que eso sea una derrota nueva — la única condición de derrota sigue siendo `#errors >= #maxErrors`; las compras nuevas (pista/tiempo/seguro) irían en un botón nuevo del HUD junto al de pausa, no en Opciones; `RICH_BOSS_MONEY` se mantiene en 300 por ahora, a confirmar con playtesting una vez que el cobro diario esté implementado de verdad; y la pantalla de resumen de día (`#day-summary-screen`) mostraría el cobro diario como línea aparte del dinero ganado por decisiones.
