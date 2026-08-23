@@ -296,9 +296,10 @@ document.querySelectorAll(".back-link").forEach(button => {
 // el dia actual, tal como quedaria si se recargara la pagina a mitad de partida
 // (la partida guardada solo se actualiza al empezar cada dia, asi que sigue
 // disponible para "Continuar partida" desde donde arranco el dia). El boton
-// de pausa (#pause-btn) y el de la tienda (#shop-btn) tienen su propio
-// listener mas abajo, no entran aca.
-document.querySelectorAll(".exit-to-menu-btn:not(#pause-btn):not(#shop-btn)").forEach(button => {
+// de pausa (#pause-btn) tiene su propio listener mas abajo, no entra aca.
+// #shop-btn ya no comparte esta clase (ver style.css), tiene su propio
+// aspecto de icono, no hace falta excluirlo aca.
+document.querySelectorAll(".exit-to-menu-btn:not(#pause-btn)").forEach(button => {
   button.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
     soundManager.stopWrite(); // corta el sonido de escritura si todavia estaba sonando

@@ -138,7 +138,6 @@
         <span id="error-counter">-</span>
         <span id="streak-counter">0</span>
         <button id="pause-btn" class="exit-to-menu-btn">⏸</button>
-        <button id="shop-btn" class="exit-to-menu-btn">$</button>
       </div>
 
       <div id="character-portrait">
@@ -163,6 +162,11 @@
       <!-- reemplaza la barra de tiempo (#time-bar-track) por el reloj de arena
            animado - ver startDayClock()/updateDayClock() en main.ts -->
       <div id="day-clock" class="stage-full frame-a"></div>
+
+      <!-- misma columna que #coin-widget/#day-clock (left: 10.9%), debajo del
+           reloj - icono de la flor que ya aparece junto a DIA/ERRORES/RACHA
+           (extraida de fondoPantallaJuegoT.png, ver public/img/ui/florHud.png) -->
+      <button id="shop-btn"></button>
 
       <!-- el pasaporte ya NO se desliza junto con el personaje: aparece recien
            cuando el personaje llego y esta con la animacion idle (ver renderVisitor()

@@ -793,9 +793,29 @@ button:disabled {
   font-size: 0.75rem;
 }
 
-/* a la izquierda del boton de pausa, mismo estilo (ver #hud .exit-to-menu-btn) */
+/* debajo del reloj de arena, misma columna que #coin-widget/#day-clock
+   (left: 10.9%) - la flor es la misma que ya aparece junto a DIA/ERRORES/
+   RACHA en fondoPantallaJuegoT.png, recortada aparte (ver public/img/ui/
+   florHud.png) porque ahi vive pintada en el fondo, no como icono suelto.
+   Sin el estilo generico de boton (fondo/borde/padding): es un icono solo. */
 #shop-btn {
-  right: 6.5%;
+  position: absolute;
+  left: 10.9%;
+  top: 80%;
+  transform: translate(-50%, -50%);
+  width: 7%;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: url("../img/ui/florHud.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: pointer;
+  z-index: 5;
 }
 
 /* resalta el campo del pasaporte (o el rasgo del personaje) que la pista de
