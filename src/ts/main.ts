@@ -392,6 +392,11 @@ function updateShopScreen(): void {
   if (extraTimeBtn !== null) {
     extraTimeBtn.disabled = game.money < game.extraTimeCost || game.usedExtraTimeToday;
   }
+  const insuranceBtn = document.querySelector("#shop-insurance-btn") as HTMLButtonElement | null;
+  if (insuranceBtn !== null) {
+    insuranceBtn.disabled = game.hasInsurance || game.money < game.insuranceCost;
+    insuranceBtn.textContent = game.hasInsurance ? "Indulto activo" : "Indulto (-8)";
+  }
 }
 
 document.querySelector("#shop-hint-btn")?.addEventListener("click", () => {
@@ -437,6 +442,22 @@ document.querySelector("#shop-extra-time-btn")?.addEventListener("click", () => 
   // reprogramar el cierre del dia con el tiempo real que queda
   dayElapsedMs = Math.max(dayElapsedMs - EXTRA_TIME_MS, 0);
   updateDayClock();
+  updateShopScreen();
+  const moneyCounterEl = document.querySelector("#money-counter");
+  if (moneyCounterEl !== null) {
+    moneyCounterEl.textContent = "Dinero: " + game.money;
+  }
+});
+
+document.querySelector("#shop-insurance-btn")?.addEventListener("click", () => {
+  if (game === null) {
+    return;
+  }
+  soundManager.playNextButton(); // sonido de click del boton
+  const bought = game.buyInsurance();
+  if (!bought) {
+    return;
+  }
   updateShopScreen();
   const moneyCounterEl = document.querySelector("#money-counter");
   if (moneyCounterEl !== null) {

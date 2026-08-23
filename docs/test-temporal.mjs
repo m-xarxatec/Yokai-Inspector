@@ -481,6 +481,9 @@ if (sucio === null) {
 }
 
 const gameP = await partidaEnDia(4);
+for (let i = 0; i < 15; i++) {
+  decidirBien(gameP); // mismo colchon de dinero que gameO, ver comentario arriba
+}
 const limpio = buscarVisitante(gameP, (visitor, violation) => violation === null);
 if (limpio === null) {
   console.log("[AVISO] no salio ningun visitante limpio, se saltea el chequeo");
@@ -538,3 +541,47 @@ const dineroAntesS = gameS.money;
 const compraSinFondos = gameS.buyExtraTime();
 console.log("tiempo extra sin fondos:", compraSinFondos, "| dinero sin cambios:", gameS.money === dineroAntesS,
   compraSinFondos === false && gameS.money === dineroAntesS ? "[OK: no cobra si no alcanza]" : "[FALLO]");
+
+// ================= TEST 15: tienda - indulto (buyInsurance) =================
+console.log("\n========== TEST 15: el indulto absorbe el proximo error sin sumar a #errors, resta dinero igual, y se consume ==========");
+const gameT = new Game();
+await loadDataAsync(gameT);
+gameT.startNewGame();
+const dineroAntesT = gameT.money;
+const compraIndulto = gameT.buyInsurance();
+console.log("compra el indulto:", compraIndulto, "| dinero descontado:", dineroAntesT - gameT.money, "(esperado " + gameT.insuranceCost + ")",
+  compraIndulto === true && dineroAntesT - gameT.money === gameT.insuranceCost ? "[OK]" : "[FALLO]");
+
+const dineroAntesIndultoUsado = gameT.money;
+const violationT = gameT.currentDay.evaluateCharacter(gameT.currentVisitor);
+gameT.decide(violationT !== null); // fuerza la respuesta incorrecta
+console.log("errores tras el error absorbido:", gameT.errors, gameT.errors === 0 ? "[OK: el indulto lo absorbe]" : "[FALLO]");
+console.log("dinero tras el error absorbido:", gameT.money, "| esperado (-5 igual, el indulto no devuelve dinero):", dineroAntesIndultoUsado - 5,
+  gameT.money === dineroAntesIndultoUsado - 5 ? "[OK]" : "[FALLO]");
+console.log("el indulto se consumio:", gameT.hasInsurance, gameT.hasInsurance === false ? "[OK]" : "[FALLO]");
+
+// sin indulto, el siguiente error si cuenta normal
+const violationT2 = gameT.currentDay.evaluateCharacter(gameT.currentVisitor);
+gameT.decide(violationT2 !== null); // fuerza la respuesta incorrecta de nuevo
+console.log("siguiente error, sin indulto activo:", gameT.errors, gameT.errors === 1 ? "[OK: vuelve a contar normal]" : "[FALLO]");
+
+// no se puede comprar un segundo indulto mientras el primero sigue activo
+const gameU = new Game();
+await loadDataAsync(gameU);
+gameU.startNewGame();
+gameU.buyInsurance();
+const dineroConIndultoActivo = gameU.money;
+const segundoIndulto = gameU.buyInsurance();
+console.log("segundo indulto con uno ya activo:", segundoIndulto, "| dinero sin cambios:", gameU.money === dineroConIndultoActivo,
+  segundoIndulto === false && gameU.money === dineroConIndultoActivo ? "[OK: un indulto activo a la vez]" : "[FALLO]");
+
+// el indulto no sobrevive al dia siguiente si no se llega a usar
+const gameV = new Game();
+await loadDataAsync(gameV);
+gameV.startNewGame();
+gameV.buyInsurance();
+for (let i = 0; i < 15; i++) {
+  decidirBien(gameV); // se decide bien todo el dia, el indulto queda sin usar
+}
+gameV.endDay();
+console.log("indulto sin usar, tras terminar el dia:", gameV.hasInsurance, gameV.hasInsurance === false ? "[OK: no se acumula para el dia siguiente]" : "[FALLO]");

@@ -21,7 +21,7 @@ Ordenado por prioridad de implementación:
 2. **Condición de final alternativo (ya implementado)** — `RICH_BOSS_MONEY` para el final "jefa millonaria".
 3. **Revisar pasaporte (pista) — ya implementado** — costo `3` (`Game.ts#buyHint()`/`hintCost`). Revela la propiedad de la regla que el visitante actual viola (resaltado visual en `main.ts`, 2.5s); si está limpio no resalta nada pero el costo se cobra igual — el riesgo de comprarla "a ciegas". Un uso por visitante (hay que comprarla de nuevo para el siguiente).
 4. **Tiempo extra en el reloj de arena — ya implementado** — costo `5` (`Game.ts#buyExtraTime()`/`extraTimeCost`), suma `EXTRA_TIME_MS` (15 segundos, constante en `main.ts`) al día actual. Límite de 1 vez por día (`usedExtraTimeToday`, se resetea en `#startDay()`), para no quitarle presión al reloj.
-5. **"Indulto" (seguro contra un error)** (propuesta, todavía no implementada) — costo `8` (la más cara). El próximo error no cuenta para los 4 que pierden la partida (`#errors` no sube), aunque igual resta el -5 de esa decisión. Un indulto activo a la vez; si no se usa en el día, se pierde al terminar.
+5. **"Indulto" (seguro contra un error) — ya implementado** — costo `8` (`Game.ts#buyInsurance()`/`insuranceCost`, la más cara). El próximo error no cuenta para los 4 que pierden la partida (`#hasInsurance`, consumido en `decide()`), aunque igual resta el -5 de esa decisión — no es gratis equivocarse, es que no cuesta la partida. Un indulto activo a la vez (no se puede comprar un segundo encima); si no se usa en el día, se pierde al terminar (`#startDay()` lo resetea).
 
 Las tres compras se accionan desde el botón `$` nuevo del HUD (junto al de pausa, `#shop-btn`), que abre la pantalla `#shop-screen` — decisión de la sección 8.
 
@@ -65,7 +65,7 @@ No hay `bossLevel`; la progresión real es la cantidad de reglas activas de `Day
 ## 9. Estado de la implementación (actualizado tras esta sesión)
 - ✅ Cobro diario (`Game.ts#chargeDailyCost()`, campos `#dayCharge`/`#lastDayCharge`), enganchado en `endDay()` y mostrado en `#day-summary-screen`.
 - ✅ Penalización por decidir sin revisar (`Game.ts#decide()`, parámetro `wasRushed`, `RUSH_PENALTY = 1`), medida en `main.ts#resolveDecision()` y mostrada en `#day-summary-screen`.
-- ✅ Tienda: botón `#shop-btn` + pantalla `#shop-screen`. Pista y tiempo extra implementados (`Game.ts#buyHint()`/`buyExtraTime()`).
-- ⬜ Pendiente: indulto (seguro contra un error).
+- ✅ Tienda: botón `#shop-btn` + pantalla `#shop-screen`. Las 3 compras implementadas (`Game.ts#buyHint()`/`buyExtraTime()`/`buyInsurance()`).
+- No queda nada pendiente del documento original; futuras ideas de economía (nuevos usos del dinero, ajustes de precios tras jugarlo de verdad) se agregarían como una sección nueva, no reabriendo esta.
 
 No quedan preguntas abiertas pendientes de discutir con Mike por ahora.

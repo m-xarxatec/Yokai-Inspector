@@ -497,3 +497,19 @@ Verificado con `npm run build` + los 40 tests de `docs/test-temporal.mjs` (35 an
 **Test 14 nuevo** en `docs/test-temporal.mjs`: la primera compra del día cobra y funciona, la segunda se niega sin cobrar de más, el límite se resetea al día siguiente, y sin dinero suficiente tampoco cobra. Mismo cuidado que el test 13: hubo que agregar decisiones de más antes de probar la compra en el día siguiente, porque el cobro diario ya había dejado el dinero por debajo del costo.
 
 Verificado con `npm run build` + los 45 tests de `docs/test-temporal.mjs` (40 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.
+
+---
+
+2026-08-23 (parte 6) — tercera y última compra de la tienda: el indulto, y la tienda queda completa:
+
+**`Game.ts#buyInsurance()`**: cobra `INSURANCE_COST = 8` (la más cara de las 3) y activa `#hasInsurance`. No se puede comprar un segundo indulto mientras el primero sigue activo — `buyInsurance()` devuelve `false` sin cobrar en ese caso. Se resetea a `false` en `#startDay()`: si no se usó en el día, no pasa al siguiente.
+
+**Cómo se consume en `decide()`**: en la rama de decisión incorrecta, si `#hasInsurance` está activo se lo apaga (`this.#hasInsurance = false`) en vez de sumar a `#errors`/`#dayErrors` — pero el `-5` de dinero de esa decisión se sigue restando igual. No es "gratis equivocarse", es "no te cuesta la partida". Con esto, la sección "compras nuevas" del documento de especificaciones queda completa: pista, tiempo extra e indulto, las 3 implementadas.
+
+**Test 15 nuevo** en `docs/test-temporal.mjs`: compra el indulto y confirma el costo, fuerza un error y confirma que no suma a `#errors` pero sí resta el dinero normal, confirma que se consume (el siguiente error sin indulto sí cuenta), que no se puede comprar un segundo mientras uno sigue activo, y que uno sin usar no sobrevive a `endDay()`.
+
+**Bug de test encontrado y corregido (no del código)**: al escribir el test 15 se repitió, sin darse cuenta, el mismo error de los tests 13/14 pero al revés — `gameT.decide(violationT === null)` en vez de `!== null` termina siendo la decisión CORRECTA, no la forzada a incorrecta, así que el primer intento del test no estaba probando nada del indulto (el dinero subía en vez de bajar). Se corrigió invirtiendo la condición, igual que ya se había hecho en los tests anteriores.
+
+**Segundo bug de test, este sí intermitente**: el mismo problema del cobro diario dejando sin fondos que ya se había corregido para el visitante "sucio" del test 13 (ver sesión de la parte 4) se había quedado sin corregir para el caso del visitante "limpio" en el mismo test — como `buscarVisitante()` decide bien una cantidad variable de veces hasta encontrar el visitante que busca, a veces alcanzaba el dinero para la pista y a veces no, dependiendo del sorteo. Detectado corriendo la suite completa varias veces seguidas (falló 1 de 5 corridas) y confirmado estable después de agregar el mismo colchón de decisiones extra que ya tenía el caso "sucio".
+
+Verificado con `npm run build` + los 52 tests de `docs/test-temporal.mjs` (45 anteriores + 7 nuevos), corridos 8 veces seguidas sin fallos para descartar la intermitencia. No se probó en el navegador todavía — queda pendiente confirmar que la tienda completa (pista + tiempo extra + indulto) se siente bien jugando de verdad, no solo en los tests automáticos.

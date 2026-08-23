@@ -19,6 +19,10 @@ const HINT_COST = 3;
 // limite de una vez por dia
 const EXTRA_TIME_COST = 5;
 
+// costo del indulto de la tienda (ver buyInsurance()) - la mas cara de las 3,
+// porque puede directamente salvar la partida absorbiendo el 4to error
+const INSURANCE_COST = 8;
+
 export class Game{
 
     #dayNumber: number;
@@ -69,6 +73,10 @@ export class Game{
     // tienda: limite de 1 tiempo extra comprado por dia (ver buyExtraTime()) -
     // se resetea en #startDay(), no sobrevive al dia siguiente
     #usedExtraTimeToday: boolean;
+    // tienda: indulto activo (ver buyInsurance() y decide()) - absorbe el
+    // proximo error para que no cuente para #errors, se consume al usarse y
+    // tambien se resetea en #startDay() si no se llego a gastar ese dia
+    #hasInsurance: boolean;
 
     constructor(playerName: string = "Jugador", totalDays: number = 7){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
@@ -102,6 +110,7 @@ export class Game{
         this.#lastDayCharge = 0;
         this.#lastDayRushPenalty = 0;
         this.#usedExtraTimeToday = false;
+        this.#hasInsurance = false;
     }
 
     loadData(onComplete: () => void): void {
@@ -141,6 +150,7 @@ export class Game{
         this.#dayMoney = 0;
         this.#dayRushPenalty = 0;
         this.#usedExtraTimeToday = false;
+        this.#hasInsurance = false;
         this.#currentVisitor = this.#generateVisitor();
         saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays})
     }
@@ -432,6 +442,24 @@ export class Game{
         return true;
     }
 
+    get insuranceCost(): number {
+        return INSURANCE_COST;
+    }
+    get hasInsurance(): boolean {
+        return this.#hasInsurance;
+    }
+
+    // tienda: activa el indulto (ver decide()) - un solo indulto activo a la
+    // vez, no se puede comprar otro encima del que ya esta activo
+    buyInsurance(): boolean {
+        if (this.#money < INSURANCE_COST || this.#hasInsurance) {
+            return false;
+        }
+        this.#money -= INSURANCE_COST;
+        this.#hasInsurance = true;
+        return true;
+    }
+
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
     // opcional para no romper a quien llame decide(accept) a secas (los tests, y
     // todo el codigo anterior al dia 6).
@@ -460,9 +488,16 @@ export class Game{
         this.#dayMoney += 2;
     } else {
         this.#money -= 5;
-        this.#errors += 1;
         this.#dayMoney -= 5;
-        this.#dayErrors += 1;
+        // el indulto absorbe este error (no cuenta para los 4 que pierden la
+        // partida) pero no devuelve el dinero - no es gratis equivocarse, es
+        // que no te cuesta la partida. Se consume, no queda para el proximo error.
+        if (this.#hasInsurance) {
+            this.#hasInsurance = false;
+        } else {
+            this.#errors += 1;
+            this.#dayErrors += 1;
+        }
     }
 
     if (wasRushed) {
