@@ -527,3 +527,11 @@ Iralys probó la tienda y el botón `$` (agregado en la parte 4, `right: 6.5%` e
 **Verificado jugando de verdad**, no solo con los tests: se levantó `public/` con `python -m http.server` y se automatizó una partida completa con Playwright (instalado en el scratchpad de la sesión, no como dependencia del repo, mismo criterio que la prueba de audio del 2026-08-19) hasta la pantalla de juego — capturas confirmando que la flor quedó bien ubicada sin pisar nada, que abrir la tienda y comprar las 3 opciones descuenta el dinero real del HUD y deshabilita los botones que ya no alcanzan, y que "Volver al juego" respeta el visitante que estaba en pantalla.
 
 No se tocó nada de `Game.ts` en esta sesión, solo `index.html`/`style.css`/`main.ts` (posición y comportamiento del botón) — la lógica de las 3 compras ya estaba completa desde la parte 6.
+
+---
+
+2026-08-23 (parte 8) — ícono real de la tienda, movido a `public/img/tienda/`:
+
+Iralys reemplazó el recorte provisorio de la flor (extraído a mano de `fondoPantallaJuegoT.png`, ver parte 7) por arte real: una ilustración completa de tienda (templete, carrito de compras, cofre con lupa y carta de interrogación, gato de la suerte, monedas), 1254×1254, guardada como `public/img/tienda/florHud.png` — carpeta nueva, reemplaza a `public/img/ui/` (que queda vacía y sin uso). Se corrigió la ruta en `style.css` (`background-image` de `#shop-btn`) y los dos comentarios que todavía mencionaban `img/ui/` (`index.html` y `style.css`). Como la imagen nueva también es cuadrada, no hizo falta tocar el `aspect-ratio: 1` del botón.
+
+Verificado con Playwright otra vez (mismo criterio que la parte 7): el ícono nuevo carga y se ve bien en el lugar de siempre, debajo del reloj de arena.
