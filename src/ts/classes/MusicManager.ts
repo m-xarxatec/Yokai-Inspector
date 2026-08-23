@@ -6,10 +6,12 @@ export class MusicManager {
         this.#menuMusic.loop = true;
     }
 
-    // silencia o reactiva la musica de fondo. Aca si se puede usar "muted"
-    // directo porque la musica NUNCA se clona (es un solo audio en loop)
-    setMuted(muted: boolean): void {
-        this.#menuMusic.muted = muted;
+    // cambia el volumen de la musica de fondo. Aca si se puede asignar
+    // "volume" directo porque la musica NUNCA se clona (es un solo audio en loop).
+    // El archivo esta mezclado muy alto - tope fijo al 50% del volumen general,
+    // los efectos de SoundManager no llevan este tope
+    setVolume(volume: number): void {
+        this.#menuMusic.volume = volume * 0.5;
     }
 
     playMenu(): void {

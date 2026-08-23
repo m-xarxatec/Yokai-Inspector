@@ -31,14 +31,26 @@ export class Game{
     #letThroughKappa: boolean;
     #bestDayVisitors: number;
     #bestDayNumber: number;
+    // contadores del dia EN CURSO (se resetean en #startDay(), igual que
+    // #visitorsSeenToday) y una "foto" del ultimo dia ya cerrado (necesaria
+    // porque endDay() ya llama a #startDay() -que resetea los contadores del
+    // dia- antes de que main.ts llegue a leerlos, ver pantalla de resumen)
+    #dayAccepted: number;
+    #dayRejected: number;
+    #dayErrors: number;
+    #dayMoney: number;
+    #lastDayAccepted: number;
+    #lastDayRejected: number;
+    #lastDayErrors: number;
+    #lastDayMoney: number;
 
-    constructor(playerName: string = "Jugador"){
+    constructor(playerName: string = "Jugador", totalDays: number = 7){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
         this.#dayNumber = 1;
         this.#errors = 0;
         this.#money = 10;
         this.#maxErrors = 4;
-        this.#totalDays = 7;
+        this.#totalDays = totalDays;
         this.#days = [];
         this.#currentVisitor = null;
         this.#visitorsSeenToday = 0;
@@ -51,6 +63,14 @@ export class Game{
         this.#letThroughKappa = false;
         this.#bestDayVisitors = 0;
         this.#bestDayNumber = 0;
+        this.#dayAccepted = 0;
+        this.#dayRejected = 0;
+        this.#dayErrors = 0;
+        this.#dayMoney = 0;
+        this.#lastDayAccepted = 0;
+        this.#lastDayRejected = 0;
+        this.#lastDayErrors = 0;
+        this.#lastDayMoney = 0;
     }
 
     loadData(onComplete: () => void): void {
@@ -84,8 +104,12 @@ export class Game{
 
     #startDay(): void {
         this.#visitorsSeenToday = 0;
+        this.#dayAccepted = 0;
+        this.#dayRejected = 0;
+        this.#dayErrors = 0;
+        this.#dayMoney = 0;
         this.#currentVisitor = this.#generateVisitor();
-        saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money})
+        saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays})
     }
     #generateVisitor(): Character {
         // el dia ya no tiene una cantidad fija de visitantes (dura por tiempo, no
@@ -345,19 +369,25 @@ export class Game{
 
     if (wasCorrect) {
         this.#money += 2; // antes 10 - se achico porque ahora, con dia por tiempo, se pueden ver muchos mas visitantes que antes
+        this.#dayMoney += 2;
     } else {
         this.#money -= 5;
         this.#errors += 1;
+        this.#dayMoney -= 5;
+        this.#dayErrors += 1;
     }
 
     this.#visitorsSeenToday += 1;
     if (accept) {
+        this.#dayAccepted += 1;
         this.#recordLetThrough(visitor);
+    } else {
+        this.#dayRejected += 1;
     }
 
     if (this.isLost()) {
         this.#recordDayVisitors();
-        saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota", name: this.#playerName });
+        saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota", name: this.#playerName, totalDays: this.#totalDays });
         addCredits(this.#playerName, this.#money);
         addResultToStreak("derrota");
         deleteCurrentGame();
@@ -372,9 +402,15 @@ export class Game{
     // visitorsSeenToday >= currentDay.getVisitorGoal().
     endDay(): void {
     this.#recordDayVisitors(); // antes de tocar #dayNumber: el conteo es del dia que se cierra
+    // foto del dia que se cierra, ANTES de que #startDay() (mas abajo) resetee
+    // los contadores del dia - ver pantalla de resumen en main.ts
+    this.#lastDayAccepted = this.#dayAccepted;
+    this.#lastDayRejected = this.#dayRejected;
+    this.#lastDayErrors = this.#dayErrors;
+    this.#lastDayMoney = this.#dayMoney;
     this.#dayNumber += 1;
     if (this.isWon()) {
-        saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName });
+        saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName, totalDays: this.#totalDays });
         addCredits(this.#playerName, this.#money);
         addResultToStreak("victoria");
         deleteCurrentGame();
@@ -391,11 +427,14 @@ export class Game{
     return this.#dayNumber > this.#totalDays;
     }
 
-    get dayNumber(): number { 
-        return this.#dayNumber; 
+    get dayNumber(): number {
+        return this.#dayNumber;
     }
-    get errors(): number { 
-        return this.#errors; 
+    get totalDays(): number {
+        return this.#totalDays;
+    }
+    get errors(): number {
+        return this.#errors;
     }
     get money(): number { 
         return this.#money; 
@@ -425,6 +464,19 @@ export class Game{
     get bestDayNumber(): number {
         return this.#bestDayNumber;
     }
+    // --- datos del ultimo dia cerrado (ver pantalla de resumen en main.ts) ---
+    get lastDayAccepted(): number {
+        return this.#lastDayAccepted;
+    }
+    get lastDayRejected(): number {
+        return this.#lastDayRejected;
+    }
+    get lastDayErrors(): number {
+        return this.#lastDayErrors;
+    }
+    get lastDayMoney(): number {
+        return this.#lastDayMoney;
+    }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
     get daysCompleted(): number {
@@ -439,6 +491,7 @@ export class Game{
     this.#dayNumber = saved.dayNumber;
     this.#errors = saved.errors;
     this.#money = saved.money;
+    this.#totalDays = saved.totalDays ?? 7; // partidas guardadas de antes de este dato: 7 por defecto
     this.#startDay();
     return true;
     }

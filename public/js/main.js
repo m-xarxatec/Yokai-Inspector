@@ -89,10 +89,15 @@ const PASSPORT_OPEN_DELAY_MS = 150;
 // cuanto se ve el sello de aceptado/rechazado sobre el pasaporte todavia abierto
 // antes de que empiece a cerrarse
 const DECISION_STAMP_FLASH_MS = 400;
-// tiempo del dia completo (ya no es por visitante) - fijo: la dificultad ya sube
-// sola por la proporcion de problematicos y la cantidad de reglas activas por dia
-const DAY_DURATION_MS = 90000;
+// tiempo del dia completo (ya no es por visitante) - la dificultad ya sube
+// sola por la proporcion de problematicos y la cantidad de reglas activas
+// por dia. Elegible desde el menu principal (ver #day-duration-slider).
+let DAY_DURATION_MS = 90000;
 let streak = 0;
+// pico de racha alcanzado en el dia en curso (streak solo no alcanza: si hubo
+// un error a mitad de dia, streak al final puede ser menor al maximo real) -
+// ver pantalla de resumen de fin de dia
+let maxStreakToday = 0;
 let timerEnabled = true;
 // variantes del retrato de la Jefa cuando explica las reglas entre dias; se elige
 // una al azar cada vez, para que no sea siempre la misma pose
@@ -113,17 +118,9 @@ function changeState(newState) {
         section.classList.add("hidden");
     });
     document.querySelector(`#${newState}-screen`)?.classList.remove("hidden");
-    // la musica del menu sigue sonando sin cortes desde que arranca el juego
-    // (menu) hasta que la jefa termina de explicar las reglas: pasa por
-    // name-entry (nombre del jugador), story (bienvenida) y day-result mientras
-    // todavia se estan mostrando los cuadros de la intro del dia 1
-    // (introBeatIndex !== null). Cuando la intro termina, introBeatIndex vuelve
-    // a null ANTES de cambiar a "game", asi que ahi ya no entra en esta lista.
-    const sigueLaMusicaDelMenu = newState === "menu" ||
-        newState === "name-entry" ||
-        newState === "story" ||
-        (newState === "day-result" && introBeatIndex !== null);
-    if (sigueLaMusicaDelMenu) {
+    // la musica de fondo suena SOLO en el menu principal - en cualquier otra
+    // pantalla (nombre, historia, intro del dia, juego, etc.) se corta
+    if (newState === "menu") {
         musicManager.playMenu();
     }
     else {
@@ -147,7 +144,7 @@ function updateContinueButton() {
         return;
     }
     statusHtmlEl.classList.remove("hidden");
-    statusEl.textContent = "⏸ Partida pausada — Día " + savedGame.dayNumber + " / 7";
+    statusEl.textContent = "⏸ Partida pausada — Día " + savedGame.dayNumber + " / " + (savedGame.totalDays ?? 7);
 }
 function updateTimerToggleButton() {
     const button = document.querySelector("#timer-toggle-btn");
@@ -166,28 +163,38 @@ document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
     timerEnabled = !timerEnabled;
     updateTimerToggleButton();
 });
-// --- silenciar audio: apaga/prende TODA la musica y TODOS los efectos, ---
-// --- incluidos los que se reproduzcan despues (ver setMuted en las dos clases) ---
-let audioMuted = false; // arranca con el sonido activado
-function updateMuteButton() {
-    const button = document.querySelector("#mute-toggle-btn");
-    if (button === null) {
-        return;
+// --- volumen: un solo control para la musica y todos los efectos juntos ---
+document.querySelector("#volume-slider")?.addEventListener("input", (event) => {
+    const raw = Number(event.target.value) / 100;
+    // curva cuadratica: el oido percibe el volumen de forma logaritmica, no
+    // lineal - sin esto, valores "bajos" del slider seguian sonando fuerte
+    const volume = raw * raw;
+    soundManager.setVolume(volume);
+    musicManager.setVolume(volume);
+});
+// --- zoom de la pantalla de juego: agranda #character-scene entero (HUD,
+// --- personaje, pasaporte, todo junto - ya escala solo, ver --scene-zoom en style.css) ---
+document.querySelector("#zoom-slider")?.addEventListener("input", (event) => {
+    const zoom = Number(event.target.value) / 100;
+    document.documentElement.style.setProperty("--scene-zoom", String(zoom));
+});
+// --- duracion del dia y cantidad de dias de la partida: solo tienen efecto ---
+// --- en la PROXIMA partida/dia que arranque, no a mitad de una en curso ---
+const DAY_DURATION_OPTIONS_MS = [30000, 60000, 90000, 120000];
+document.querySelector("#day-duration-slider")?.addEventListener("input", (event) => {
+    const index = Number(event.target.value);
+    DAY_DURATION_MS = DAY_DURATION_OPTIONS_MS[index];
+    const valueEl = document.querySelector("#day-duration-value");
+    if (valueEl !== null) {
+        valueEl.textContent = (DAY_DURATION_MS / 1000) + "s";
     }
-    if (audioMuted) {
-        button.textContent = "Sonido: OFF";
-    }
-    else {
-        button.textContent = "Sonido: ON";
-    }
-}
-document.querySelector("#mute-toggle-btn")?.addEventListener("click", () => {
-    audioMuted = !audioMuted; // invierte el estado actual
-    soundManager.setMuted(audioMuted); // aplica el silencio a los efectos
-    musicManager.setMuted(audioMuted); // aplica el silencio a la musica
-    updateMuteButton();
-    if (!audioMuted) {
-        soundManager.playNextButton(); // sonido de click, solo si sigue sonando
+});
+let selectedTotalDays = 7;
+document.querySelector("#total-days-slider")?.addEventListener("input", (event) => {
+    selectedTotalDays = Number(event.target.value);
+    const valueEl = document.querySelector("#total-days-value");
+    if (valueEl !== null) {
+        valueEl.textContent = String(selectedTotalDays);
     }
 });
 // --- pantalla completa: usa la Fullscreen API nativa del navegador sobre ---
@@ -226,7 +233,7 @@ document.querySelector("#player-name-form")?.addEventListener("submit", (event) 
     input?.blur(); // saca el foco del input ya mismo (la carga de datos de abajo es async y tarda)
     const name = input?.value.trim() ?? "";
     savePlayerName(name);
-    game = new Game(name);
+    game = new Game(name, selectedTotalDays);
     streak = 0;
     dayStreaks = [];
     saveDayStreaks(dayStreaks);
@@ -239,17 +246,21 @@ document.querySelector("#player-name-form")?.addEventListener("submit", (event) 
         changeState("story");
     });
 });
+// a donde vuelve el "Volver al menu" de options/credits/exit - "menu" salvo
+// que se haya entrado a options desde la pantalla de pausa (ver #pause-options-btn)
+let backLinkTarget = "menu";
 document.querySelectorAll(".back-link").forEach(button => {
     button.addEventListener("click", () => {
         soundManager.playNextButton(); // sonido de click del boton
-        changeState("menu");
+        changeState(backLinkTarget);
     });
 });
 // disponible desde historia/juego/resultado del dia: vuelve al menu sin terminar
 // el dia actual, tal como quedaria si se recargara la pagina a mitad de partida
 // (la partida guardada solo se actualiza al empezar cada dia, asi que sigue
-// disponible para "Continuar partida" desde donde arranco el dia).
-document.querySelectorAll(".exit-to-menu-btn").forEach(button => {
+// disponible para "Continuar partida" desde donde arranco el dia). El boton
+// de pausa (#pause-btn) tiene su propio listener mas abajo, no entra aca.
+document.querySelectorAll(".exit-to-menu-btn:not(#pause-btn)").forEach(button => {
     button.addEventListener("click", () => {
         soundManager.playNextButton(); // sonido de click del boton
         soundManager.stopWrite(); // corta el sonido de escritura si todavia estaba sonando
@@ -269,16 +280,40 @@ document.querySelectorAll(".exit-to-menu-btn").forEach(button => {
         updateContinueButton();
     });
 });
+// --- pausa real durante el juego: pausa el temporizador del dia de verdad ---
+// --- (mismas pauseDayTimer()/resumeDayTimer() que ya usa la reaccion de la Jefa por error) ---
+document.querySelector("#pause-btn")?.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
+    pauseDayTimer();
+    changeState("pause");
+});
+document.querySelector("#pause-continue-btn")?.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
+    changeState("game");
+    resumeDayTimer();
+});
+document.querySelector("#pause-options-btn")?.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
+    backLinkTarget = "pause";
+    // duracion del dia/dias de la partida solo tienen sentido antes de
+    // arrancar una partida nueva, no a mitad de una en curso
+    document.querySelector("#new-game-options")?.classList.add("hidden");
+    changeState("options");
+});
 document.querySelector("#options-btn")?.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
+    backLinkTarget = "menu";
+    document.querySelector("#new-game-options")?.classList.remove("hidden");
     changeState("options");
 });
 document.querySelector("#exit-btn")?.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
+    backLinkTarget = "menu";
     changeState("exit");
 });
 document.querySelector("#credits-btn")?.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
+    backLinkTarget = "menu";
     renderCreditsScreen();
     changeState("credits");
 });
@@ -315,7 +350,7 @@ function renderHistoryTable() {
         nameCell.textContent = entry.name ?? "—";
         row.appendChild(nameCell);
         const dayCell = document.createElement("td");
-        dayCell.textContent = "Día " + entry.day + " / 7";
+        dayCell.textContent = "Día " + entry.day + " / " + (entry.totalDays ?? 7);
         row.appendChild(dayCell);
         const errorsCell = document.createElement("td");
         errorsCell.textContent = entry.errors + " errores";
@@ -397,7 +432,6 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
         }
         game.loadProgress();
         changeState("game");
-        soundManager.playNextPlease(); // llama al primer pasajero de la partida
         renderVisitor();
         startDayTimer();
     });
@@ -843,7 +877,7 @@ function renderVisitor() {
     const streakEl = document.querySelector("#streak-counter");
     const sceneEl = document.querySelector("#character-scene");
     if (dayEl !== null)
-        dayEl.textContent = game.dayNumber + " / 7";
+        dayEl.textContent = game.dayNumber + " / " + game.totalDays;
     if (errorsEl !== null) {
         errorsEl.textContent = game.errors + " / 4";
         if (game.errors >= 3) {
@@ -874,7 +908,11 @@ function afterDecision(dayBefore) {
     if (game === null) {
         return;
     }
-    if (game.isLost() || game.isWon()) {
+    // una partida cortada por errores no "termina el dia" de verdad - va
+    // directo al final, sin pasar por el resumen de dia (ver isWon() mas abajo,
+    // que SI pasa por el resumen: el dia 7 completo se resume igual que
+    // cualquier otro dia, antes de ir a la pantalla final)
+    if (game.isLost()) {
         clearDayTimer();
         dayStreaks.push(streak);
         saveDayStreaks(dayStreaks);
@@ -884,11 +922,13 @@ function afterDecision(dayBefore) {
     }
     if (game.dayNumber > dayBefore) {
         clearDayTimer();
+        const dayMaxStreak = Math.max(maxStreakToday, streak);
         dayStreaks.push(streak);
         saveDayStreaks(dayStreaks);
         streak = 0; // la racha arranca de nuevo en cada dia (ver docs/ideas.md)
-        changeState("day-result"); // primero cambia de pantalla para que no corte el audio de abajo
-        renderDayResultScreen();
+        maxStreakToday = 0;
+        changeState("day-summary"); // primero cambia de pantalla para que no corte el audio de abajo
+        renderDaySummaryScreen(dayBefore, dayMaxStreak);
         return;
     }
     renderVisitor();
@@ -993,7 +1033,9 @@ function resolveDecision(accept, usedAlienStamp = false) {
                     }
                     else {
                         streak += 1;
-                        soundManager.playNextPlease(); // cuño correcto: llama al proximo pasajero
+                        if (streak > maxStreakToday) {
+                            maxStreakToday = streak;
+                        }
                     }
                     // el dia vencio mientras se animaba esta decision (ver startDayTimer()):
                     // recien ahora, con el visitante que el jugador realmente vio ya
@@ -1145,6 +1187,57 @@ document.querySelector("#passport-object")?.addEventListener("click", () => {
         setDecisionStampsEnabled(true);
     }, PASSPORT_OPEN_DELAY_MS);
 });
+// --- Day summary screen (resumen narrativo + estadisticas al terminar cada dia) ---
+const DAY_END_MESSAGES = [
+    "Ha finalizado el día. Vas camino a casa, feliz con tu nuevo empleo.",
+    "Ha finalizado tu jornada. Ahora ves que se te está exigiendo más... te duelen los pies y las manos de tanto sellar.",
+    "Final de la jornada. Ahora no puedes esperar para estar en casa, llorar un poco y dormir... mucha suerte.",
+    "Final de la jornada. Hoy no estás tan agotado... además, la Jefa te ha hecho un cumplido, te sientes afortunado.",
+    "Fin de la jornada... tratas de convencerte de que la paga es buena... aunque realmente no lo es...",
+    "Jornada de trabajo terminada... día agotador, pero te tranquiliza la idea de que solo te quedan 45 años para jubilarte... suerte.",
+    "Fin del día 7... buen trabajo.",
+];
+function renderDaySummaryScreen(dayNumber, maxStreak) {
+    if (game === null) {
+        return;
+    }
+    const numberEl = document.querySelector("#day-summary-number");
+    if (numberEl !== null) {
+        numberEl.textContent = String(dayNumber);
+    }
+    typeDialogue(DAY_END_MESSAGES[dayNumber - 1], "#day-summary-text");
+    const statsEl = document.querySelector("#day-summary-stats");
+    if (statsEl === null) {
+        return;
+    }
+    statsEl.innerHTML = "";
+    const money = game.lastDayMoney;
+    const stats = [
+        "Aceptados: " + game.lastDayAccepted,
+        "Rechazados: " + game.lastDayRejected,
+        "Errores: " + game.lastDayErrors,
+        "Racha máxima: " + maxStreak,
+        "Dinero ganado: " + (money >= 0 ? "+" : "") + money,
+    ];
+    stats.forEach(line => {
+        const item = document.createElement("li");
+        item.textContent = line;
+        statsEl.appendChild(item);
+    });
+}
+document.querySelector("#day-summary-continue-btn")?.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
+    if (game === null) {
+        return;
+    }
+    if (game.isWon()) {
+        renderFinalScreen();
+        changeState("final");
+        return;
+    }
+    changeState("day-result"); // primero cambia de pantalla para que no corte el audio de abajo
+    renderDayResultScreen();
+});
 // --- Day result screen ---
 function renderDayResultScreen(showSummary = true) {
     if (game === null) {
@@ -1173,10 +1266,11 @@ function renderDayResultScreen(showSummary = true) {
     }
 }
 // 3 modos posibles, revisados en orden: en medio de la intro del dia 1 (avanza
-// el cuadro, o arranca el juego si ya era el ultimo), reaccion de la Jefa por
-// un error (vuelve al visitante siguiente, SIN reiniciar el temporizador del
-// dia - sigue corriendo igual que durante resolveDecision()), o el paso
-// normal entre dias (arranca el dia nuevo con su propio temporizador).
+// el cuadro, o pasa a la pantalla de reglas activas si ya era el ultimo),
+// reaccion de la Jefa por un error (vuelve al visitante siguiente, SIN
+// reiniciar el temporizador del dia - sigue corriendo igual que durante
+// resolveDecision()), o el paso normal entre dias (pasa a la pantalla de
+// reglas activas antes de arrancar el dia nuevo).
 document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
     soundManager.stopWrite(); // corta el sonido de escritura si todavia estaba sonando
@@ -1188,10 +1282,8 @@ document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
             return;
         }
         introBeatIndex = null;
-        changeState("game");
-        soundManager.playNextPlease(); // llama al primer pasajero del dia 1
-        renderVisitor();
-        startDayTimer();
+        changeState("day-start");
+        renderDayStartScreen();
         return;
     }
     if (errorReactionPending) {
@@ -1201,8 +1293,32 @@ document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
         resumeDayTimer();
         return;
     }
+    changeState("day-start");
+    renderDayStartScreen();
+});
+// --- Day start screen (reglas activas del dia, antes de arrancar a jugar) ---
+function renderDayStartScreen() {
+    if (game === null) {
+        return;
+    }
+    const numberEl = document.querySelector("#day-start-number");
+    if (numberEl !== null) {
+        numberEl.textContent = game.dayNumber + " / " + game.totalDays;
+    }
+    const rulesEl = document.querySelector("#day-start-rules");
+    if (rulesEl === null) {
+        return;
+    }
+    rulesEl.innerHTML = "";
+    game.currentDay.getActiveRules().forEach(rule => {
+        const item = document.createElement("li");
+        item.textContent = rule.getDescription();
+        rulesEl.appendChild(item);
+    });
+}
+document.querySelector("#day-start-continue-btn")?.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
     changeState("game");
-    soundManager.playNextPlease(); // llama al primer pasajero del nuevo dia
     renderVisitor();
     startDayTimer();
 });

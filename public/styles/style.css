@@ -43,14 +43,15 @@
 }
 
 :root {
-  /* dos familias: pixel-art gruesa para titulos/acentos cortos (su ancho fijo
-     por caracter no compromete la lectura ahi) y una version pixel-art mas
-     legible para todo el texto funcional (parrafos, botones, tablas) */
-  --font-display: "Press Start 2P", "Pixelify Sans", system-ui, sans-serif;
-  --font-body: "Pixelify Sans", system-ui, sans-serif;
+  /* Jersey 10 es la fuente unica del juego (ver comentario en @font-face
+     arriba); Press Start 2P/Pixelify Sans quedan como fallback si no carga */
+  --font-display: "Jersey 10", "Press Start 2P", "Pixelify Sans", system-ui, sans-serif;
+  --font-body: "Jersey 10", "Pixelify Sans", system-ui, sans-serif;
   /* fuente propia de los mensajes de la Jefa en #next-day-message (regla y
      error por igual) - cae a --font-body si Jersey 10 no carga */
   --font-jefa: "Jersey 10", var(--font-body);
+  /* zoom de #character-scene (barra en #options-screen) - 1 = tamaño normal */
+  --scene-zoom: 1;
 }
 
 * {
@@ -267,7 +268,7 @@ button:disabled {
   position: absolute;
   right: 3%;
   bottom: 4%;
-  width: min(50%, 560px);
+  width: min(58%, 680px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -288,7 +289,7 @@ button:disabled {
 
 #history-panel h2 {
   margin: 0 0 0.4rem;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 400;
   color: #f2ede3;
 }
@@ -361,7 +362,30 @@ button:disabled {
   margin: 0;
 }
 
-#credits-list {
+/* fila de label + <input type="range"> (volumen, zoom de la pantalla de
+   juego) dentro de .screen-panel - mismo ancho que los botones de al lado */
+.slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+}
+
+/* agrupa los 2 sliders que solo tienen sentido antes de arrancar una
+   partida nueva (duracion del dia, dias de la partida) - ver #new-game-options */
+#new-game-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.slider-row input[type="range"] {
+  width: 100%;
+}
+
+/* lista generica de .screen-panel: creditos, reglas activas del dia, y
+   estadisticas del resumen de fin de dia (ver #day-start-rules/#day-summary-stats) */
+.styled-list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -370,7 +394,7 @@ button:disabled {
   text-align: left;
 }
 
-#credits-list li {
+.styled-list li {
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #4a4658;
 }
@@ -397,7 +421,7 @@ button:disabled {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   margin-top: 0;
 }
 
@@ -406,7 +430,7 @@ button:disabled {
   padding: 0.3rem 0.8rem 0.3rem 0.25rem;
   color: rgba(242, 237, 227, 0.55);
   font-weight: 400;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   border-bottom: 1px solid rgba(242, 237, 227, 0.15);
@@ -417,7 +441,7 @@ button:disabled {
   background: transparent;
   padding: 0.35rem 0.8rem 0.35rem 0.25rem;
   text-align: left;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   border-bottom: 1px solid rgba(242, 237, 227, 0.08);
   white-space: nowrap;
 }
@@ -948,7 +972,7 @@ button:disabled {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(80vw, calc(70vh * 3670 / 2446));
+  width: calc(min(80vw, calc(70vh * 3670 / 2446)) * var(--scene-zoom));
   aspect-ratio: 3670 / 2446;
   border-radius: 8px;
   overflow: hidden;
