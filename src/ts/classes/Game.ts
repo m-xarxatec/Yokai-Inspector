@@ -10,6 +10,10 @@ import { Day } from "./Day.js";
 // wasRushed) - chica a proposito, es un descuido, no un error de reglas
 const RUSH_PENALTY = 1;
 
+// costo de la pista de la tienda (ver buyHint()) - la mas barata de las 3
+// compras, porque no garantiza nada si el visitante esta limpio
+const HINT_COST = 3;
+
 export class Game{
 
     #dayNumber: number;
@@ -377,6 +381,25 @@ export class Game{
     // recien el dia en que empieza a hacer falta.
     alienStampRuleActive(): boolean {
         return this.currentDay.getActiveRules().some((rule: Rule) => rule.getProperty() === "selloAlien");
+    }
+
+    get hintCost(): number {
+        return HINT_COST;
+    }
+
+    // tienda: revela que propiedad del visitante actual viola una regla hoy (o
+    // null si esta limpio - no hay nada que revelar, pero el costo se cobra
+    // igual, es el riesgo de comprarla "a ciegas"). Devuelve null tambien si no
+    // alcanza el dinero, sin cobrar nada (la UI ya deshabilita el boton en ese
+    // caso, esto es solo una segunda barrera).
+    buyHint(): string | null {
+        if (this.#money < HINT_COST) {
+            return null;
+        }
+        this.#money -= HINT_COST;
+        const visitor = this.#currentVisitor as Character;
+        const violatedRule = this.currentDay.evaluateCharacter(visitor);
+        return violatedRule === null ? null : violatedRule.getProperty();
     }
 
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es

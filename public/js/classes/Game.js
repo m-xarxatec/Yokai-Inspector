@@ -19,6 +19,9 @@ import { Day } from "./Day.js";
 // penalizacion por decidir sin revisar el pasaporte (ver decide(), parametro
 // wasRushed) - chica a proposito, es un descuido, no un error de reglas
 const RUSH_PENALTY = 1;
+// costo de la pista de la tienda (ver buyHint()) - la mas barata de las 3
+// compras, porque no garantiza nada si el visitante esta limpio
+const HINT_COST = 3;
 export class Game {
     constructor(playerName = "Jugador", totalDays = 7) {
         _Game_instances.add(this);
@@ -133,6 +136,23 @@ export class Game {
     // recien el dia en que empieza a hacer falta.
     alienStampRuleActive() {
         return this.currentDay.getActiveRules().some((rule) => rule.getProperty() === "selloAlien");
+    }
+    get hintCost() {
+        return HINT_COST;
+    }
+    // tienda: revela que propiedad del visitante actual viola una regla hoy (o
+    // null si esta limpio - no hay nada que revelar, pero el costo se cobra
+    // igual, es el riesgo de comprarla "a ciegas"). Devuelve null tambien si no
+    // alcanza el dinero, sin cobrar nada (la UI ya deshabilita el boton en ese
+    // caso, esto es solo una segunda barrera).
+    buyHint() {
+        if (__classPrivateFieldGet(this, _Game_money, "f") < HINT_COST) {
+            return null;
+        }
+        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - HINT_COST, "f");
+        const visitor = __classPrivateFieldGet(this, _Game_currentVisitor, "f");
+        const violatedRule = this.currentDay.evaluateCharacter(visitor);
+        return violatedRule === null ? null : violatedRule.getProperty();
     }
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
     // opcional para no romper a quien llame decide(accept) a secas (los tests, y

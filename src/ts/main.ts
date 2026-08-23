@@ -296,8 +296,9 @@ document.querySelectorAll(".back-link").forEach(button => {
 // el dia actual, tal como quedaria si se recargara la pagina a mitad de partida
 // (la partida guardada solo se actualiza al empezar cada dia, asi que sigue
 // disponible para "Continuar partida" desde donde arranco el dia). El boton
-// de pausa (#pause-btn) tiene su propio listener mas abajo, no entra aca.
-document.querySelectorAll(".exit-to-menu-btn:not(#pause-btn)").forEach(button => {
+// de pausa (#pause-btn) y el de la tienda (#shop-btn) tienen su propio
+// listener mas abajo, no entran aca.
+document.querySelectorAll(".exit-to-menu-btn:not(#pause-btn):not(#shop-btn)").forEach(button => {
   button.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
     soundManager.stopWrite(); // corta el sonido de escritura si todavia estaba sonando
@@ -330,6 +331,90 @@ document.querySelector("#pause-continue-btn")?.addEventListener("click", () => {
   soundManager.playNextButton(); // sonido de click del boton
   changeState("game");
   resumeDayTimer();
+});
+
+// --- tienda: comprar con el dinero acumulado durante la partida (ver
+// especificaciones-economia.md) ---
+document.querySelector("#shop-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  pauseDayTimer();
+  updateShopScreen();
+  changeState("shop");
+});
+
+document.querySelector("#shop-continue-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  changeState("game");
+  resumeDayTimer();
+});
+
+const HINT_HIGHLIGHT_MS = 2500;
+
+// traduce la propiedad de la regla violada (ver Rule.getProperty()) al elemento
+// que hay que resaltar - los rasgos fisicos (cuernos/ojos amarillos) se ven en
+// el personaje, no en el pasaporte. "selloAlien" no entra: nunca es la regla
+// violada que devuelve evaluateCharacter() (ver Rule.isViolated()).
+function hintTargetSelector(property: string): string | null {
+  if (property === "tieneCuernos") {
+    return ".part-horns";
+  }
+  if (property === "ojosAmarillos") {
+    return ".part-eyes";
+  }
+  if (property === "region") {
+    return "#passport-region";
+  }
+  if (property === "especieProhibida") {
+    return "#passport-species";
+  }
+  if (property === "sello") {
+    return "#passport-stamp";
+  }
+  return null;
+}
+
+// refresca el dinero mostrado y deshabilita los botones de compra que ya no
+// se pueden pagar - se llama al abrir la tienda y despues de cada compra
+function updateShopScreen(): void {
+  if (game === null) {
+    return;
+  }
+  const moneyEl = document.querySelector("#shop-money");
+  if (moneyEl !== null) {
+    moneyEl.textContent = String(game.money);
+  }
+  const hintBtn = document.querySelector("#shop-hint-btn") as HTMLButtonElement | null;
+  if (hintBtn !== null) {
+    hintBtn.disabled = game.money < game.hintCost;
+  }
+}
+
+document.querySelector("#shop-hint-btn")?.addEventListener("click", () => {
+  if (game === null) {
+    return;
+  }
+  soundManager.playNextButton(); // sonido de click del boton
+  const property = game.buyHint();
+  updateShopScreen();
+  const moneyCounterEl = document.querySelector("#money-counter");
+  if (moneyCounterEl !== null) {
+    moneyCounterEl.textContent = "Dinero: " + game.money;
+  }
+  if (property === null) {
+    return; // visitante limpio (o no alcanzaba el dinero) - nada que resaltar
+  }
+  const selector = hintTargetSelector(property);
+  if (selector === null) {
+    return;
+  }
+  const targetEl = document.querySelector(selector);
+  if (targetEl === null) {
+    return;
+  }
+  targetEl.classList.add("hint-highlight");
+  window.setTimeout(() => {
+    targetEl.classList.remove("hint-highlight");
+  }, HINT_HIGHLIGHT_MS);
 });
 
 document.querySelector("#pause-options-btn")?.addEventListener("click", () => {
@@ -916,6 +1001,10 @@ function renderVisitor(): void {
   }
 
   resetElementOffscreen(CHARACTER_ELEMENT);
+
+  // por si quedaba un resaltado de la pista de la tienda sin terminar de
+  // apagarse (ver #shop-hint-btn) - no tiene sentido sobre el visitante nuevo
+  document.querySelectorAll(".hint-highlight").forEach(el => el.classList.remove("hint-highlight"));
 
   // se mantienen deshabilitados hasta que el jugador abra el pasaporte (ver el
   // listener de click de #passport-object) - no se puede decidir a ciegas

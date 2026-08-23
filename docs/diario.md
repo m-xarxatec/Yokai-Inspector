@@ -467,3 +467,21 @@ Segunda pieza del documento de especificaciones. Antes de escribir nada se revis
 **Test 12 nuevo** en `docs/test-temporal.mjs`: un acierto apurado resta el `+2` normal más el `RUSH_PENALTY` sin tocar `#errors`; una decisión sin apurar (llamando a `decide()` con dos argumentos, como el resto del código viejo) no resta nada de más.
 
 Verificado con `npm run build` + los 35 tests de `docs/test-temporal.mjs` (31 anteriores + 4 nuevos) — todo en verde. No se probó en el navegador todavía (falta confirmar que el umbral de 700ms se siente bien jugando de verdad, no solo en los tests).
+
+---
+
+2026-08-23 (parte 4) — arranca la tienda: botón nuevo en el HUD y la primera compra (pista):
+
+Tercera pieza del documento de especificaciones. Antes de escribir código se definieron los 3 precios con Iralys: pista 3 (revisar pasaporte), tiempo extra 5 (+15s), indulto 8 (el más caro, puede salvar la partida). Esta sesión implementa la infraestructura de la tienda entera más la primera compra; tiempo extra e indulto quedan para las próximas dos.
+
+**HUD**: botón nuevo `#shop-btn` ("$"), a la izquierda del de pausa (`right: 6.5%` en `style.css`, mismo estilo que `.exit-to-menu-btn`). Reutiliza esa clase para el aspecto visual pero **no** el comportamiento — se agregó a la exclusión del handler compartido (`.exit-to-menu-btn:not(#pause-btn):not(#shop-btn)`) para que no mande al menú como el resto de esos botones. Abrir la tienda pausa el día entero (mismas `pauseDayTimer()`/`resumeDayTimer()` que ya usaba la pausa), igual criterio que Opciones.
+
+**Pantalla nueva `#shop-screen`**: mismo patrón `.screen-panel` que Pausa/Opciones/Créditos, con el dinero disponible arriba y un botón por compra (se van a ir agregando).
+
+**Pista (`Game.ts#buyHint()`)**: devuelve la propiedad de la regla que el visitante actual está violando (`Rule.getProperty()`, vía `currentDay.evaluateCharacter()`), o `null` si está limpio — en ese caso no hay nada que revelar, pero el costo se cobra igual, es el riesgo de comprarla "a ciegas". También devuelve `null` sin cobrar si no alcanza el dinero (la UI ya deshabilita el botón en ese caso; esto es solo una segunda barrera del lado de `Game`).
+
+**De la propiedad al resaltado visual**: función nueva `hintTargetSelector()` en `main.ts` traduce la propiedad devuelta al elemento a resaltar — los rasgos físicos (`tieneCuernos`/`ojosAmarillos`) se ven en el personaje (`.part-horns`/`.part-eyes`), el resto (`region`/`especieProhibida`/`sello`) en el campo correspondiente del pasaporte. Clase CSS nueva `.hint-highlight` (glow dorado, `@keyframes hint-glow`, se saca sola a los 2.5s). Se limpia cualquier resaltado que hubiera quedado colgado al renderizar el visitante siguiente (`renderVisitor()`), por si el jugador decide antes de que termine de apagarse.
+
+**Test 13 nuevo** en `docs/test-temporal.mjs`: confirma que la pista devuelve la propiedad correcta sobre un visitante sucio, que cobra igual sobre uno limpio sin devolver nada, y que no cobra nada si no alcanza el dinero. Encontró y corrigió un problema del propio test (no del código): `partidaEnDia(4)` decide sobre un solo visitante por día para llegar rápido al día 4, así que el cobro diario acumulado (4+5+9=18) puede dejar el dinero en negativo antes de probar la pista — se agregaron decisiones de más antes de buscar al visitante de prueba, para no confundir "no alcanza el dinero" con un fallo real de `buyHint()`.
+
+Verificado con `npm run build` + los 40 tests de `docs/test-temporal.mjs` (35 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.

@@ -458,3 +458,50 @@ const violationN = gameN.currentDay.evaluateCharacter(gameN.currentVisitor);
 gameN.decide(violationN === null); // sin tercer parametro, como todo el codigo anterior a este cambio
 console.log("dinero sin apurar:", gameN.money, "| esperado (10 + 2, sin penalizacion):", dineroAntesN + 2,
   gameN.money === dineroAntesN + 2 ? "[OK: wasRushed=false por defecto no rompe las llamadas viejas]" : "[FALLO]");
+
+// ================= TEST 13: tienda - pista (buyHint) =================
+console.log("\n========== TEST 13: la pista de la tienda revela la propiedad violada, cobra igual si el visitante esta limpio ==========");
+const gameO = await partidaEnDia(4); // dia 4: ya hay varias propiedades distintas en juego
+// el cobro diario acumulado hasta el dia 4 (4+5+9=18) ya deja el dinero casi en
+// 0 o negativo con solo la decision minima que hace partidaEnDia() por dia -
+// se juega un poco mas de margen antes de probar la pista, para no confundir
+// "no le alcanza" con un fallo real de buyHint()
+for (let i = 0; i < 15; i++) {
+  decidirBien(gameO);
+}
+const sucio = buscarVisitante(gameO, (visitor, violation) => violation !== null);
+if (sucio === null) {
+  console.log("[AVISO] no salio ningun visitante sucio, se saltea el chequeo");
+} else {
+  const violacionEsperada = gameO.currentDay.evaluateCharacter(sucio).getProperty();
+  const dineroAntesO = gameO.money;
+  const pista = gameO.buyHint();
+  console.log("pista devuelta:", pista, "| propiedad violada real:", violacionEsperada, pista === violacionEsperada ? "[OK]" : "[FALLO]");
+  console.log("dinero descontado:", dineroAntesO - gameO.money, "(esperado " + gameO.hintCost + ")", dineroAntesO - gameO.money === gameO.hintCost ? "[OK]" : "[FALLO]");
+}
+
+const gameP = await partidaEnDia(4);
+const limpio = buscarVisitante(gameP, (visitor, violation) => violation === null);
+if (limpio === null) {
+  console.log("[AVISO] no salio ningun visitante limpio, se saltea el chequeo");
+} else {
+  const dineroAntesP = gameP.money;
+  const pistaLimpia = gameP.buyHint();
+  console.log("pista sobre visitante limpio:", pistaLimpia, pistaLimpia === null ? "[OK: nada que revelar]" : "[FALLO]");
+  console.log("igual se cobro:", dineroAntesP - gameP.money === gameP.hintCost ? "[OK: el riesgo de comprarla a ciegas]" : "[FALLO]");
+}
+
+// sin dinero suficiente: no cobra nada y devuelve null (aunque la UI ya deshabilita
+// el boton en ese caso, esto es la segunda barrera del lado de Game.ts)
+const gameQ = new Game();
+await loadDataAsync(gameQ);
+gameQ.startNewGame();
+for (let i = 0; i < 3; i++) {
+  const violation = gameQ.currentDay.evaluateCharacter(gameQ.currentVisitor);
+  gameQ.decide(violation !== null); // fuerza la respuesta incorrecta, sin llegar a los 4 errores que pierden la partida
+}
+console.log("dinero tras 3 errores:", gameQ.money, "(por debajo del costo de la pista,", gameQ.hintCost + ")");
+const dineroAntesQ = gameQ.money;
+const pistaSinFondos = gameQ.buyHint();
+console.log("pista sin fondos:", pistaSinFondos, "| dinero sin cambios:", gameQ.money === dineroAntesQ,
+  pistaSinFondos === null && gameQ.money === dineroAntesQ ? "[OK: no cobra si no alcanza]" : "[FALLO]");

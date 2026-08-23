@@ -19,11 +19,11 @@ Ordenado por prioridad de implementación:
 
 1. **Ranking entre partidas (ya implementado)** — créditos acumulados por nombre de jugador, pantalla de Créditos.
 2. **Condición de final alternativo (ya implementado)** — `RICH_BOSS_MONEY` para el final "jefa millonaria".
-3. **Comprar pistas sobre la regla del día** (propuesta nueva) — p. ej. revelar una palabra prohibida del día 4 antes de tiempo, a cambio de dinero, para jugadores que van perdiendo por errores repetidos.
-4. **Comprar tiempo extra en el reloj de arena** (propuesta nueva) — encaja con `DAY_DURATION_MS` (ya configurable desde Opciones), sumaría unos segundos al día actual por un costo fijo.
-5. **"Seguro" contra un error** (propuesta nueva) — pagar para que el próximo error no reste una vida/no cuente para `#maxErrors`, pensado como mecánica de riesgo/recompensa coherente con el final de la jefa millonaria (arriesgar dinero para sobrevivir un día difícil).
+3. **Revisar pasaporte (pista) — ya implementado** — costo `3` (`Game.ts#buyHint()`/`hintCost`). Revela la propiedad de la regla que el visitante actual viola (resaltado visual en `main.ts`, 2.5s); si está limpio no resalta nada pero el costo se cobra igual — el riesgo de comprarla "a ciegas". Un uso por visitante (hay que comprarla de nuevo para el siguiente).
+4. **Comprar tiempo extra en el reloj de arena** (propuesta, todavía no implementada) — costo `5`, +15 segundos al día actual, encaja con `DAY_DURATION_MS` (ya configurable desde Opciones). Pensada como límite de 1 vez por día, para no quitarle presión al reloj.
+5. **"Indulto" (seguro contra un error)** (propuesta, todavía no implementada) — costo `8` (la más cara). El próximo error no cuenta para los 4 que pierden la partida (`#errors` no sube), aunque igual resta el -5 de esa decisión. Un indulto activo a la vez; si no se usa en el día, se pierde al terminar.
 
-Las compras 3-5 necesitan un punto de acceso en la UI durante el día — ver decisión en la sección 8 (botón nuevo en el HUD, no en Opciones).
+Las tres compras se accionan desde el botón `$` nuevo del HUD (junto al de pausa, `#shop-btn`), que abre la pantalla `#shop-screen` — decisión de la sección 8.
 
 ## 4. Tabla de valores económicos
 
@@ -65,6 +65,7 @@ No hay `bossLevel`; la progresión real es la cantidad de reglas activas de `Day
 ## 9. Estado de la implementación (actualizado tras esta sesión)
 - ✅ Cobro diario (`Game.ts#chargeDailyCost()`, campos `#dayCharge`/`#lastDayCharge`), enganchado en `endDay()` y mostrado en `#day-summary-screen`.
 - ✅ Penalización por decidir sin revisar (`Game.ts#decide()`, parámetro `wasRushed`, `RUSH_PENALTY = 1`), medida en `main.ts#resolveDecision()` y mostrada en `#day-summary-screen`.
-- ⬜ Pendiente: las 3 compras nuevas (pista, tiempo extra, seguro) y el botón de "Tienda" en el HUD.
+- ✅ Tienda: botón `#shop-btn` + pantalla `#shop-screen`. Pista implementada (`Game.ts#buyHint()`).
+- ⬜ Pendiente: tiempo extra y seguro (botones ya listados en la sección 3, todavía sin lógica).
 
 No quedan preguntas abiertas pendientes de discutir con Mike por ahora.
