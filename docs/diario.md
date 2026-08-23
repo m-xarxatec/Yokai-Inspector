@@ -535,3 +535,19 @@ No se tocó nada de `Game.ts` en esta sesión, solo `index.html`/`style.css`/`ma
 Iralys reemplazó el recorte provisorio de la flor (extraído a mano de `fondoPantallaJuegoT.png`, ver parte 7) por arte real: una ilustración completa de tienda (templete, carrito de compras, cofre con lupa y carta de interrogación, gato de la suerte, monedas), 1254×1254, guardada como `public/img/tienda/florHud.png` — carpeta nueva, reemplaza a `public/img/ui/` (que queda vacía y sin uso). Se corrigió la ruta en `style.css` (`background-image` de `#shop-btn`) y los dos comentarios que todavía mencionaban `img/ui/` (`index.html` y `style.css`). Como la imagen nueva también es cuadrada, no hizo falta tocar el `aspect-ratio: 1` del botón.
 
 Verificado con Playwright otra vez (mismo criterio que la parte 7): el ícono nuevo carga y se ve bien en el lugar de siempre, debajo del reloj de arena.
+
+---
+
+2026-08-23 (parte 9) — bug real encontrado: la pantalla de Opciones había quedado con la versión vieja tras el merge grande:
+
+Iralys notó que Opciones se ve distinto en `develop` que en su rama y pidió dejarlo como en `develop`. Investigando (`git diff origin/develop HEAD -- public/index.html`) apareció un bug real de la sesión del merge grande (parte 3, 2026-08-22/23): `index.html` había quedado con la versión VIEJA de Opciones (botón `#mute-toggle-btn`, "Sonido: ON/OFF") en vez de la de `develop` (sliders de volumen, tamaño de pantalla, duración del día y días de partida).
+
+**Por qué pasó**: en aquel merge, `git` marcó `index.html` como conflicto real, pero al revisarlo no aparecían marcadores `<<<<<<<`/`=======`/`>>>>>>>` en ningún lado — se asumió (mal) que ya estaba resuelto y solo faltaba `git add`. En realidad `git` había resuelto la sección de Opciones automáticamente quedándose con el lado de `actualIralys` (la versión vieja, de antes de que existiera el rework de volumen), sin dejar marcadores porque no hubo superposición línea por línea exacta - un merge "limpio" pero semánticamente incorrecto. La lógica de `main.ts` para los 4 sliders (`#volume-slider`, `#zoom-slider`, `#day-duration-slider`, `#total-days-slider`) sí se había traído bien desde `develop` en ese mismo merge (esos conflictos sí tenían marcadores y se resolvieron a mano) - por eso el código funcionaba pero los controles no existían en el HTML, y `#mute-toggle-btn` quedó como botón fantasma sin ningún listener en `main.ts`.
+
+**Corrección**: se reemplazó la sección `#options-screen` de `index.html` por la de `origin/develop` tal cual (los 4 `slider-row` + `#new-game-options`), se sacó `#mute-toggle-btn`. El CSS (`.slider-row`, `#new-game-options`) ya estaba bien desde el merge, no hizo falta tocarlo.
+
+**Lección para mergear**: que un archivo no tenga marcadores de conflicto no prueba que el auto-merge haya elegido el lado correcto en cada sección — hay que comparar contra ambos lados semánticamente, no solo buscar `<<<<<<<`.
+
+Verificado con Playwright: los 4 sliders aparecen y se ven bien en Opciones, `#mute-toggle-btn` ya no existe en ningún lado del código. Se corrió también toda la suite de `docs/test-temporal.mjs` (52 tests, sin relación directa pero por las dudas) — sigue en verde.
+
+**Pendiente, no relacionado con Opciones pero encontrado de paso**: `index.html` todavía trae el `<link>` viejo a Google Fonts (Jost/Marcellus) en el `<head>`, que `develop` ya no tiene (se sacó cuando se decidió alojar las tipografías localmente, ver sesión del 2026-08-15). Es el mismo leftover que ya se había detectado y dejado afuera A PROPÓSITO en un merge anterior hacia `objetosMike` (ver entrada del 2026-08-17), pero nunca se limpió en `actualIralys` misma. No se tocó en esta sesión porque no fue lo que Iralys pidió arreglar.
