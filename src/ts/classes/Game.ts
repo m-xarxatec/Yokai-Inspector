@@ -6,6 +6,9 @@ import { Yokai } from "./Yokai.js";
 import { Rule } from "./Rule.js";
 import { Day } from "./Day.js";
 
+// penalizacion por decidir sin revisar el pasaporte (ver decide(), parametro
+// wasRushed) - chica a proposito, es un descuido, no un error de reglas
+const RUSH_PENALTY = 1;
 
 export class Game{
 
@@ -44,11 +47,16 @@ export class Game{
     // se congela en #lastDayCharge recien cuando ESE dia termina, igual que
     // #dayMoney/#lastDayMoney
     #dayCharge: number;
+    // penalizacion de "decidiste sin revisar" (ver decide(), parametro wasRushed) -
+    // NO suma a #errors, es un descuido de procedimiento aparte de si la decision
+    // en si fue correcta o no. Mismo patron dia/lastDay que #dayMoney/#dayCharge.
+    #dayRushPenalty: number;
     #lastDayAccepted: number;
     #lastDayRejected: number;
     #lastDayErrors: number;
     #lastDayMoney: number;
     #lastDayCharge: number;
+    #lastDayRushPenalty: number;
 
     constructor(playerName: string = "Jugador", totalDays: number = 7){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
@@ -74,11 +82,13 @@ export class Game{
         this.#dayErrors = 0;
         this.#dayMoney = 0;
         this.#dayCharge = 0;
+        this.#dayRushPenalty = 0;
         this.#lastDayAccepted = 0;
         this.#lastDayRejected = 0;
         this.#lastDayErrors = 0;
         this.#lastDayMoney = 0;
         this.#lastDayCharge = 0;
+        this.#lastDayRushPenalty = 0;
     }
 
     loadData(onComplete: () => void): void {
@@ -116,6 +126,7 @@ export class Game{
         this.#dayRejected = 0;
         this.#dayErrors = 0;
         this.#dayMoney = 0;
+        this.#dayRushPenalty = 0;
         this.#currentVisitor = this.#generateVisitor();
         saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays})
     }
@@ -371,7 +382,12 @@ export class Game{
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
     // opcional para no romper a quien llame decide(accept) a secas (los tests, y
     // todo el codigo anterior al dia 6).
-    decide(accept: boolean, usedAlienStamp: boolean = false): void {
+    // wasRushed = el jugador decidio casi al toque de abrir el pasaporte (ver
+    // RUSH_THRESHOLD_MS en main.ts) - senal de que no lo reviso de verdad. Resta
+    // dinero aparte, pero NO suma a #errors: es un descuido de procedimiento,
+    // distinto de si la decision en si fue correcta o no (ver especificaciones-
+    // economia.md, seccion 4).
+    decide(accept: boolean, usedAlienStamp: boolean = false, wasRushed: boolean = false): void {
     const currentDay = this.#days[this.#dayNumber - 1];
     const visitor = this.#currentVisitor as Character;
     const violatedRule = currentDay.evaluateCharacter(visitor);
@@ -394,6 +410,11 @@ export class Game{
         this.#errors += 1;
         this.#dayMoney -= 5;
         this.#dayErrors += 1;
+    }
+
+    if (wasRushed) {
+        this.#money -= RUSH_PENALTY;
+        this.#dayRushPenalty += RUSH_PENALTY;
     }
 
     this.#visitorsSeenToday += 1;
@@ -428,6 +449,7 @@ export class Game{
     this.#lastDayErrors = this.#dayErrors;
     this.#lastDayMoney = this.#dayMoney;
     this.#lastDayCharge = this.#dayCharge;
+    this.#lastDayRushPenalty = this.#dayRushPenalty;
     this.#dayNumber += 1;
     if (this.isWon()) {
         saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName, totalDays: this.#totalDays });
@@ -500,6 +522,9 @@ export class Game{
     }
     get lastDayCharge(): number {
         return this.#lastDayCharge;
+    }
+    get lastDayRushPenalty(): number {
+        return this.#lastDayRushPenalty;
     }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7

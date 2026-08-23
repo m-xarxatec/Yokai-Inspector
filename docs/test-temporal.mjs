@@ -430,3 +430,31 @@ gameL.endDay(); // el cobro diario se suma encima del dinero ya negativo
 console.log("dinero negativo antes del cobro:", 10 - 15, "| dinero real tras cobrar el dia 2:", gameL.money,
   gameL.money < 0 ? "[OK: el cobro diario puede dejar el dinero mas negativo todavia]" : "[FALLO]");
 console.log("isLost() con 3 errores y dinero negativo:", gameL.isLost(), gameL.isLost() === false ? "[OK: quedar en negativo no es motivo de derrota]" : "[FALLO]");
+
+// ================= TEST 12: penalizacion por decidir sin revisar (wasRushed) =================
+console.log("\n========== TEST 12: decidir muy rapido (wasRushed) resta dinero aparte, sin sumar a #errors ==========");
+resetMocks();
+const gameM = new Game();
+await loadDataAsync(gameM);
+gameM.startNewGame();
+// decision CORRECTA pero apurada: dinero solo deberia bajar el RUSH_PENALTY (1),
+// no el -5 de un error - #errors tiene que quedar en 0
+const erroresAntesM = gameM.errors;
+const dineroAntesM = gameM.money;
+const violationM = gameM.currentDay.evaluateCharacter(gameM.currentVisitor);
+gameM.decide(violationM === null, false, true); // acierta la decision, pero apurado
+console.log("dinero tras acierto apurado:", gameM.money, "| esperado (10 + 2 - 1 de penalizacion):", dineroAntesM + 2 - 1,
+  gameM.money === dineroAntesM + 2 - 1 ? "[OK]" : "[FALLO]");
+console.log("errores tras acierto apurado:", gameM.errors, gameM.errors === erroresAntesM ? "[OK: la penalizacion no suma a #errors]" : "[FALLO]");
+gameM.endDay();
+console.log("resumen del dia, descuido acumulado:", gameM.lastDayRushPenalty, gameM.lastDayRushPenalty === 1 ? "[OK]" : "[FALLO]");
+
+// una decision SIN apurar (wasRushed por defecto en false) no debe restar nada aparte
+const gameN = new Game();
+await loadDataAsync(gameN);
+gameN.startNewGame();
+const dineroAntesN = gameN.money;
+const violationN = gameN.currentDay.evaluateCharacter(gameN.currentVisitor);
+gameN.decide(violationN === null); // sin tercer parametro, como todo el codigo anterior a este cambio
+console.log("dinero sin apurar:", gameN.money, "| esperado (10 + 2, sin penalizacion):", dineroAntesN + 2,
+  gameN.money === dineroAntesN + 2 ? "[OK: wasRushed=false por defecto no rompe las llamadas viejas]" : "[FALLO]");

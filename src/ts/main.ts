@@ -742,6 +742,14 @@ let errorReactionPending = false;
 let dayElapsedMs = 0;
 let dayResumedAt: number | null = null;
 
+// instante en que se habilito decidir sobre el pasaporte actual (ver el click
+// de #passport-object mas abajo, que llama setDecisionStampsEnabled(true)) -
+// null mientras el pasaporte esta cerrado. Se usa en resolveDecision() para
+// detectar si el jugador decidio demasiado rapido como para haberlo revisado
+// de verdad (ver RUSH_THRESHOLD_MS y Game.decide(), parametro wasRushed).
+let passportOpenedAt: number | null = null;
+const RUSH_THRESHOLD_MS = 700;
+
 function currentDayElapsedMs(): number {
   if (dayResumedAt === null) {
     return dayElapsedMs;
@@ -937,6 +945,7 @@ function renderVisitor(): void {
     passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
     passportEl.classList.add("closed");
   }
+  passportOpenedAt = null;
 
   window.setTimeout(() => {
     if (passportEl !== null) {
@@ -1114,6 +1123,11 @@ function resolveDecision(accept: boolean, usedAlienStamp: boolean = false): void
   if (game === null) {
     return;
   }
+  // se mide ACA (apenas el jugador suelta el sello), no mas abajo cuando recien
+  // se llama a game.decide() - esa llamada esta atras de ~2s de animacion, no
+  // del tiempo que el jugador realmente tardo en revisar el pasaporte
+  const wasRushed = passportOpenedAt !== null && (performance.now() - passportOpenedAt) < RUSH_THRESHOLD_MS;
+
   // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
   // que seguir corriendo mientras se decide (ver startDayTimer()). Se marca
   // que hay una decision en curso para que, si el dia vence en el medio, no
@@ -1171,7 +1185,7 @@ function resolveDecision(accept: boolean, usedAlienStamp: boolean = false): void
           if (game === null) {
             return;
           }
-          game.decide(accept, usedAlienStamp);
+          game.decide(accept, usedAlienStamp, wasRushed);
 
           const justErred = game.errors > errorsBefore;
           if (justErred) {
@@ -1351,6 +1365,7 @@ document.querySelector("#passport-object")?.addEventListener("click", () => {
     passportEl.classList.remove("closed");
     passportEl.classList.add("open");
     setDecisionStampsEnabled(true);
+    passportOpenedAt = performance.now();
   }, PASSPORT_OPEN_DELAY_MS);
 });
 
@@ -1383,6 +1398,7 @@ function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
   statsEl.innerHTML = "";
   const money = game.lastDayMoney;
   const charge = game.lastDayCharge;
+  const rushPenalty = game.lastDayRushPenalty;
   const stats = [
     "Aceptados: " + game.lastDayAccepted,
     "Rechazados: " + game.lastDayRejected,
@@ -1394,6 +1410,11 @@ function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
   // linea si no hubo cobro
   if (charge > 0) {
     stats.push("Cobro diario: -" + charge);
+  }
+  // solo aparece si hubo al menos una decision demasiado rapida ese dia (ver
+  // RUSH_THRESHOLD_MS)
+  if (rushPenalty > 0) {
+    stats.push("Descuido (decidiste sin revisar): -" + rushPenalty);
   }
   stats.forEach(line => {
     const item = document.createElement("li");

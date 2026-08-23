@@ -9,13 +9,16 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_playerName, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_dayCharge, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_lastDayCharge, _Game_startDay, _Game_generateVisitor, _Game_chargeDailyCost, _Game_pickPhrase, _Game_pickAlienFace, _Game_recordDayVisitors, _Game_recordLetThrough;
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_playerName, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_dayCharge, _Game_dayRushPenalty, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_lastDayCharge, _Game_lastDayRushPenalty, _Game_startDay, _Game_generateVisitor, _Game_chargeDailyCost, _Game_pickPhrase, _Game_pickAlienFace, _Game_recordDayVisitors, _Game_recordLetThrough;
 import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, addCredits, addResultToStreak } from "../Storage.js";
 import { Passport } from "./Passport.js";
 import { Human } from "./Human.js";
 import { Yokai } from "./Yokai.js";
 import { Rule } from "./Rule.js";
 import { Day } from "./Day.js";
+// penalizacion por decidir sin revisar el pasaporte (ver decide(), parametro
+// wasRushed) - chica a proposito, es un descuido, no un error de reglas
+const RUSH_PENALTY = 1;
 export class Game {
     constructor(playerName = "Jugador", totalDays = 7) {
         _Game_instances.add(this);
@@ -54,11 +57,16 @@ export class Game {
         // se congela en #lastDayCharge recien cuando ESE dia termina, igual que
         // #dayMoney/#lastDayMoney
         _Game_dayCharge.set(this, void 0);
+        // penalizacion de "decidiste sin revisar" (ver decide(), parametro wasRushed) -
+        // NO suma a #errors, es un descuido de procedimiento aparte de si la decision
+        // en si fue correcta o no. Mismo patron dia/lastDay que #dayMoney/#dayCharge.
+        _Game_dayRushPenalty.set(this, void 0);
         _Game_lastDayAccepted.set(this, void 0);
         _Game_lastDayRejected.set(this, void 0);
         _Game_lastDayErrors.set(this, void 0);
         _Game_lastDayMoney.set(this, void 0);
         _Game_lastDayCharge.set(this, void 0);
+        _Game_lastDayRushPenalty.set(this, void 0);
         __classPrivateFieldSet(this, _Game_playerName, playerName.trim() !== "" ? playerName : "Jugador", "f");
         __classPrivateFieldSet(this, _Game_dayNumber, 1, "f");
         __classPrivateFieldSet(this, _Game_errors, 0, "f");
@@ -82,11 +90,13 @@ export class Game {
         __classPrivateFieldSet(this, _Game_dayErrors, 0, "f");
         __classPrivateFieldSet(this, _Game_dayMoney, 0, "f");
         __classPrivateFieldSet(this, _Game_dayCharge, 0, "f");
+        __classPrivateFieldSet(this, _Game_dayRushPenalty, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayAccepted, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayRejected, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayErrors, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayMoney, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayCharge, 0, "f");
+        __classPrivateFieldSet(this, _Game_lastDayRushPenalty, 0, "f");
     }
     loadData(onComplete) {
         Promise.all([
@@ -127,7 +137,12 @@ export class Game {
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
     // opcional para no romper a quien llame decide(accept) a secas (los tests, y
     // todo el codigo anterior al dia 6).
-    decide(accept, usedAlienStamp = false) {
+    // wasRushed = el jugador decidio casi al toque de abrir el pasaporte (ver
+    // RUSH_THRESHOLD_MS en main.ts) - senal de que no lo reviso de verdad. Resta
+    // dinero aparte, pero NO suma a #errors: es un descuido de procedimiento,
+    // distinto de si la decision en si fue correcta o no (ver especificaciones-
+    // economia.md, seccion 4).
+    decide(accept, usedAlienStamp = false, wasRushed = false) {
         const currentDay = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1];
         const visitor = __classPrivateFieldGet(this, _Game_currentVisitor, "f");
         const violatedRule = currentDay.evaluateCharacter(visitor);
@@ -148,6 +163,10 @@ export class Game {
             __classPrivateFieldSet(this, _Game_errors, __classPrivateFieldGet(this, _Game_errors, "f") + 1, "f");
             __classPrivateFieldSet(this, _Game_dayMoney, __classPrivateFieldGet(this, _Game_dayMoney, "f") - 5, "f");
             __classPrivateFieldSet(this, _Game_dayErrors, __classPrivateFieldGet(this, _Game_dayErrors, "f") + 1, "f");
+        }
+        if (wasRushed) {
+            __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - RUSH_PENALTY, "f");
+            __classPrivateFieldSet(this, _Game_dayRushPenalty, __classPrivateFieldGet(this, _Game_dayRushPenalty, "f") + RUSH_PENALTY, "f");
         }
         __classPrivateFieldSet(this, _Game_visitorsSeenToday, __classPrivateFieldGet(this, _Game_visitorsSeenToday, "f") + 1, "f");
         if (accept) {
@@ -179,6 +198,7 @@ export class Game {
         __classPrivateFieldSet(this, _Game_lastDayErrors, __classPrivateFieldGet(this, _Game_dayErrors, "f"), "f");
         __classPrivateFieldSet(this, _Game_lastDayMoney, __classPrivateFieldGet(this, _Game_dayMoney, "f"), "f");
         __classPrivateFieldSet(this, _Game_lastDayCharge, __classPrivateFieldGet(this, _Game_dayCharge, "f"), "f");
+        __classPrivateFieldSet(this, _Game_lastDayRushPenalty, __classPrivateFieldGet(this, _Game_dayRushPenalty, "f"), "f");
         __classPrivateFieldSet(this, _Game_dayNumber, __classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, "f");
         if (this.isWon()) {
             saveToHistory({ day: __classPrivateFieldGet(this, _Game_totalDays, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "victoria", name: __classPrivateFieldGet(this, _Game_playerName, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
@@ -249,6 +269,9 @@ export class Game {
     get lastDayCharge() {
         return __classPrivateFieldGet(this, _Game_lastDayCharge, "f");
     }
+    get lastDayRushPenalty() {
+        return __classPrivateFieldGet(this, _Game_lastDayRushPenalty, "f");
+    }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
     get daysCompleted() {
@@ -267,12 +290,13 @@ export class Game {
         return true;
     }
 }
-_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_playerName = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_dayCharge = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_lastDayCharge = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
+_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_playerName = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_dayCharge = new WeakMap(), _Game_dayRushPenalty = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_lastDayCharge = new WeakMap(), _Game_lastDayRushPenalty = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
     __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
     __classPrivateFieldSet(this, _Game_dayAccepted, 0, "f");
     __classPrivateFieldSet(this, _Game_dayRejected, 0, "f");
     __classPrivateFieldSet(this, _Game_dayErrors, 0, "f");
     __classPrivateFieldSet(this, _Game_dayMoney, 0, "f");
+    __classPrivateFieldSet(this, _Game_dayRushPenalty, 0, "f");
     __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_instances, "m", _Game_generateVisitor).call(this), "f");
     saveCurrentGame({ dayNumber: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
 }, _Game_generateVisitor = function _Game_generateVisitor() {

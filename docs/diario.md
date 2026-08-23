@@ -451,3 +451,19 @@ Primera pieza del documento de especificaciones que pasa de propuesta a código:
 **Test 11 nuevo** en `docs/test-temporal.mjs`: confirma que el día 1 no cobra, que el monto coincide con `2 + reglas activas` del día 2, y que forzar el dinero a negativo (con solo 3 errores, sin llegar a los 4 que pierden la partida) más el cobro diario deja el dinero todavía más negativo sin que `isLost()` se active — la decisión de que quedar en negativo no es motivo de derrota, tal como se había definido en la sesión anterior.
 
 Verificado con `npm run build` + los 31 tests de `docs/test-temporal.mjs` (26 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.
+
+---
+
+2026-08-23 (parte 3) — se implementa la penalización por decidir sin revisar el pasaporte:
+
+Segunda pieza del documento de especificaciones. Antes de escribir nada se revisaron las dos ideas originales de "error de procedimiento" (dejar pasar un visitante peligroso sin regla activa, o exceder el tiempo sin decidir) y las dos se descartaron por no aplicar al código real: la primera no puede pasar nunca (`#generateVisitor()` solo pone cuernos/ojos amarillos cuando la regla ya está activa, así que siempre cae en el -5 normal de `decide()`), y la segunda penalizaría a todo el mundo al final de cada día por igual, porque siempre queda un visitante nuevo sin decidir cuando suena el timer (se genera uno apenas se decide el anterior) — no depende de ninguna acción evitable del jugador.
+
+**Idea nueva, decidida con Iralys**: penalizar decidir demasiado rápido como para haber revisado el pasaporte de verdad, sin importar si la decisión en sí fue correcta.
+
+**Dónde se mide el tiempo**: no en el momento en que se llama a `Game.decide()` dentro de `resolveDecision()` (main.ts) — esa llamada está atrás de ~2 segundos de animación del sello y el pasaporte, no refleja cuánto tardó el jugador de verdad. Se mide en cambio desde `setDecisionStampsEnabled(true)` (el click de `#passport-object`, cuando se habilita decidir) hasta el instante en que se invoca `resolveDecision()` (cuando el jugador suelta el sello) — variable nueva `passportOpenedAt` en `main.ts`, umbral `RUSH_THRESHOLD_MS = 700`.
+
+**Dónde vive en `Game.ts`**: `decide()` suma un tercer parámetro opcional, `wasRushed` (default `false`, para no romper las llamadas de 2 argumentos que ya existían en tests y en el resto del código). Resta `RUSH_PENALTY = 1` de `#money` de forma independiente al acierto/error de la decisión — nunca suma a `#errors`, es un descuido de procedimiento, no un error de reglas. Mismo patrón día/lastDay que `#dayMoney`/`#dayCharge`: campos nuevos `#dayRushPenalty`/`#lastDayRushPenalty`, con línea nueva ("Descuido (decidiste sin revisar): -N") en `#day-summary-screen`, oculta si no hubo ninguna decisión apurada ese día.
+
+**Test 12 nuevo** en `docs/test-temporal.mjs`: un acierto apurado resta el `+2` normal más el `RUSH_PENALTY` sin tocar `#errors`; una decisión sin apurar (llamando a `decide()` con dos argumentos, como el resto del código viejo) no resta nada de más.
+
+Verificado con `npm run build` + los 35 tests de `docs/test-temporal.mjs` (31 anteriores + 4 nuevos) — todo en verde. No se probó en el navegador todavía (falta confirmar que el umbral de 700ms se siente bien jugando de verdad, no solo en los tests).
