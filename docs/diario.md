@@ -584,3 +584,33 @@ Se usó el agente `.opencode/agents/generar-documentacion-html.md` para generar 
 **4 diagramas Mermaid** (clases, flujo de una partida, secuencia de una decisión, flujo de trabajo del equipo), con código de color para Grupo A/Grupo B, verificados en el navegador con Playwright: los 4 renderizan como SVG sin errores de consola. El de flujo de trabajo del equipo usa un `flowchart` en vez de un `gitGraph` literal — el historial real tiene demasiados merges/ramas como para que un `gitGraph` fiel se leyera bien, así que se resume el patrón (cada quien en su rama, integrando contra `develop`) más 3 bugs de integración reales documentados en el diario, incluido el de la pantalla de Opciones de esta misma sesión (parte 9).
 
 No se modificó ningún archivo de código del proyecto — el agente es de solo lectura, como indica su propia definición.
+
+---
+
+2026-08-23 (parte 12) — documento de preparación para la defensa oral de Iralys:
+
+Se generó `especificaciones-defensa-iralys.md` a partir de un agente nuevo (distinto al de documentación técnica de la parte 11) que Iralys pasó por texto, sin guardarlo como archivo aparte en `.opencode/agents/` — solo se pidió generar el documento, no dejar el agente reutilizable. A diferencia del documento técnico genérico de la parte 11, este es personal y con un alcance mucho más acotado: solo el código de Iralys (`Rule.ts`, `Day.ts`, `Storage.ts`, `Game.ts`, su parte de `main.ts`, `SoundManager.ts`/`MusicManager.ts`), explicado línea por línea, con argumentos de defensa y preguntas de examen ya respondidas en primera persona.
+
+**Se releyeron `Game.ts`, `SoundManager.ts` y `MusicManager.ts` completos de nuevo** (cambiaron mucho en esta sesión con el sistema económico) para citar código exacto, no de memoria. Se marcaron explícitamente dos funciones de `main.ts` como "atribución dudosa" en vez de asignarlas a ciegas: `preloadCharacterImages()`/`preloadImages()` y `startCoinSpin()` — ninguna de las dos es claramente "ciclo de juego" ni claramente "arte/drag&drop", y el diario no deja constancia de quién las escribió.
+
+**Un hallazgo se convirtió en pregunta de examen con respuesta honesta**: la confusión de `reglas.json` usando `"dia"` como ID de regla en vez de día calendario (ya documentada en la parte 11) se redactó como pregunta 7 de la sección final, con una respuesta que reconoce que el nombre del campo podría haber sido mejor (`ruleId`) — a pedido implícito del propio agente, que insiste en preparar respuestas defendibles, no en ocultar decisiones discutibles.
+
+No se modificó ningún archivo de código — mismo criterio de solo lectura que la parte 11.
+
+---
+
+2026-08-23 (parte 13) — la defensa oral pasa a HTML con colores, tablas y diagramas:
+
+Iralys pidió deshacer el commit del `.md` de la parte 12 (nunca se había pusheado, así que se deshizo sin riesgo con `git reset --mixed HEAD~1`, dejando el archivo en el disco) y usarlo como fuente para armar `especificaciones-defensa-iralys.html` — una versión visual del mismo contenido, no un resumen: mismo código citado, mismas explicaciones línea por línea, mismos argumentos de defensa y las 10 preguntas de examen, pero con el sistema de diseño oscuro ya usado en `documentacion-proyecto.html` (parte 11) más elementos nuevos pensados para este documento en particular:
+
+- Un diagrama de flujo mostrando visualmente la trampa de examen de `reglas.json`/`dias.json` (qué ID de regla se activa en qué día calendario real).
+- Un gráfico de barras comparando los 7 montos del sistema económico (aciertos, errores, cobro diario, las 3 compras de la tienda) a simple vista.
+- Un árbol de decisión completo de `Game.decide()` (correcto/incorrecto, indulto, apuro, derrota) en un solo diagrama.
+- Un diagrama de estados para el temporizador (Corriendo/Pausado/EsperandoSuelte/Vencido) y uno de secuencia para el bug real de `SoundManager` (el `AbortError` sin clonar el audio).
+- Tablas para las claves de `localStorage`, el patrón `#dayX`/`#lastDayX` de `Game.ts`, y la comparación `SoundManager` vs `MusicManager`.
+
+**Dos diagramas necesitaron un ajuste después de verificarlos con Playwright**: la última nota del diagrama de secuencia de audio quedaba cortada visualmente (texto de dos líneas mal calculado por Mermaid, se acortó a una sola línea con `Note over SM,A2` en vez de `Note over A2` solo), y las etiquetas de `pauseDayTimer()`/`resumeDayTimer()` en el diagrama de estados se superponían por quedar muy pegadas — se acortaron las etiquetas del diagrama y la explicación completa se movió a un párrafo aparte debajo. También se redujo el diagrama de `reglas.json`/`dias.json` de 7 cajas a 3 (agrupando los días 1 a 5, que no tienen truco, y dejando solo los días 6-7 que sí lo tienen) porque con las 7 el texto quedaba demasiado chico para leerse.
+
+El `.md` de la parte 12 queda en el disco, sin trackear en git — solo se commitea el `.html`, que es la versión que Iralys pidió como resultado final.
+
+Verificado con Playwright: los 5 diagramas renderizan como SVG sin errores de consola, confirmado dos veces (antes y después de los ajustes de superposición).
