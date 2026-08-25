@@ -6,6 +6,22 @@ import { Yokai } from "./Yokai.js";
 import { Rule } from "./Rule.js";
 import { Day } from "./Day.js";
 
+// penalizacion por decidir sin revisar el pasaporte (ver decide(), parametro
+// wasRushed) - chica a proposito, es un descuido, no un error de reglas
+const RUSH_PENALTY = 1;
+
+// costo de la pista de la tienda (ver buyHint()) - la mas barata de las 3
+// compras, porque no garantiza nada si el visitante esta limpio
+const HINT_COST = 3;
+
+// costo del tiempo extra de la tienda (ver buyExtraTime()) - los segundos que
+// suma los pone main.ts (EXTRA_TIME_MS), Game.ts solo controla el dinero y el
+// limite de una vez por dia
+const EXTRA_TIME_COST = 5;
+
+// costo del indulto de la tienda (ver buyInsurance()) - la mas cara de las 3,
+// porque puede directamente salvar la partida absorbiendo el 4to error
+const INSURANCE_COST = 8;
 
 export class Game{
 
@@ -39,10 +55,28 @@ export class Game{
     #dayRejected: number;
     #dayErrors: number;
     #dayMoney: number;
+    // cobro diario (gastos fijos) que costo empezar el dia EN CURSO - se fija una
+    // sola vez en endDay() al entrar a un dia nuevo (0 el dia 1, que no cobra) y
+    // se congela en #lastDayCharge recien cuando ESE dia termina, igual que
+    // #dayMoney/#lastDayMoney
+    #dayCharge: number;
+    // penalizacion de "decidiste sin revisar" (ver decide(), parametro wasRushed) -
+    // NO suma a #errors, es un descuido de procedimiento aparte de si la decision
+    // en si fue correcta o no. Mismo patron dia/lastDay que #dayMoney/#dayCharge.
+    #dayRushPenalty: number;
     #lastDayAccepted: number;
     #lastDayRejected: number;
     #lastDayErrors: number;
     #lastDayMoney: number;
+    #lastDayCharge: number;
+    #lastDayRushPenalty: number;
+    // tienda: limite de 1 tiempo extra comprado por dia (ver buyExtraTime()) -
+    // se resetea en #startDay(), no sobrevive al dia siguiente
+    #usedExtraTimeToday: boolean;
+    // tienda: indulto activo (ver buyInsurance() y decide()) - absorbe el
+    // proximo error para que no cuente para #errors, se consume al usarse y
+    // tambien se resetea en #startDay() si no se llego a gastar ese dia
+    #hasInsurance: boolean;
 
     constructor(playerName: string = "Jugador", totalDays: number = 7){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
@@ -67,10 +101,16 @@ export class Game{
         this.#dayRejected = 0;
         this.#dayErrors = 0;
         this.#dayMoney = 0;
+        this.#dayCharge = 0;
+        this.#dayRushPenalty = 0;
         this.#lastDayAccepted = 0;
         this.#lastDayRejected = 0;
         this.#lastDayErrors = 0;
         this.#lastDayMoney = 0;
+        this.#lastDayCharge = 0;
+        this.#lastDayRushPenalty = 0;
+        this.#usedExtraTimeToday = false;
+        this.#hasInsurance = false;
     }
 
     loadData(onComplete: () => void): void {
@@ -108,6 +148,9 @@ export class Game{
         this.#dayRejected = 0;
         this.#dayErrors = 0;
         this.#dayMoney = 0;
+        this.#dayRushPenalty = 0;
+        this.#usedExtraTimeToday = false;
+        this.#hasInsurance = false;
         this.#currentVisitor = this.#generateVisitor();
         saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays})
     }
@@ -310,6 +353,17 @@ export class Game{
         return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
     }
 
+    // gastos fijos de vivir el dia que arranca: escala con la cantidad de reglas
+    // activas de ese dia (mas reglas, mas visitantes, mas presion economica).
+    // Puede dejar #money en negativo, eso no termina la partida por si solo
+    // (la unica condicion de derrota es isLost()).
+    #chargeDailyCost(): void {
+        const activeRulesCount = this.currentDay.getActiveRules().length;
+        const cost = 2 + activeRulesCount;
+        this.#dayCharge = cost;
+        this.#money -= cost;
+    }
+
     #pickPhrase(): string {
         return this.#phrases[Math.floor(Math.random() * this.#phrases.length)];
     }
@@ -349,10 +403,72 @@ export class Game{
         return this.currentDay.getActiveRules().some((rule: Rule) => rule.getProperty() === "selloAlien");
     }
 
+    get hintCost(): number {
+        return HINT_COST;
+    }
+
+    // tienda: revela que propiedad del visitante actual viola una regla hoy (o
+    // null si esta limpio - no hay nada que revelar, pero el costo se cobra
+    // igual, es el riesgo de comprarla "a ciegas"). Devuelve null tambien si no
+    // alcanza el dinero, sin cobrar nada (la UI ya deshabilita el boton en ese
+    // caso, esto es solo una segunda barrera).
+    buyHint(): string | null {
+        if (this.#money < HINT_COST) {
+            return null;
+        }
+        this.#money -= HINT_COST;
+        const visitor = this.#currentVisitor as Character;
+        const violatedRule = this.currentDay.evaluateCharacter(visitor);
+        return violatedRule === null ? null : violatedRule.getProperty();
+    }
+
+    get extraTimeCost(): number {
+        return EXTRA_TIME_COST;
+    }
+    get usedExtraTimeToday(): boolean {
+        return this.#usedExtraTimeToday;
+    }
+
+    // tienda: cuantos segundos sumar al reloj del dia los pone main.ts
+    // (EXTRA_TIME_MS) - aca solo se controla el dinero y el limite de una vez
+    // por dia (si no, el reloj de arena, que es la presion central del juego,
+    // dejaria de importar)
+    buyExtraTime(): boolean {
+        if (this.#money < EXTRA_TIME_COST || this.#usedExtraTimeToday) {
+            return false;
+        }
+        this.#money -= EXTRA_TIME_COST;
+        this.#usedExtraTimeToday = true;
+        return true;
+    }
+
+    get insuranceCost(): number {
+        return INSURANCE_COST;
+    }
+    get hasInsurance(): boolean {
+        return this.#hasInsurance;
+    }
+
+    // tienda: activa el indulto (ver decide()) - un solo indulto activo a la
+    // vez, no se puede comprar otro encima del que ya esta activo
+    buyInsurance(): boolean {
+        if (this.#money < INSURANCE_COST || this.#hasInsurance) {
+            return false;
+        }
+        this.#money -= INSURANCE_COST;
+        this.#hasInsurance = true;
+        return true;
+    }
+
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
     // opcional para no romper a quien llame decide(accept) a secas (los tests, y
     // todo el codigo anterior al dia 6).
-    decide(accept: boolean, usedAlienStamp: boolean = false): void {
+    // wasRushed = el jugador decidio casi al toque de abrir el pasaporte (ver
+    // RUSH_THRESHOLD_MS en main.ts) - senal de que no lo reviso de verdad. Resta
+    // dinero aparte, pero NO suma a #errors: es un descuido de procedimiento,
+    // distinto de si la decision en si fue correcta o no (ver especificaciones-
+    // economia.md, seccion 4).
+    decide(accept: boolean, usedAlienStamp: boolean = false, wasRushed: boolean = false): void {
     const currentDay = this.#days[this.#dayNumber - 1];
     const visitor = this.#currentVisitor as Character;
     const violatedRule = currentDay.evaluateCharacter(visitor);
@@ -372,9 +488,21 @@ export class Game{
         this.#dayMoney += 2;
     } else {
         this.#money -= 5;
-        this.#errors += 1;
         this.#dayMoney -= 5;
-        this.#dayErrors += 1;
+        // el indulto absorbe este error (no cuenta para los 4 que pierden la
+        // partida) pero no devuelve el dinero - no es gratis equivocarse, es
+        // que no te cuesta la partida. Se consume, no queda para el proximo error.
+        if (this.#hasInsurance) {
+            this.#hasInsurance = false;
+        } else {
+            this.#errors += 1;
+            this.#dayErrors += 1;
+        }
+    }
+
+    if (wasRushed) {
+        this.#money -= RUSH_PENALTY;
+        this.#dayRushPenalty += RUSH_PENALTY;
     }
 
     this.#visitorsSeenToday += 1;
@@ -408,6 +536,8 @@ export class Game{
     this.#lastDayRejected = this.#dayRejected;
     this.#lastDayErrors = this.#dayErrors;
     this.#lastDayMoney = this.#dayMoney;
+    this.#lastDayCharge = this.#dayCharge;
+    this.#lastDayRushPenalty = this.#dayRushPenalty;
     this.#dayNumber += 1;
     if (this.isWon()) {
         saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName, totalDays: this.#totalDays });
@@ -416,6 +546,7 @@ export class Game{
         deleteCurrentGame();
         return;
     }
+    this.#chargeDailyCost();
     this.#startDay();
     }
 
@@ -476,6 +607,12 @@ export class Game{
     }
     get lastDayMoney(): number {
         return this.#lastDayMoney;
+    }
+    get lastDayCharge(): number {
+        return this.#lastDayCharge;
+    }
+    get lastDayRushPenalty(): number {
+        return this.#lastDayRushPenalty;
     }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7

@@ -400,3 +400,188 @@ if (cuernudo === null) {
   gameJ.decide(true); // lo deja pasar
   console.log("tras aceptar un cuernudo -> letThroughOni:", gameJ.letThroughOni, gameJ.letThroughOni === true ? "[OK]" : "[FALLO]");
 }
+
+// ================= TEST 11: cobro diario =================
+console.log("\n========== TEST 11: cobro diario escala con la cantidad de reglas activas, y el dia 1 no cobra ==========");
+resetMocks();
+const gameK = new Game();
+await loadDataAsync(gameK);
+gameK.startNewGame();
+console.log("dia 1, antes de jugar nada -> dinero:", gameK.money, gameK.money === 10 ? "[OK: sin cobro todavia]" : "[FALLO]");
+gameK.endDay(); // cierra el dia 1 (nunca cobra) y ya cobro el dia 2 adentro de endDay()
+const reglasDia2 = gameK.currentDay.getActiveRules().length;
+const cobroEsperadoDia2 = 2 + reglasDia2;
+console.log("dia 1 -> resumen del dia que cerro, cobro diario:", gameK.lastDayCharge, gameK.lastDayCharge === 0 ? "[OK: el dia 1 no cobra]" : "[FALLO]");
+console.log("dia 2, reglas activas:", reglasDia2, "| dinero real:", gameK.money, "| dinero esperado (10 - cobro):", 10 - cobroEsperadoDia2,
+  gameK.money === 10 - cobroEsperadoDia2 ? "[OK]" : "[FALLO]");
+
+const gameL = new Game();
+await loadDataAsync(gameL);
+gameL.startNewGame();
+// fuerza el dinero bien negativo antes de que termine el dia 1, sin llegar a los 4
+// errores (isLost() corta la partida antes de eso)
+const patronL = [false, false, false];
+patronL.forEach((responderCorrecto) => {
+  const violation = gameL.currentDay.evaluateCharacter(gameL.currentVisitor);
+  const shouldAccept = violation === null;
+  gameL.decide(responderCorrecto ? shouldAccept : !shouldAccept);
+});
+gameL.endDay(); // el cobro diario se suma encima del dinero ya negativo
+console.log("dinero negativo antes del cobro:", 10 - 15, "| dinero real tras cobrar el dia 2:", gameL.money,
+  gameL.money < 0 ? "[OK: el cobro diario puede dejar el dinero mas negativo todavia]" : "[FALLO]");
+console.log("isLost() con 3 errores y dinero negativo:", gameL.isLost(), gameL.isLost() === false ? "[OK: quedar en negativo no es motivo de derrota]" : "[FALLO]");
+
+// ================= TEST 12: penalizacion por decidir sin revisar (wasRushed) =================
+console.log("\n========== TEST 12: decidir muy rapido (wasRushed) resta dinero aparte, sin sumar a #errors ==========");
+resetMocks();
+const gameM = new Game();
+await loadDataAsync(gameM);
+gameM.startNewGame();
+// decision CORRECTA pero apurada: dinero solo deberia bajar el RUSH_PENALTY (1),
+// no el -5 de un error - #errors tiene que quedar en 0
+const erroresAntesM = gameM.errors;
+const dineroAntesM = gameM.money;
+const violationM = gameM.currentDay.evaluateCharacter(gameM.currentVisitor);
+gameM.decide(violationM === null, false, true); // acierta la decision, pero apurado
+console.log("dinero tras acierto apurado:", gameM.money, "| esperado (10 + 2 - 1 de penalizacion):", dineroAntesM + 2 - 1,
+  gameM.money === dineroAntesM + 2 - 1 ? "[OK]" : "[FALLO]");
+console.log("errores tras acierto apurado:", gameM.errors, gameM.errors === erroresAntesM ? "[OK: la penalizacion no suma a #errors]" : "[FALLO]");
+gameM.endDay();
+console.log("resumen del dia, descuido acumulado:", gameM.lastDayRushPenalty, gameM.lastDayRushPenalty === 1 ? "[OK]" : "[FALLO]");
+
+// una decision SIN apurar (wasRushed por defecto en false) no debe restar nada aparte
+const gameN = new Game();
+await loadDataAsync(gameN);
+gameN.startNewGame();
+const dineroAntesN = gameN.money;
+const violationN = gameN.currentDay.evaluateCharacter(gameN.currentVisitor);
+gameN.decide(violationN === null); // sin tercer parametro, como todo el codigo anterior a este cambio
+console.log("dinero sin apurar:", gameN.money, "| esperado (10 + 2, sin penalizacion):", dineroAntesN + 2,
+  gameN.money === dineroAntesN + 2 ? "[OK: wasRushed=false por defecto no rompe las llamadas viejas]" : "[FALLO]");
+
+// ================= TEST 13: tienda - pista (buyHint) =================
+console.log("\n========== TEST 13: la pista de la tienda revela la propiedad violada, cobra igual si el visitante esta limpio ==========");
+const gameO = await partidaEnDia(4); // dia 4: ya hay varias propiedades distintas en juego
+// el cobro diario acumulado hasta el dia 4 (4+5+9=18) ya deja el dinero casi en
+// 0 o negativo con solo la decision minima que hace partidaEnDia() por dia -
+// se juega un poco mas de margen antes de probar la pista, para no confundir
+// "no le alcanza" con un fallo real de buyHint()
+for (let i = 0; i < 15; i++) {
+  decidirBien(gameO);
+}
+const sucio = buscarVisitante(gameO, (visitor, violation) => violation !== null);
+if (sucio === null) {
+  console.log("[AVISO] no salio ningun visitante sucio, se saltea el chequeo");
+} else {
+  const violacionEsperada = gameO.currentDay.evaluateCharacter(sucio).getProperty();
+  const dineroAntesO = gameO.money;
+  const pista = gameO.buyHint();
+  console.log("pista devuelta:", pista, "| propiedad violada real:", violacionEsperada, pista === violacionEsperada ? "[OK]" : "[FALLO]");
+  console.log("dinero descontado:", dineroAntesO - gameO.money, "(esperado " + gameO.hintCost + ")", dineroAntesO - gameO.money === gameO.hintCost ? "[OK]" : "[FALLO]");
+}
+
+const gameP = await partidaEnDia(4);
+for (let i = 0; i < 15; i++) {
+  decidirBien(gameP); // mismo colchon de dinero que gameO, ver comentario arriba
+}
+const limpio = buscarVisitante(gameP, (visitor, violation) => violation === null);
+if (limpio === null) {
+  console.log("[AVISO] no salio ningun visitante limpio, se saltea el chequeo");
+} else {
+  const dineroAntesP = gameP.money;
+  const pistaLimpia = gameP.buyHint();
+  console.log("pista sobre visitante limpio:", pistaLimpia, pistaLimpia === null ? "[OK: nada que revelar]" : "[FALLO]");
+  console.log("igual se cobro:", dineroAntesP - gameP.money === gameP.hintCost ? "[OK: el riesgo de comprarla a ciegas]" : "[FALLO]");
+}
+
+// sin dinero suficiente: no cobra nada y devuelve null (aunque la UI ya deshabilita
+// el boton en ese caso, esto es la segunda barrera del lado de Game.ts)
+const gameQ = new Game();
+await loadDataAsync(gameQ);
+gameQ.startNewGame();
+for (let i = 0; i < 3; i++) {
+  const violation = gameQ.currentDay.evaluateCharacter(gameQ.currentVisitor);
+  gameQ.decide(violation !== null); // fuerza la respuesta incorrecta, sin llegar a los 4 errores que pierden la partida
+}
+console.log("dinero tras 3 errores:", gameQ.money, "(por debajo del costo de la pista,", gameQ.hintCost + ")");
+const dineroAntesQ = gameQ.money;
+const pistaSinFondos = gameQ.buyHint();
+console.log("pista sin fondos:", pistaSinFondos, "| dinero sin cambios:", gameQ.money === dineroAntesQ,
+  pistaSinFondos === null && gameQ.money === dineroAntesQ ? "[OK: no cobra si no alcanza]" : "[FALLO]");
+
+// ================= TEST 14: tienda - tiempo extra (buyExtraTime) =================
+console.log("\n========== TEST 14: tiempo extra cobra una vez por dia, se niega la segunda vez y sin fondos ==========");
+const gameR = new Game();
+await loadDataAsync(gameR);
+gameR.startNewGame();
+const dineroAntesR = gameR.money;
+const primeraCompra = gameR.buyExtraTime();
+console.log("primera compra:", primeraCompra, "| dinero descontado:", dineroAntesR - gameR.money, "(esperado " + gameR.extraTimeCost + ")",
+  primeraCompra === true && dineroAntesR - gameR.money === gameR.extraTimeCost ? "[OK]" : "[FALLO]");
+const dineroTrasPrimera = gameR.money;
+const segundaCompra = gameR.buyExtraTime();
+console.log("segunda compra el mismo dia:", segundaCompra, "| dinero sin cambios:", gameR.money === dineroTrasPrimera,
+  segundaCompra === false && gameR.money === dineroTrasPrimera ? "[OK: solo se puede comprar una vez por dia]" : "[FALLO]");
+gameR.endDay(); // el cobro diario del dia 2 se suma encima de lo que quedaba tras comprar tiempo extra
+console.log("limite reseteado al dia siguiente:", gameR.usedExtraTimeToday, gameR.usedExtraTimeToday === false ? "[OK]" : "[FALLO]");
+for (let i = 0; i < 5; i++) {
+  decidirBien(gameR); // asegura dinero suficiente antes de probar la compra de nuevo
+}
+const terceraCompra = gameR.buyExtraTime();
+console.log("compra al dia siguiente (con dinero):", terceraCompra, terceraCompra === true ? "[OK: el limite se resetea cada dia]" : "[FALLO]");
+
+const gameS = new Game();
+await loadDataAsync(gameS);
+gameS.startNewGame();
+for (let i = 0; i < 3; i++) {
+  const violation = gameS.currentDay.evaluateCharacter(gameS.currentVisitor);
+  gameS.decide(violation !== null); // fuerza la respuesta incorrecta, para vaciar el dinero
+}
+const dineroAntesS = gameS.money;
+const compraSinFondos = gameS.buyExtraTime();
+console.log("tiempo extra sin fondos:", compraSinFondos, "| dinero sin cambios:", gameS.money === dineroAntesS,
+  compraSinFondos === false && gameS.money === dineroAntesS ? "[OK: no cobra si no alcanza]" : "[FALLO]");
+
+// ================= TEST 15: tienda - indulto (buyInsurance) =================
+console.log("\n========== TEST 15: el indulto absorbe el proximo error sin sumar a #errors, resta dinero igual, y se consume ==========");
+const gameT = new Game();
+await loadDataAsync(gameT);
+gameT.startNewGame();
+const dineroAntesT = gameT.money;
+const compraIndulto = gameT.buyInsurance();
+console.log("compra el indulto:", compraIndulto, "| dinero descontado:", dineroAntesT - gameT.money, "(esperado " + gameT.insuranceCost + ")",
+  compraIndulto === true && dineroAntesT - gameT.money === gameT.insuranceCost ? "[OK]" : "[FALLO]");
+
+const dineroAntesIndultoUsado = gameT.money;
+const violationT = gameT.currentDay.evaluateCharacter(gameT.currentVisitor);
+gameT.decide(violationT !== null); // fuerza la respuesta incorrecta
+console.log("errores tras el error absorbido:", gameT.errors, gameT.errors === 0 ? "[OK: el indulto lo absorbe]" : "[FALLO]");
+console.log("dinero tras el error absorbido:", gameT.money, "| esperado (-5 igual, el indulto no devuelve dinero):", dineroAntesIndultoUsado - 5,
+  gameT.money === dineroAntesIndultoUsado - 5 ? "[OK]" : "[FALLO]");
+console.log("el indulto se consumio:", gameT.hasInsurance, gameT.hasInsurance === false ? "[OK]" : "[FALLO]");
+
+// sin indulto, el siguiente error si cuenta normal
+const violationT2 = gameT.currentDay.evaluateCharacter(gameT.currentVisitor);
+gameT.decide(violationT2 !== null); // fuerza la respuesta incorrecta de nuevo
+console.log("siguiente error, sin indulto activo:", gameT.errors, gameT.errors === 1 ? "[OK: vuelve a contar normal]" : "[FALLO]");
+
+// no se puede comprar un segundo indulto mientras el primero sigue activo
+const gameU = new Game();
+await loadDataAsync(gameU);
+gameU.startNewGame();
+gameU.buyInsurance();
+const dineroConIndultoActivo = gameU.money;
+const segundoIndulto = gameU.buyInsurance();
+console.log("segundo indulto con uno ya activo:", segundoIndulto, "| dinero sin cambios:", gameU.money === dineroConIndultoActivo,
+  segundoIndulto === false && gameU.money === dineroConIndultoActivo ? "[OK: un indulto activo a la vez]" : "[FALLO]");
+
+// el indulto no sobrevive al dia siguiente si no se llega a usar
+const gameV = new Game();
+await loadDataAsync(gameV);
+gameV.startNewGame();
+gameV.buyInsurance();
+for (let i = 0; i < 15; i++) {
+  decidirBien(gameV); // se decide bien todo el dia, el indulto queda sin usar
+}
+gameV.endDay();
+console.log("indulto sin usar, tras terminar el dia:", gameV.hasInsurance, gameV.hasInsurance === false ? "[OK: no se acumula para el dia siguiente]" : "[FALLO]");

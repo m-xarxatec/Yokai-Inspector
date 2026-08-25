@@ -297,6 +297,8 @@ document.querySelectorAll(".back-link").forEach(button => {
 // (la partida guardada solo se actualiza al empezar cada dia, asi que sigue
 // disponible para "Continuar partida" desde donde arranco el dia). El boton
 // de pausa (#pause-btn) tiene su propio listener mas abajo, no entra aca.
+// #shop-btn ya no comparte esta clase (ver style.css), tiene su propio
+// aspecto de icono, no hace falta excluirlo aca.
 document.querySelectorAll(".exit-to-menu-btn:not(#pause-btn)").forEach(button => {
   button.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
@@ -330,6 +332,137 @@ document.querySelector("#pause-continue-btn")?.addEventListener("click", () => {
   soundManager.playNextButton(); // sonido de click del boton
   changeState("game");
   resumeDayTimer();
+});
+
+// --- tienda: comprar con el dinero acumulado durante la partida ---
+document.querySelector("#shop-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  pauseDayTimer();
+  updateShopScreen();
+  changeState("shop");
+});
+
+document.querySelector("#shop-continue-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  changeState("game");
+  resumeDayTimer();
+});
+
+const HINT_HIGHLIGHT_MS = 2500;
+const EXTRA_TIME_MS = 15000;
+
+// traduce la propiedad de la regla violada (ver Rule.getProperty()) al elemento
+// que hay que resaltar - los rasgos fisicos (cuernos/ojos amarillos) se ven en
+// el personaje, no en el pasaporte. "selloAlien" no entra: nunca es la regla
+// violada que devuelve evaluateCharacter() (ver Rule.isViolated()).
+function hintTargetSelector(property: string): string | null {
+  if (property === "tieneCuernos") {
+    return ".part-horns";
+  }
+  if (property === "ojosAmarillos") {
+    return ".part-eyes";
+  }
+  if (property === "region") {
+    return "#passport-region";
+  }
+  if (property === "especieProhibida") {
+    return "#passport-species";
+  }
+  if (property === "sello") {
+    return "#passport-stamp";
+  }
+  return null;
+}
+
+// refresca el dinero mostrado y deshabilita los botones de compra que ya no
+// se pueden pagar - se llama al abrir la tienda y despues de cada compra
+function updateShopScreen(): void {
+  if (game === null) {
+    return;
+  }
+  const moneyEl = document.querySelector("#shop-money");
+  if (moneyEl !== null) {
+    moneyEl.textContent = String(game.money);
+  }
+  const hintBtn = document.querySelector("#shop-hint-btn") as HTMLButtonElement | null;
+  if (hintBtn !== null) {
+    hintBtn.disabled = game.money < game.hintCost;
+  }
+  const extraTimeBtn = document.querySelector("#shop-extra-time-btn") as HTMLButtonElement | null;
+  if (extraTimeBtn !== null) {
+    extraTimeBtn.disabled = game.money < game.extraTimeCost || game.usedExtraTimeToday;
+  }
+  const insuranceBtn = document.querySelector("#shop-insurance-btn") as HTMLButtonElement | null;
+  if (insuranceBtn !== null) {
+    insuranceBtn.disabled = game.hasInsurance || game.money < game.insuranceCost;
+    insuranceBtn.textContent = game.hasInsurance ? "Indulto activo" : "Indulto (-8)";
+  }
+}
+
+document.querySelector("#shop-hint-btn")?.addEventListener("click", () => {
+  if (game === null) {
+    return;
+  }
+  soundManager.playNextButton(); // sonido de click del boton
+  const property = game.buyHint();
+  updateShopScreen();
+  const moneyCounterEl = document.querySelector("#money-counter");
+  if (moneyCounterEl !== null) {
+    moneyCounterEl.textContent = "Dinero: " + game.money;
+  }
+  if (property === null) {
+    return; // visitante limpio (o no alcanzaba el dinero) - nada que resaltar
+  }
+  const selector = hintTargetSelector(property);
+  if (selector === null) {
+    return;
+  }
+  const targetEl = document.querySelector(selector);
+  if (targetEl === null) {
+    return;
+  }
+  targetEl.classList.add("hint-highlight");
+  window.setTimeout(() => {
+    targetEl.classList.remove("hint-highlight");
+  }, HINT_HIGHLIGHT_MS);
+});
+
+document.querySelector("#shop-extra-time-btn")?.addEventListener("click", () => {
+  if (game === null) {
+    return;
+  }
+  soundManager.playNextButton(); // sonido de click del boton
+  const bought = game.buyExtraTime();
+  if (!bought) {
+    return;
+  }
+  // la tienda esta abierta con el dia en pausa (ver pauseDayTimer() en el
+  // listener de #shop-btn) - restar del tiempo ya transcurrido equivale a
+  // sumarle tiempo al reloj, y resumeDayTimer() (al cerrar la tienda) va a
+  // reprogramar el cierre del dia con el tiempo real que queda
+  dayElapsedMs = Math.max(dayElapsedMs - EXTRA_TIME_MS, 0);
+  updateDayClock();
+  updateShopScreen();
+  const moneyCounterEl = document.querySelector("#money-counter");
+  if (moneyCounterEl !== null) {
+    moneyCounterEl.textContent = "Dinero: " + game.money;
+  }
+});
+
+document.querySelector("#shop-insurance-btn")?.addEventListener("click", () => {
+  if (game === null) {
+    return;
+  }
+  soundManager.playNextButton(); // sonido de click del boton
+  const bought = game.buyInsurance();
+  if (!bought) {
+    return;
+  }
+  updateShopScreen();
+  const moneyCounterEl = document.querySelector("#money-counter");
+  if (moneyCounterEl !== null) {
+    moneyCounterEl.textContent = "Dinero: " + game.money;
+  }
 });
 
 document.querySelector("#pause-options-btn")?.addEventListener("click", () => {
@@ -739,6 +872,14 @@ let errorReactionPending = false;
 let dayElapsedMs = 0;
 let dayResumedAt: number | null = null;
 
+// instante en que se habilito decidir sobre el pasaporte actual (ver el click
+// de #passport-object mas abajo, que llama setDecisionStampsEnabled(true)) -
+// null mientras el pasaporte esta cerrado. Se usa en resolveDecision() para
+// detectar si el jugador decidio demasiado rapido como para haberlo revisado
+// de verdad (ver RUSH_THRESHOLD_MS y Game.decide(), parametro wasRushed).
+let passportOpenedAt: number | null = null;
+const RUSH_THRESHOLD_MS = 700;
+
 function currentDayElapsedMs(): number {
   if (dayResumedAt === null) {
     return dayElapsedMs;
@@ -906,6 +1047,10 @@ function renderVisitor(): void {
 
   resetElementOffscreen(CHARACTER_ELEMENT);
 
+  // por si quedaba un resaltado de la pista de la tienda sin terminar de
+  // apagarse (ver #shop-hint-btn) - no tiene sentido sobre el visitante nuevo
+  document.querySelectorAll(".hint-highlight").forEach(el => el.classList.remove("hint-highlight"));
+
   // se mantienen deshabilitados hasta que el jugador abra el pasaporte (ver el
   // listener de click de #passport-object) - no se puede decidir a ciegas
   setDecisionStampsEnabled(false);
@@ -934,6 +1079,7 @@ function renderVisitor(): void {
     passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
     passportEl.classList.add("closed");
   }
+  passportOpenedAt = null;
 
   window.setTimeout(() => {
     if (passportEl !== null) {
@@ -1111,6 +1257,11 @@ function resolveDecision(accept: boolean, usedAlienStamp: boolean = false): void
   if (game === null) {
     return;
   }
+  // se mide ACA (apenas el jugador suelta el sello), no mas abajo cuando recien
+  // se llama a game.decide() - esa llamada esta atras de ~2s de animacion, no
+  // del tiempo que el jugador realmente tardo en revisar el pasaporte
+  const wasRushed = passportOpenedAt !== null && (performance.now() - passportOpenedAt) < RUSH_THRESHOLD_MS;
+
   // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
   // que seguir corriendo mientras se decide (ver startDayTimer()). Se marca
   // que hay una decision en curso para que, si el dia vence en el medio, no
@@ -1168,7 +1319,7 @@ function resolveDecision(accept: boolean, usedAlienStamp: boolean = false): void
           if (game === null) {
             return;
           }
-          game.decide(accept, usedAlienStamp);
+          game.decide(accept, usedAlienStamp, wasRushed);
 
           const justErred = game.errors > errorsBefore;
           if (justErred) {
@@ -1348,6 +1499,7 @@ document.querySelector("#passport-object")?.addEventListener("click", () => {
     passportEl.classList.remove("closed");
     passportEl.classList.add("open");
     setDecisionStampsEnabled(true);
+    passportOpenedAt = performance.now();
   }, PASSPORT_OPEN_DELAY_MS);
 });
 
@@ -1379,6 +1531,8 @@ function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
   }
   statsEl.innerHTML = "";
   const money = game.lastDayMoney;
+  const charge = game.lastDayCharge;
+  const rushPenalty = game.lastDayRushPenalty;
   const stats = [
     "Aceptados: " + game.lastDayAccepted,
     "Rechazados: " + game.lastDayRejected,
@@ -1386,6 +1540,16 @@ function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
     "Racha máxima: " + maxStreak,
     "Dinero ganado: " + (money >= 0 ? "+" : "") + money,
   ];
+  // el dia 1 no tiene cobro diario (ver Game.#chargeDailyCost()), no mostrar la
+  // linea si no hubo cobro
+  if (charge > 0) {
+    stats.push("Cobro diario: -" + charge);
+  }
+  // solo aparece si hubo al menos una decision demasiado rapida ese dia (ver
+  // RUSH_THRESHOLD_MS)
+  if (rushPenalty > 0) {
+    stats.push("Descuido (decidiste sin revisar): -" + rushPenalty);
+  }
   stats.forEach(line => {
     const item = document.createElement("li");
     item.textContent = line;
@@ -1547,11 +1711,10 @@ const ENDING_RICH_BOSS: EndingBeat[] = [
 // de "te convertiste en yokai" / "sos el jefe"
 const CONSECUTIVE_FOR_SPECIAL_ENDING = 3;
 
-// PENDIENTE DE DEFINIR (Mike): cuanto dinero hay que terminar la partida para el
-// final de la jefa millonaria. Por ahora una cifra absurda a proposito, para que
-// no salga por accidente mientras se decide el numero real - con +2 por acierto,
-// una partida normal de 7 dias ronda las 100-200 monedas.
-const RICH_BOSS_MONEY = 9999;
+// cuanto dinero hay que terminar la partida para el final de la jefa millonaria -
+// bien por encima de una partida normal de 7 dias (100-200 monedas con +2 por
+// acierto), para que haga falta jugar rapido y arriesgado de verdad.
+const RICH_BOSS_MONEY = 300;
 
 // premios de fin de partida: se muestran de a uno despues del final, gane o
 // pierda. La imagen es la clase de #final-award (ver public/img/animaciones/).
