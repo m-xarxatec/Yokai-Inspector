@@ -9,26 +9,13 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_parts, _Game_names, _Game_phrases, _Game_stamps, _Game_species, _Game_playerName, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_dayCharge, _Game_dayRushPenalty, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_lastDayCharge, _Game_lastDayRushPenalty, _Game_usedExtraTimeToday, _Game_hasInsurance, _Game_startDay, _Game_generateVisitor, _Game_chargeDailyCost, _Game_pickPhrase, _Game_pickAlienFace, _Game_recordDayVisitors, _Game_recordLetThrough;
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_playerName, _Game_visitorGenerator, _Game_economy, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_startDay, _Game_recordDayVisitors, _Game_recordLetThrough;
 import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, addCredits, addResultToStreak } from "../Storage.js";
-import { Passport } from "./Passport.js";
-import { Human } from "./Human.js";
 import { Yokai } from "./Yokai.js";
 import { Rule } from "./Rule.js";
 import { Day } from "./Day.js";
-// penalizacion por decidir sin revisar el pasaporte (ver decide(), parametro
-// wasRushed) - chica a proposito, es un descuido, no un error de reglas
-const RUSH_PENALTY = 1;
-// costo de la pista de la tienda (ver buyHint()) - la mas barata de las 3
-// compras, porque no garantiza nada si el visitante esta limpio
-const HINT_COST = 3;
-// costo del tiempo extra de la tienda (ver buyExtraTime()) - los segundos que
-// suma los pone main.ts (EXTRA_TIME_MS), Game.ts solo controla el dinero y el
-// limite de una vez por dia
-const EXTRA_TIME_COST = 5;
-// costo del indulto de la tienda (ver buyInsurance()) - la mas cara de las 3,
-// porque puede directamente salvar la partida absorbiendo el 4to error
-const INSURANCE_COST = 8;
+import { VisitorGenerator } from "./VisitorGenerator.js";
+import { Economy } from "./Economy.js";
 export class Game {
     constructor(playerName = "Jugador", totalDays = 7) {
         _Game_instances.add(this);
@@ -40,12 +27,9 @@ export class Game {
         _Game_days.set(this, void 0);
         _Game_currentVisitor.set(this, void 0);
         _Game_visitorsSeenToday.set(this, void 0);
-        _Game_parts.set(this, void 0);
-        _Game_names.set(this, void 0);
-        _Game_phrases.set(this, void 0);
-        _Game_stamps.set(this, void 0);
-        _Game_species.set(this, void 0);
         _Game_playerName.set(this, void 0);
+        _Game_visitorGenerator.set(this, void 0);
+        _Game_economy.set(this, void 0);
         // datos que solo se usan para los premios de fin de partida (ver main.ts,
         // AWARD_BEATS): que tipo de visitante dejo pasar el jugador alguna vez, y cual
         // fue su dia con mas visitantes atendidos
@@ -62,28 +46,10 @@ export class Game {
         _Game_dayRejected.set(this, void 0);
         _Game_dayErrors.set(this, void 0);
         _Game_dayMoney.set(this, void 0);
-        // cobro diario (gastos fijos) que costo empezar el dia EN CURSO - se fija una
-        // sola vez en endDay() al entrar a un dia nuevo (0 el dia 1, que no cobra) y
-        // se congela en #lastDayCharge recien cuando ESE dia termina, igual que
-        // #dayMoney/#lastDayMoney
-        _Game_dayCharge.set(this, void 0);
-        // penalizacion de "decidiste sin revisar" (ver decide(), parametro wasRushed) -
-        // NO suma a #errors, es un descuido de procedimiento aparte de si la decision
-        // en si fue correcta o no. Mismo patron dia/lastDay que #dayMoney/#dayCharge.
-        _Game_dayRushPenalty.set(this, void 0);
         _Game_lastDayAccepted.set(this, void 0);
         _Game_lastDayRejected.set(this, void 0);
         _Game_lastDayErrors.set(this, void 0);
         _Game_lastDayMoney.set(this, void 0);
-        _Game_lastDayCharge.set(this, void 0);
-        _Game_lastDayRushPenalty.set(this, void 0);
-        // tienda: limite de 1 tiempo extra comprado por dia (ver buyExtraTime()) -
-        // se resetea en #startDay(), no sobrevive al dia siguiente
-        _Game_usedExtraTimeToday.set(this, void 0);
-        // tienda: indulto activo (ver buyInsurance() y decide()) - absorbe el
-        // proximo error para que no cuente para #errors, se consume al usarse y
-        // tambien se resetea en #startDay() si no se llego a gastar ese dia
-        _Game_hasInsurance.set(this, void 0);
         __classPrivateFieldSet(this, _Game_playerName, playerName.trim() !== "" ? playerName : "Jugador", "f");
         __classPrivateFieldSet(this, _Game_dayNumber, 1, "f");
         __classPrivateFieldSet(this, _Game_errors, 0, "f");
@@ -93,10 +59,8 @@ export class Game {
         __classPrivateFieldSet(this, _Game_days, [], "f");
         __classPrivateFieldSet(this, _Game_currentVisitor, null, "f");
         __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
-        __classPrivateFieldSet(this, _Game_names, [], "f");
-        __classPrivateFieldSet(this, _Game_phrases, [], "f");
-        __classPrivateFieldSet(this, _Game_stamps, [], "f");
-        __classPrivateFieldSet(this, _Game_species, [], "f");
+        __classPrivateFieldSet(this, _Game_visitorGenerator, new VisitorGenerator(), "f");
+        __classPrivateFieldSet(this, _Game_economy, new Economy(), "f");
         __classPrivateFieldSet(this, _Game_letThroughOni, false, "f");
         __classPrivateFieldSet(this, _Game_letThroughKitsune, false, "f");
         __classPrivateFieldSet(this, _Game_letThroughKappa, false, "f");
@@ -106,16 +70,10 @@ export class Game {
         __classPrivateFieldSet(this, _Game_dayRejected, 0, "f");
         __classPrivateFieldSet(this, _Game_dayErrors, 0, "f");
         __classPrivateFieldSet(this, _Game_dayMoney, 0, "f");
-        __classPrivateFieldSet(this, _Game_dayCharge, 0, "f");
-        __classPrivateFieldSet(this, _Game_dayRushPenalty, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayAccepted, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayRejected, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayErrors, 0, "f");
         __classPrivateFieldSet(this, _Game_lastDayMoney, 0, "f");
-        __classPrivateFieldSet(this, _Game_lastDayCharge, 0, "f");
-        __classPrivateFieldSet(this, _Game_lastDayRushPenalty, 0, "f");
-        __classPrivateFieldSet(this, _Game_usedExtraTimeToday, false, "f");
-        __classPrivateFieldSet(this, _Game_hasInsurance, false, "f");
     }
     loadData(onComplete) {
         Promise.all([
@@ -128,11 +86,7 @@ export class Game {
             fetch("data/sellos.json").then(r => r.json()),
             fetch("data/species.json").then(r => r.json())
         ]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) => {
-            __classPrivateFieldSet(this, _Game_parts, parts, "f");
-            __classPrivateFieldSet(this, _Game_names, names, "f");
-            __classPrivateFieldSet(this, _Game_phrases, phrases, "f");
-            __classPrivateFieldSet(this, _Game_stamps, stamps, "f");
-            __classPrivateFieldSet(this, _Game_species, species, "f");
+            __classPrivateFieldGet(this, _Game_visitorGenerator, "f").setData(parts, names, phrases, stamps, species);
             const rules = rawRules.map((r) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
             __classPrivateFieldSet(this, _Game_days, rawDays.map((d) => {
                 const activeRules = rules.filter((rule) => d.reglasActivas.includes(rule.getDay()));
@@ -154,7 +108,7 @@ export class Game {
         return this.currentDay.getActiveRules().some((rule) => rule.getProperty() === "selloAlien");
     }
     get hintCost() {
-        return HINT_COST;
+        return __classPrivateFieldGet(this, _Game_economy, "f").hintCost;
     }
     // tienda: revela que propiedad del visitante actual viola una regla hoy (o
     // null si esta limpio - no hay nada que revelar, pero el costo se cobra
@@ -162,46 +116,46 @@ export class Game {
     // alcanza el dinero, sin cobrar nada (la UI ya deshabilita el boton en ese
     // caso, esto es solo una segunda barrera).
     buyHint() {
-        if (__classPrivateFieldGet(this, _Game_money, "f") < HINT_COST) {
+        if (__classPrivateFieldGet(this, _Game_money, "f") < __classPrivateFieldGet(this, _Game_economy, "f").hintCost) {
             return null;
         }
-        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - HINT_COST, "f");
+        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - __classPrivateFieldGet(this, _Game_economy, "f").hintCost, "f");
         const visitor = __classPrivateFieldGet(this, _Game_currentVisitor, "f");
         const violatedRule = this.currentDay.evaluateCharacter(visitor);
         return violatedRule === null ? null : violatedRule.getProperty();
     }
     get extraTimeCost() {
-        return EXTRA_TIME_COST;
+        return __classPrivateFieldGet(this, _Game_economy, "f").extraTimeCost;
     }
     get usedExtraTimeToday() {
-        return __classPrivateFieldGet(this, _Game_usedExtraTimeToday, "f");
+        return __classPrivateFieldGet(this, _Game_economy, "f").usedExtraTimeToday;
     }
     // tienda: cuantos segundos sumar al reloj del dia los pone main.ts
     // (EXTRA_TIME_MS) - aca solo se controla el dinero y el limite de una vez
     // por dia (si no, el reloj de arena, que es la presion central del juego,
     // dejaria de importar)
     buyExtraTime() {
-        if (__classPrivateFieldGet(this, _Game_money, "f") < EXTRA_TIME_COST || __classPrivateFieldGet(this, _Game_usedExtraTimeToday, "f")) {
+        const cost = __classPrivateFieldGet(this, _Game_economy, "f").tryBuyExtraTime(__classPrivateFieldGet(this, _Game_money, "f"));
+        if (cost === 0) {
             return false;
         }
-        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - EXTRA_TIME_COST, "f");
-        __classPrivateFieldSet(this, _Game_usedExtraTimeToday, true, "f");
+        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - cost, "f");
         return true;
     }
     get insuranceCost() {
-        return INSURANCE_COST;
+        return __classPrivateFieldGet(this, _Game_economy, "f").insuranceCost;
     }
     get hasInsurance() {
-        return __classPrivateFieldGet(this, _Game_hasInsurance, "f");
+        return __classPrivateFieldGet(this, _Game_economy, "f").hasInsurance;
     }
     // tienda: activa el indulto (ver decide()) - un solo indulto activo a la
     // vez, no se puede comprar otro encima del que ya esta activo
     buyInsurance() {
-        if (__classPrivateFieldGet(this, _Game_money, "f") < INSURANCE_COST || __classPrivateFieldGet(this, _Game_hasInsurance, "f")) {
+        const cost = __classPrivateFieldGet(this, _Game_economy, "f").tryBuyInsurance(__classPrivateFieldGet(this, _Game_money, "f"));
+        if (cost === 0) {
             return false;
         }
-        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - INSURANCE_COST, "f");
-        __classPrivateFieldSet(this, _Game_hasInsurance, true, "f");
+        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - cost, "f");
         return true;
     }
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
@@ -210,8 +164,7 @@ export class Game {
     // wasRushed = el jugador decidio casi al toque de abrir el pasaporte (ver
     // RUSH_THRESHOLD_MS en main.ts) - senal de que no lo reviso de verdad. Resta
     // dinero aparte, pero NO suma a #errors: es un descuido de procedimiento,
-    // distinto de si la decision en si fue correcta o no (ver especificaciones-
-    // economia.md, seccion 4).
+    // distinto de si la decision en si fue correcta o no.
     decide(accept, usedAlienStamp = false, wasRushed = false) {
         const currentDay = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1];
         const visitor = __classPrivateFieldGet(this, _Game_currentVisitor, "f");
@@ -234,17 +187,13 @@ export class Game {
             // el indulto absorbe este error (no cuenta para los 4 que pierden la
             // partida) pero no devuelve el dinero - no es gratis equivocarse, es
             // que no te cuesta la partida. Se consume, no queda para el proximo error.
-            if (__classPrivateFieldGet(this, _Game_hasInsurance, "f")) {
-                __classPrivateFieldSet(this, _Game_hasInsurance, false, "f");
-            }
-            else {
+            if (!__classPrivateFieldGet(this, _Game_economy, "f").consumeInsuranceIfActive()) {
                 __classPrivateFieldSet(this, _Game_errors, __classPrivateFieldGet(this, _Game_errors, "f") + 1, "f");
                 __classPrivateFieldSet(this, _Game_dayErrors, __classPrivateFieldGet(this, _Game_dayErrors, "f") + 1, "f");
             }
         }
         if (wasRushed) {
-            __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - RUSH_PENALTY, "f");
-            __classPrivateFieldSet(this, _Game_dayRushPenalty, __classPrivateFieldGet(this, _Game_dayRushPenalty, "f") + RUSH_PENALTY, "f");
+            __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - __classPrivateFieldGet(this, _Game_economy, "f").recordRushPenalty(), "f");
         }
         __classPrivateFieldSet(this, _Game_visitorsSeenToday, __classPrivateFieldGet(this, _Game_visitorsSeenToday, "f") + 1, "f");
         if (accept) {
@@ -262,7 +211,7 @@ export class Game {
             deleteCurrentGame();
             return;
         }
-        __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_instances, "m", _Game_generateVisitor).call(this), "f");
+        __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1]), "f");
     }
     // el dia ya no termina por cantidad de visitantes: lo llama main.ts cuando se
     // acaba el temporizador del dia. Antes vivia adentro de decide(), atado a
@@ -275,8 +224,7 @@ export class Game {
         __classPrivateFieldSet(this, _Game_lastDayRejected, __classPrivateFieldGet(this, _Game_dayRejected, "f"), "f");
         __classPrivateFieldSet(this, _Game_lastDayErrors, __classPrivateFieldGet(this, _Game_dayErrors, "f"), "f");
         __classPrivateFieldSet(this, _Game_lastDayMoney, __classPrivateFieldGet(this, _Game_dayMoney, "f"), "f");
-        __classPrivateFieldSet(this, _Game_lastDayCharge, __classPrivateFieldGet(this, _Game_dayCharge, "f"), "f");
-        __classPrivateFieldSet(this, _Game_lastDayRushPenalty, __classPrivateFieldGet(this, _Game_dayRushPenalty, "f"), "f");
+        __classPrivateFieldGet(this, _Game_economy, "f").snapshotDayEnd();
         __classPrivateFieldSet(this, _Game_dayNumber, __classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, "f");
         if (this.isWon()) {
             saveToHistory({ day: __classPrivateFieldGet(this, _Game_totalDays, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "victoria", name: __classPrivateFieldGet(this, _Game_playerName, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
@@ -285,7 +233,7 @@ export class Game {
             deleteCurrentGame();
             return;
         }
-        __classPrivateFieldGet(this, _Game_instances, "m", _Game_chargeDailyCost).call(this);
+        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - __classPrivateFieldGet(this, _Game_economy, "f").chargeDailyCost(this.currentDay.getActiveRules().length), "f");
         __classPrivateFieldGet(this, _Game_instances, "m", _Game_startDay).call(this);
     }
     isLost() {
@@ -345,10 +293,10 @@ export class Game {
         return __classPrivateFieldGet(this, _Game_lastDayMoney, "f");
     }
     get lastDayCharge() {
-        return __classPrivateFieldGet(this, _Game_lastDayCharge, "f");
+        return __classPrivateFieldGet(this, _Game_economy, "f").lastDayCharge;
     }
     get lastDayRushPenalty() {
-        return __classPrivateFieldGet(this, _Game_lastDayRushPenalty, "f");
+        return __classPrivateFieldGet(this, _Game_economy, "f").lastDayRushPenalty;
     }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
@@ -368,197 +316,15 @@ export class Game {
         return true;
     }
 }
-_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_parts = new WeakMap(), _Game_names = new WeakMap(), _Game_phrases = new WeakMap(), _Game_stamps = new WeakMap(), _Game_species = new WeakMap(), _Game_playerName = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_dayCharge = new WeakMap(), _Game_dayRushPenalty = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_lastDayCharge = new WeakMap(), _Game_lastDayRushPenalty = new WeakMap(), _Game_usedExtraTimeToday = new WeakMap(), _Game_hasInsurance = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
+_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_playerName = new WeakMap(), _Game_visitorGenerator = new WeakMap(), _Game_economy = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
     __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
     __classPrivateFieldSet(this, _Game_dayAccepted, 0, "f");
     __classPrivateFieldSet(this, _Game_dayRejected, 0, "f");
     __classPrivateFieldSet(this, _Game_dayErrors, 0, "f");
     __classPrivateFieldSet(this, _Game_dayMoney, 0, "f");
-    __classPrivateFieldSet(this, _Game_dayRushPenalty, 0, "f");
-    __classPrivateFieldSet(this, _Game_usedExtraTimeToday, false, "f");
-    __classPrivateFieldSet(this, _Game_hasInsurance, false, "f");
-    __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_instances, "m", _Game_generateVisitor).call(this), "f");
+    __classPrivateFieldGet(this, _Game_economy, "f").resetForNewDay();
+    __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1]), "f");
     saveCurrentGame({ dayNumber: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
-}, _Game_generateVisitor = function _Game_generateVisitor() {
-    // el dia ya no tiene una cantidad fija de visitantes (dura por tiempo, no
-    // por conteo) - "goal" queda solo como el denominador de la proporcion de
-    // problematicos, calibrada por dia; en vez de repartir una cantidad exacta
-    // en un array pre-armado, se sortea de nuevo en cada visitante.
-    const goal = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1].getVisitorGoal();
-    const problematicRatio = Math.min(__classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, goal - 1) / goal;
-    const isProblematic = Math.random() < problematicRatio;
-    const name = __classPrivateFieldGet(this, _Game_names, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_names, "f").length)];
-    const phrase = __classPrivateFieldGet(this, _Game_instances, "m", _Game_pickPhrase).call(this);
-    let face = __classPrivateFieldGet(this, _Game_parts, "f").rostro[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").rostro.length)];
-    const eyesShape = __classPrivateFieldGet(this, _Game_parts, "f").ojos[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").ojos.length)];
-    const mouth = __classPrivateFieldGet(this, _Game_parts, "f").boca[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").boca.length)];
-    const horns = __classPrivateFieldGet(this, _Game_parts, "f").cuernos[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").cuernos.length)];
-    const hair = __classPrivateFieldGet(this, _Game_parts, "f").sombrero[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").sombrero.length)];
-    const activeRules = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1].getActiveRules();
-    // pool completo menos lo que la regla de esa propiedad prohiba HOY: asi un dato
-    // (region, sello, especie) puede aparecer en el pasaporte desde el dia 1 sin
-    // ninguna consecuencia, y recien se vuelve invalido el dia en que se activa su
-    // regla - un visitante "seguro" nunca puede mostrar, por pura casualidad del
-    // sorteo, un valor que hoy SI seria motivo de rechazo (eso rompería
-    // problematicRatio, que no lo contempla).
-    function withoutForbiddenToday(fullPool, property) {
-        const forbiddenToday = activeRules.filter((rule) => rule.getProperty() === property).map((rule) => rule.getForbiddenValue());
-        return fullPool.filter((value) => !forbiddenToday.includes(value));
-    }
-    // cada cuanto sale un alien en vez de un rostro comun. Un alien NO es una
-    // especie de Yokai: es un rostro aparte (partes.json -> "alienes") que
-    // siempre viaja con el mismo pasaporte, ver #applyAlienPassport().
-    const ALIEN_CHANCE = 0.18;
-    if (!isProblematic) {
-        // "via lactea"/"alien" quedan fuera del sorteo comun a proposito: son los
-        // datos propios de los alien y no los puede declarar nadie mas que lo sea
-        // de verdad. Si no, un visitante con rostro humano podia salir declarando
-        // "alien" y "via lactea" sin serlo, y con la regla del sello azul en juego
-        // eso es confuso de leer: el pasaporte dice alien pero corresponde el sello
-        // verde. (Un Yokai mintiendo SI puede declararse "alien" - ver lieOptions
-        // mas abajo - pero ese siempre viola alguna regla, asi que igual se rechaza.)
-        const allRegions = ["playa", "ciudad", "rio", "bosque", "montana"];
-        const allStamps = __classPrivateFieldGet(this, _Game_stamps, "f").map((stamp) => stamp.color);
-        const safeRegions = withoutForbiddenToday(allRegions, "region");
-        const safeStamps = withoutForbiddenToday(allStamps, "sello");
-        const safeSpecies = withoutForbiddenToday(__classPrivateFieldGet(this, _Game_species, "f"), "especieProhibida").filter((specie) => specie !== "alien");
-        let region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
-        const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)];
-        let declaredSpecie = safeSpecies[Math.floor(Math.random() * safeSpecies.length)];
-        // un alien "en regla": ni "via lactea" ni "alien" estan prohibidos por
-        // ninguna regla, asi que sigue siendo un visitante seguro - lo unico
-        // distinto es que desde el dia 6 hay que aprobarlo con el sello azul
-        // (eso no lo decide el pasaporte, lo decide el jugador, ver decide())
-        if (Math.random() < ALIEN_CHANCE) {
-            face = __classPrivateFieldGet(this, _Game_instances, "m", _Game_pickAlienFace).call(this);
-            region = "via lactea";
-            declaredSpecie = "alien";
-        }
-        const passport = new Passport(name, region, declaredSpecie, stamp);
-        return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
-    }
-    // se elige primero la CATEGORIA (propiedad) y recien despues una regla puntual
-    // dentro de ella - si se eligiera directo entre reglas individuales, un dia con
-    // varias reglas de la misma propiedad activas a la vez (ver "especieProhibida",
-    // 4 entradas el mismo dia, o "sello" con 2 desde el dia 6) pesaria de mas esa
-    // categoria frente al resto, sin que problematicRatio lo haya contemplado.
-    // "selloAlien" queda afuera a proposito: no es una regla de rechazo (ver
-    // Rule.isViolated()), asi que no sirve para fabricar un visitante problematico -
-    // si se la eligiera como categoria, el visitante saldria sin ningun rasgo que
-    // violar y contaria como problematico igual, corriendo problematicRatio.
-    const activeProperties = activeRules
-        .map((rule) => rule.getProperty())
-        .filter((property, index, properties) => properties.indexOf(property) === index)
-        .filter((property) => property !== "selloAlien");
-    const targetProperty = activeProperties[Math.floor(Math.random() * activeProperties.length)];
-    const rulesForProperty = activeRules.filter((rule) => rule.getProperty() === targetProperty);
-    const targetRule = rulesForProperty[Math.floor(Math.random() * rulesForProperty.length)];
-    let yokaiType = "oni";
-    let declaredSpecie = "";
-    let region = "campo";
-    let stamp = "dorado";
-    const property = targetRule.getProperty();
-    // el rostro de alien solo se puede usar cuando el rasgo que vuelve problematico
-    // al visitante NO vive en el pasaporte: con "region" haria falta declarar "rio"
-    // y con "especieProhibida" una palabra de la lista negra, y el pasaporte fijo
-    // del alien ("via lactea"/"alien") pisaria justo ese rasgo, dejandolo limpio.
-    // Con cuernos, ojos amarillos o sello prohibido no hay conflicto: el rasgo
-    // sobrevive igual al pasaporte forzado.
-    const canBeAlien = property !== "region" && property !== "especieProhibida";
-    const isAlien = canBeAlien && Math.random() < ALIEN_CHANCE;
-    if (isAlien) {
-        face = __classPrivateFieldGet(this, _Game_instances, "m", _Game_pickAlienFace).call(this);
-    }
-    if (property === "tieneCuernos") {
-        yokaiType = "oni";
-    }
-    if (property === "ojosAmarillos") {
-        yokaiType = "kitsune";
-    }
-    if (property === "region") {
-        yokaiType = "kappa";
-        region = "rio";
-    }
-    // un Yokai generado por su rasgo fisico (tieneCuernos/ojosAmarillos/region) jamas
-    // reconoce su propia especie en el pasaporte - SIEMPRE miente sobre eso, no "a veces
-    // por estadistica" (si se sorteara con probabilidad iria a coincidir alguna vez).
-    // Antes del dia 4 esto no tiene consecuencia (la especie declarada todavia no se
-    // revisa), pero el personaje ya miente igual - es asi de nacimiento, no algo que
-    // empiece a hacer recien cuando hay una regla. Ademas, tambien evita por sorteo
-    // cualquier otra palabra que YA este en la lista negra hoy - si no, cualquiera de
-    // estos Yokai violaria SIEMPRE (no solo con la chance del combo de mas abajo) su
-    // regla fisica Y especieProhibida a la vez, volviendo a esta ultima redundante con
-    // las de los dias 1-3. El combo de mas abajo sigue siendo la UNICA via intencional
-    // para que le toque una palabra prohibida ademas de su rasgo fisico.
-    if (property === "tieneCuernos" || property === "ojosAmarillos" || property === "region") {
-        const especieProhibidaHoy = activeRules.filter((rule) => rule.getProperty() === "especieProhibida").map((rule) => rule.getForbiddenValue());
-        const lieOptions = __classPrivateFieldGet(this, _Game_species, "f").filter((specie) => specie !== yokaiType && !especieProhibidaHoy.includes(specie));
-        declaredSpecie = lieOptions[Math.floor(Math.random() * lieOptions.length)];
-    }
-    if (property === "sello") {
-        declaredSpecie = "humano";
-        stamp = targetRule.getForbiddenValue();
-    }
-    // lista negra de especies (dia 4): no depende de ningun rasgo fisico, asi que
-    // no hace falta generar un Yokai - alcanza con que el pasaporte declare una de
-    // las especies prohibidas (ver mas abajo, se devuelve un Human igual que "sello")
-    if (property === "especieProhibida") {
-        declaredSpecie = targetRule.getForbiddenValue();
-    }
-    // rasgos combinados: ademas del rasgo principal de arriba (el de targetRule), un visitante
-    // problematico puede tener, con una probabilidad extra, UN segundo rasgo sospechoso (nunca
-    // dos a la vez, para no dejar 3 señales juntas y sacar toda la duda) de otra regla que YA
-    // este activa hoy - obliga a revisar todo el pasaporte, no solo "el rasgo del dia".
-    const EXTRA_TRAIT_CHANCE = 0.35;
-    const stampRules = activeRules.filter((rule) => rule.getProperty() === "sello");
-    const bannedSpecieRules = activeRules.filter((rule) => rule.getProperty() === "especieProhibida");
-    const extraTraitOptions = [];
-    const regionRuleActive = activeRules.some((rule) => rule.getProperty() === "region");
-    if (property !== "region" && regionRuleActive) {
-        extraTraitOptions.push("region");
-    }
-    if (property !== "sello" && stampRules.length > 0) {
-        extraTraitOptions.push("sello");
-    }
-    if (property !== "especieProhibida" && bannedSpecieRules.length > 0) {
-        extraTraitOptions.push("especieProhibida");
-    }
-    if (extraTraitOptions.length > 0 && Math.random() < EXTRA_TRAIT_CHANCE) {
-        const extraTrait = extraTraitOptions[Math.floor(Math.random() * extraTraitOptions.length)];
-        if (extraTrait === "region") {
-            region = "rio";
-        }
-        if (extraTrait === "sello") {
-            const extraStampRule = stampRules[Math.floor(Math.random() * stampRules.length)];
-            stamp = extraStampRule.getForbiddenValue();
-        }
-        if (extraTrait === "especieProhibida") {
-            const extraBannedSpecieRule = bannedSpecieRules[Math.floor(Math.random() * bannedSpecieRules.length)];
-            declaredSpecie = extraBannedSpecieRule.getForbiddenValue();
-        }
-    }
-    // va DESPUES de los rasgos combinados a proposito: el pasaporte del alien es
-    // fijo y pisa lo que hubiera sorteado el rasgo extra (region/especie). El rasgo
-    // PRINCIPAL nunca se pierde - los tres que pueden tocarle a un alien viven
-    // fuera del pasaporte (cuernos, ojos amarillos) o en el sello, que no se toca.
-    if (isAlien) {
-        region = "via lactea";
-        declaredSpecie = "alien";
-    }
-    const passport = new Passport(name, region, declaredSpecie, stamp);
-    if (targetRule.getProperty() === "sello" || targetRule.getProperty() === "especieProhibida") {
-        return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
-    }
-    return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
-}, _Game_chargeDailyCost = function _Game_chargeDailyCost() {
-    const activeRulesCount = this.currentDay.getActiveRules().length;
-    const cost = 2 + activeRulesCount;
-    __classPrivateFieldSet(this, _Game_dayCharge, cost, "f");
-    __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - cost, "f");
-}, _Game_pickPhrase = function _Game_pickPhrase() {
-    return __classPrivateFieldGet(this, _Game_phrases, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_phrases, "f").length)];
-}, _Game_pickAlienFace = function _Game_pickAlienFace() {
-    return __classPrivateFieldGet(this, _Game_parts, "f").alienes[Math.floor(Math.random() * __classPrivateFieldGet(this, _Game_parts, "f").alienes.length)];
 }, _Game_recordDayVisitors = function _Game_recordDayVisitors() {
     if (__classPrivateFieldGet(this, _Game_visitorsSeenToday, "f") > __classPrivateFieldGet(this, _Game_bestDayVisitors, "f")) {
         __classPrivateFieldSet(this, _Game_bestDayVisitors, __classPrivateFieldGet(this, _Game_visitorsSeenToday, "f"), "f");
