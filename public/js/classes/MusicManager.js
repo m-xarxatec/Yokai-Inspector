@@ -16,10 +16,6 @@ export class MusicManager {
         __classPrivateFieldSet(this, _MusicManager_menuMusic, new Audio("sounds/menu.mp3"), "f");
         __classPrivateFieldGet(this, _MusicManager_menuMusic, "f").loop = true;
     }
-    // cambia el volumen de la musica de fondo. Aca si se puede asignar
-    // "volume" directo porque la musica NUNCA se clona (es un solo audio en loop).
-    // El archivo esta mezclado muy alto - tope fijo al 50% del volumen general,
-    // los efectos de SoundManager no llevan este tope
     setVolume(volume) {
         __classPrivateFieldGet(this, _MusicManager_menuMusic, "f").volume = volume * 0.5;
     }

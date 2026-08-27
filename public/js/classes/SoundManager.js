@@ -15,29 +15,23 @@ export class SoundManager {
         _SoundManager_instances.add(this);
         _SoundManager_stampSound.set(this, void 0);
         _SoundManager_wrongSound.set(this, void 0);
-        _SoundManager_nextButtonSound.set(this, void 0); // sonido de click para los botones generales
-        _SoundManager_paperFlipSound.set(this, void 0); // sonido al abrir el pasaporte
-        _SoundManager_victorySound.set(this, void 0); // sonido cuando el usuario gana la partida
-        _SoundManager_loseSound.set(this, void 0); // sonido cuando el usuario pierde la partida
-        _SoundManager_writeSound.set(this, void 0); // sonido de escritura cuando aparece el texto de error de la jefa
-        _SoundManager_writeClone.set(this, void 0); // el clon de "escribir" que esta sonando ahora, para poder cortarlo
-        _SoundManager_volume.set(this, void 0); // 0 a 1, volumen de todos los efectos de sonido
+        _SoundManager_nextButtonSound.set(this, void 0);
+        _SoundManager_paperFlipSound.set(this, void 0);
+        _SoundManager_victorySound.set(this, void 0);
+        _SoundManager_loseSound.set(this, void 0);
+        _SoundManager_writeSound.set(this, void 0);
+        _SoundManager_writeClone.set(this, void 0);
+        _SoundManager_volume.set(this, void 0);
         __classPrivateFieldSet(this, _SoundManager_stampSound, new Audio("sounds/stamp.mp3"), "f");
         __classPrivateFieldSet(this, _SoundManager_wrongSound, new Audio("sounds/wrong.wav"), "f");
-        __classPrivateFieldSet(this, _SoundManager_nextButtonSound, new Audio("sounds/nextButton.mp3"), "f"); // carga el archivo del boton
-        __classPrivateFieldSet(this, _SoundManager_paperFlipSound, new Audio("sounds/paperFlip.mp3"), "f"); // carga el archivo del pasaporte
-        __classPrivateFieldSet(this, _SoundManager_victorySound, new Audio("sounds/victorySound.mp3"), "f"); // carga el archivo de victoria
-        __classPrivateFieldSet(this, _SoundManager_loseSound, new Audio("sounds/loseSound.mp3"), "f"); // carga el archivo de derrota
-        __classPrivateFieldSet(this, _SoundManager_writeSound, new Audio("sounds/write.mp3"), "f"); // carga el archivo de escritura
-        __classPrivateFieldSet(this, _SoundManager_writeClone, null, "f"); // todavia no sono ninguno
-        __classPrivateFieldSet(this, _SoundManager_volume, 1, "f"); // arranca al 100%
+        __classPrivateFieldSet(this, _SoundManager_nextButtonSound, new Audio("sounds/nextButton.mp3"), "f");
+        __classPrivateFieldSet(this, _SoundManager_paperFlipSound, new Audio("sounds/paperFlip.mp3"), "f");
+        __classPrivateFieldSet(this, _SoundManager_victorySound, new Audio("sounds/victorySound.mp3"), "f");
+        __classPrivateFieldSet(this, _SoundManager_loseSound, new Audio("sounds/loseSound.mp3"), "f");
+        __classPrivateFieldSet(this, _SoundManager_writeSound, new Audio("sounds/write.mp3"), "f");
+        __classPrivateFieldSet(this, _SoundManager_writeClone, null, "f");
+        __classPrivateFieldSet(this, _SoundManager_volume, 1, "f");
     }
-    // cambia el volumen de TODOS los efectos de sonido, incluidos los que se
-    // reproduzcan despues de llamar este metodo (#playClone se lo asigna a
-    // cada clon antes de reproducirlo). No se usa la propiedad "volume" del
-    // Audio original porque #playClone clona el audio en cada reproduccion,
-    // y esa propiedad no se copia al clon (no es un atributo HTML, es estado
-    // en memoria) - por eso hay que reasignarla a mano en cada clon
     setVolume(volume) {
         __classPrivateFieldSet(this, _SoundManager_volume, volume, "f");
     }
@@ -51,35 +45,29 @@ export class SoundManager {
         __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_wrongSound, "f"));
     }
     playNextButton() {
-        __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_nextButtonSound, "f")); // reproduce el sonido del boton
+        __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_nextButtonSound, "f"));
     }
     playPaperFlip() {
-        __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_paperFlipSound, "f")); // reproduce el sonido de abrir el pasaporte
+        __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_paperFlipSound, "f"));
     }
     playVictory() {
-        __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_victorySound, "f")); // reproduce el sonido de victoria
+        __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_victorySound, "f"));
     }
     playLose() {
-        __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_loseSound, "f")); // reproduce el sonido de derrota
+        __classPrivateFieldGet(this, _SoundManager_instances, "m", _SoundManager_playClone).call(this, __classPrivateFieldGet(this, _SoundManager_loseSound, "f"));
     }
-    // este sonido NO usa #playClone: se guarda el clon aparte para poder
-    // apagarlo antes con stopWrite() (al apretar "Siguiente" o "Volver al
-    // menu"), y ademas se corta solo a los 1500ms por si el jugador tarda en
-    // clickear - el archivo original es mas largo que eso
     playWrite() {
         if (__classPrivateFieldGet(this, _SoundManager_volume, "f") === 0) {
-            return; // volumen al minimo: no reproduce nada
+            return;
         }
-        const clone = __classPrivateFieldGet(this, _SoundManager_writeSound, "f").cloneNode(); // copia independiente del audio
+        const clone = __classPrivateFieldGet(this, _SoundManager_writeSound, "f").cloneNode();
         clone.volume = __classPrivateFieldGet(this, _SoundManager_volume, "f");
         __classPrivateFieldSet(this, _SoundManager_writeClone, clone, "f");
-        clone.play().catch(() => { }); // evita que un error de reproduccion quede sin manejar
+        clone.play().catch(() => { });
         window.setTimeout(() => {
-            clone.pause(); // corta el sonido aunque el archivo original sea mas largo
+            clone.pause();
         }, 1500);
     }
-    // corta de una el sonido de escritura si todavia esta sonando (se llama
-    // al apretar "Siguiente", para que no se siga escuchando en la pantalla siguiente)
     stopWrite() {
         if (__classPrivateFieldGet(this, _SoundManager_writeClone, "f") !== null) {
             __classPrivateFieldGet(this, _SoundManager_writeClone, "f").pause();
@@ -89,10 +77,10 @@ export class SoundManager {
 }
 _SoundManager_stampSound = new WeakMap(), _SoundManager_wrongSound = new WeakMap(), _SoundManager_nextButtonSound = new WeakMap(), _SoundManager_paperFlipSound = new WeakMap(), _SoundManager_victorySound = new WeakMap(), _SoundManager_loseSound = new WeakMap(), _SoundManager_writeSound = new WeakMap(), _SoundManager_writeClone = new WeakMap(), _SoundManager_volume = new WeakMap(), _SoundManager_instances = new WeakSet(), _SoundManager_playClone = function _SoundManager_playClone(sound) {
     if (__classPrivateFieldGet(this, _SoundManager_volume, "f") === 0) {
-        return; // volumen al minimo: no reproduce nada
+        return;
     }
-    const clone = sound.cloneNode(); // copia independiente del audio
+    const clone = sound.cloneNode();
     clone.volume = __classPrivateFieldGet(this, _SoundManager_volume, "f");
-    clone.play().catch(() => { }); // evita que un error de reproduccion quede sin manejar
+    clone.play().catch(() => { });
 };
 //# sourceMappingURL=SoundManager.js.map

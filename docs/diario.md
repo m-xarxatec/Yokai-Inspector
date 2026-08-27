@@ -624,3 +624,15 @@ Conflictos en `docs/test-temporal.mjs`, `src/ts/classes/Game.ts` y `src/ts/main.
 Los `.js`/`.js.map` compilados en conflicto (`Game.js`, `main.js`) no se resolvieron a mano: se resolvieron primero los `.ts`, y la salida compilada se regeneró con `npm run build`, más confiable que fusionar JS generado a mano.
 
 Verificado con `npm run build` limpio y los 52 tests de `docs/test-temporal.mjs`, todos en verde. No se pusheó — el merge quedó commiteado localmente en `actualiralys`, adelantada respecto a `origin/actualiralys`.
+
+---
+
+2026-08-27 (parte 2) — limpieza de comentarios en las clases propias (Grupo B):
+
+A pedido de Iralys, se sacaron los comentarios explicativos de las clases que le corresponden según `especificaciones-economia.md` (Grupo B): `Rule.ts`, `Day.ts`, `Storage.ts`, `Game.ts`, `SoundManager.ts`, `MusicManager.ts`. No se tocó `main.ts` (autoría mezclada, no es una clase) ni `Economy.ts`/`VisitorGenerator.ts`/`DayTimer.ts` (confirmado por `git log` que son de Mike, aunque salieron de dividir `Game.ts`).
+
+De paso, `Game.ts` perdió un import sin usar (`getHistory`, de `Storage.ts`) y se emparejó la indentación de `decide()`, `endDay()`, `isLost()`/`isWon()`, el getter `currentVisitor` y `loadProgress()`, que tenían menos sangría que el resto de la clase desde antes.
+
+**Un intento fallido**: simplificar el tipo de retorno de `getAllCredits()` en `Storage.ts`, de `Record<string, number>` a `any`, rompió la compilación de `records.ts` (TypeScript perdía el tipo en `Object.entries(credits)`) — se revirtió. Ese `Record` no era capricho de más experiencia de la cuenta, hacía falta ahí para que el resto del código siguiera tipando bien.
+
+Verificado con `npm run build` limpio y los 52 tests de `docs/test-temporal.mjs`, todos en verde — ningún cambio de comportamiento, solo comentarios, un import muerto y formato.
