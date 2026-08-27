@@ -614,3 +614,13 @@ Iralys pidió deshacer el commit del `.md` de la parte 12 (nunca se había pushe
 El `.md` de la parte 12 queda en el disco, sin trackear en git — solo se commitea el `.html`, que es la versión que Iralys pidió como resultado final.
 
 Verificado con Playwright: los 5 diagramas renderizan como SVG sin errores de consola, confirmado dos veces (antes y después de los ajustes de superposición).
+
+---
+
+2026-08-27 — merge de `develop` a `actualiralys`, con el refactor grande de Mike (Economy/VisitorGenerator/DayTimer/shop/stampDrag) ya integrado:
+
+Conflictos en `docs/test-temporal.mjs`, `src/ts/classes/Game.ts` y `src/ts/main.ts` (18 bloques en total). La causa fue siempre la misma: `develop` había extraído a módulos y clases nuevas (`Economy.ts`, `VisitorGenerator.ts`, `DayTimer.ts`, `shop.ts`, `stampDrag.ts`) exactamente la misma lógica que esta rama todavía tenía escrita inline en `Game.ts`/`main.ts` (economía de la tienda, generación de visitantes, reloj de arena del día, drag and drop de los sellos) — mismo código, solo reorganizado por Mike. Se confirmó comparando cada bloque en conflicto contra el archivo nuevo correspondiente antes de resolver nada; el lado de esta rama ni siquiera compilaba (`Game.ts` usaba campos privados como `#parts`/`#names` que ya no estaban declarados), así que se tomó el lado de `develop` en los 18 bloques.
+
+Los `.js`/`.js.map` compilados en conflicto (`Game.js`, `main.js`) no se resolvieron a mano: se resolvieron primero los `.ts`, y la salida compilada se regeneró con `npm run build`, más confiable que fusionar JS generado a mano.
+
+Verificado con `npm run build` limpio y los 52 tests de `docs/test-temporal.mjs`, todos en verde. No se pusheó — el merge quedó commiteado localmente en `actualiralys`, adelantada respecto a `origin/actualiralys`.
