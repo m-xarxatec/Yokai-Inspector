@@ -401,7 +401,7 @@ if (cuernudo === null) {
   console.log("tras aceptar un cuernudo -> letThroughOni:", gameJ.letThroughOni, gameJ.letThroughOni === true ? "[OK]" : "[FALLO]");
 }
 
-// ================= TEST 11: cobro diario (ver especificaciones-economia.md) =================
+// ================= TEST 11: cobro diario =================
 console.log("\n========== TEST 11: cobro diario escala con la cantidad de reglas activas, y el dia 1 no cobra ==========");
 resetMocks();
 const gameK = new Game();

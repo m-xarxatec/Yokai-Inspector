@@ -11,7 +11,8 @@ Encapsulamiento: campos siempre privados con `#`, nunca `public` directo.
 
 Estilo de acceso a los campos:
 - `Character`, `Human`, `Yokai`, `Passport`: los getters simples son `get` accessors (se llaman sin paréntesis, ej. `personaje.obtainName`).
-- `Rule`, `Day`, `Game`: los getters son métodos normales con paréntesis (ej. `regla.getDay()`), salvo los campos simples de `Game` (`dayNumber`, `errors`, `money`, `currentVisitor`, `currentDay`, `playerName`), que sí son `get` accessors.
+- `Rule`, `Day`: los getters son métodos normales con paréntesis (ej. `regla.getDay()`).
+- `Game` y sus clases colaboradoras (`Economy`, `VisitorGenerator`): todo getter que solo devuelve un campo (sin calcular nada) es un `get` accessor — es el patrón que terminó usando toda la clase a medida que creció (día/racha, economía), no solo un puñado de campos "simples" como en una versión anterior de este documento. Lo que SÍ hace algo (`decide()`, `endDay()`, `buyHint()`, `alienStampRuleActive()`, `chargeDailyCost()`, etc.) sigue siendo un método normal con paréntesis.
 
 Evitar `switch` — preferencia mencionada en clase por el profesor, usar cadenas de `if`/`else if` en su lugar. (Excepción: `Rule.isViolated()` quedó con `switch`, a cargo de Iralys si el profesor lo señala.)
 
@@ -22,6 +23,8 @@ Nada de `var` — solo `const`/`let`.
 Nada de `async`/`await` — carga de datos con `Promise.all(...).then()/.catch()`.
 
 Separación de responsabilidades: las clases de dominio (`Character`, `Passport`, `Rule`, `Day`) no tocan el DOM ni `localStorage`. `Game` orquesta la partida. `Storage` son funciones sueltas para `localStorage`. `main.ts` conecta `Game` con la interfaz.
+
+`main.ts` fue separandose en módulos por sub-sistema de UI a medida que creció (ver diario.md): `DayTimer` (clase, en `classes/`, temporizador del día + reloj visual), `shop.ts`/`stampDrag.ts` (registran sus propios listeners vía una función `initX()` a la que `main.ts` le pasa lo que necesitan de su estado compartido - `game`, `soundManager`, etc. - como parámetros, nunca importándolo directo, para no crear imports circulares), `characterSlide.ts` (entrada/salida del personaje), `records.ts` (créditos/historial), `bezierArc.ts`/`dialogue.ts`/`preload.ts`/`coinSpin.ts` (funciones sueltas sin estado compartido). Lo que sigue en `main.ts`: el router de pantallas (`changeState()`), `renderVisitor()`, `resolveDecision()`, `afterDecision()`, y los `render*Screen()` de cada pantalla - la orquestación real, profundamente entrelazada entre sí.
 
 Persistencia con `localStorage` vía `Storage.ts` (`saveCurrentGame`, `loadCurrentGame`, `deleteCurrentGame`, `saveToHistory`, `getHistory`), usando `JSON.stringify`/`JSON.parse`.
 
