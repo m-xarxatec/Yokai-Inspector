@@ -125,12 +125,10 @@ function setupStampDrag(
 
 // registra el drag and drop de los 3 sellos y el click para abrir el
 // pasaporte antes de poder usarlos - resolveDecision se recibe por parametro
-// porque vive en main.ts (es el corazon del flujo, ver resolveDecision() ahi)
-// y onPassportOpened porque main.ts necesita registrar passportOpenedAt.
+// porque vive en main.ts (es el corazon del flujo, ver resolveDecision() ahi).
 export function initStampDrag(
   soundManager: SoundManager,
-  resolveDecision: (accept: boolean, usedAlienStamp: boolean) => void,
-  onPassportOpened: () => void
+  resolveDecision: (accept: boolean, usedAlienStamp: boolean) => void
 ): void {
   setupStampDrag("reject-btn", false, false, soundManager, resolveDecision);
   setupStampDrag("accept-btn", true, false, soundManager, resolveDecision);
@@ -153,7 +151,6 @@ export function initStampDrag(
       passportEl.classList.remove("closed");
       passportEl.classList.add("open");
       setDecisionStampsEnabled(true);
-      onPassportOpened();
     }, PASSPORT_OPEN_DELAY_MS);
   });
 }

@@ -1,5 +1,7 @@
 import { Game } from "./classes/Game.js";
-import { loadCurrentGame, savePlayerName, loadPlayerName, saveDayStreaks, loadDayStreaks, getResultStreak, clearSavedGames } from "./Storage.js";
+import { loadCurrentGame, savePlayerName, loadPlayerName, saveDayStreaks, loadDayStreaks, getResultStreak, clearSavedGames, clearCredits } from "./Storage.js";
+import { mulberry32, todayChallengeSeed } from "./random.js";
+import { initKeyboardNav, focusFirstControl } from "./keyboardNav.js";
 import { SoundManager } from "./classes/SoundManager.js";
 import { MusicManager } from "./classes/MusicManager.js";
 import { DayTimer } from "./classes/DayTimer.js";
@@ -13,7 +15,9 @@ import { CHARACTER_ELEMENT, resetElementOffscreen, setDecisionStampsEnabled, sli
 import { initStampDrag } from "./stampDrag.js";
 
 let game: Game | null = null;
-let currentState: string = "menu";
+// arranca en la pantalla-gate (fondo negro + boton Start), que ya esta visible
+// en el HTML sin pasar por changeState() - ver #start-gate-btn mas abajo
+let currentState: string = "start-gate";
 const soundManager = new SoundManager();
 const musicManager = new MusicManager();
 // se avisa aca (en vez de que DayTimer conozca a Game) cuando el dia vence
@@ -27,16 +31,14 @@ const dayTimer = new DayTimer(() => {
   afterDecision(dayBefore);
 });
 
-// el menu ya esta visible por defecto en el HTML (arranca en "menu" sin pasar
-// por changeState()), y los navegadores bloquean el audio hasta la primera
-// interaccion del usuario: se intenta reproducir de una, y si el navegador lo
-// bloquea, se reintenta en el primer click/tecla que haga en cualquier parte
-musicManager.playMenu();
-document.addEventListener("pointerdown", () => {
-  if (currentState === "menu") {
-    musicManager.playMenu();
-  }
-}, { once: true });
+// gate de audio: el click en un boton real SIEMPRE cuenta como gesto de usuario
+// valido para el navegador, asi que la musica del menu arranca aca sin
+// necesidad de reintentos ni listeners de respaldo
+document.querySelector("#start-gate-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton();
+  musicManager.playMenu();
+  changeState("menu");
+});
 
 // racha con la que termino cada dia de la partida en curso - se guarda en
 // localStorage al cerrar cada dia (ver afterDecision()), todavia sin usarse
@@ -106,6 +108,14 @@ const DECISION_STAMP_FLASH_MS = 400;
 // sola por la proporcion de problematicos y la cantidad de reglas activas
 // por dia. Elegible desde el menu principal (ver #day-duration-slider).
 let DAY_DURATION_MS = 90000;
+// valor elegido en el slider de Opciones - lo aplica beginGame() al arrancar
+// una partida normal. El modo dificil lo ignora (fuerza 30s) y el desafio
+// diario tambien (fija 90s para que sea igual para todos).
+let selectedDayDurationMs = 90000;
+
+// true en modo dificil - solo se puede cambiar en el menu, antes de arrancar
+// una partida nueva (ver #hard-mode-toggle-btn)
+let hardModeSelected = false;
 
 let streak: number = 0;
 // pico de racha alcanzado en el dia en curso (streak solo no alcanza: si hubo
@@ -141,6 +151,11 @@ function changeState(newState: string): void {
   } else {
     musicManager.stop();
   }
+
+  // deja el foco en el primer boton (o el input de texto) de la pantalla
+  // nueva, asi se puede navegar con las flechas y confirmar con Enter sin
+  // tocar el mouse - la pantalla de juego se saltea (ver keyboardNav.ts)
+  focusFirstControl(newState);
 }
 
 // --- Menu screen ---
@@ -163,7 +178,7 @@ function updateContinueButton(): void {
     return;
   }
   statusHtmlEl.classList.remove("hidden");
-  statusEl.textContent = "⏸ Partida pausada — Día " + savedGame.dayNumber + " / " + (savedGame.totalDays ?? 7);
+  statusEl.textContent = "⏸ Partida pausada — Día " + savedGame.dayNumber + " / " + (savedGame.totalDays ?? 7) + (savedGame.hardMode ? " · Difícil" : "");
 }
 
 function updateTimerToggleButton(): void {
@@ -207,10 +222,11 @@ const DAY_DURATION_OPTIONS_MS = [30000, 60000, 90000, 120000];
 
 document.querySelector("#day-duration-slider")?.addEventListener("input", (event) => {
   const index = Number((event.target as HTMLInputElement).value);
-  DAY_DURATION_MS = DAY_DURATION_OPTIONS_MS[index];
+  selectedDayDurationMs = DAY_DURATION_OPTIONS_MS[index];
+  DAY_DURATION_MS = selectedDayDurationMs;
   const valueEl = document.querySelector("#day-duration-value");
   if (valueEl !== null) {
-    valueEl.textContent = (DAY_DURATION_MS / 1000) + "s";
+    valueEl.textContent = (selectedDayDurationMs / 1000) + "s";
   }
 });
 
@@ -252,20 +268,17 @@ document.querySelector("#fullscreen-toggle-btn")?.addEventListener("click", () =
   }
 });
 
-// al confirmar el nombre arranca la partida nueva (esto reemplaza lo que antes
-// hacia el click de "Nueva partida" directamente)
-document.querySelector("#player-name-form")?.addEventListener("submit", (event) => {
-  event.preventDefault();
-  soundManager.playNextButton(); // sonido de click del boton
-  const input = document.querySelector("#player-name-input") as HTMLInputElement | null;
-  input?.blur(); // saca el foco del input ya mismo (la carga de datos de abajo es async y tarda)
-  const name = input?.value.trim() ?? "";
-  savePlayerName(name);
-
-  game = new Game(name, selectedTotalDays);
+// arranca una partida nueva y lleva a la pantalla de historia. Lo comparten el
+// submit del nombre (partida normal, con o sin modo dificil) y el boton de
+// desafio diario (semilla fija). randomFn = Math.random para una partida
+// comun, o un generador con semilla para el desafio diario.
+function beginGame(name: string, totalDays: number, hardMode: boolean, randomFn: () => number, dayDurationMs: number): void {
+  game = new Game(name, totalDays, hardMode, randomFn);
   streak = 0;
+  maxStreakToday = 0;
   dayStreaks = [];
   saveDayStreaks(dayStreaks);
+  DAY_DURATION_MS = dayDurationMs;
   game.loadData(() => {
     if (game === null) {
       return;
@@ -274,6 +287,56 @@ document.querySelector("#player-name-form")?.addEventListener("submit", (event) 
     renderStoryScreen();
     changeState("story");
   });
+}
+
+// al confirmar el nombre arranca la partida nueva (esto reemplaza lo que antes
+// hacia el click de "Nueva partida" directamente)
+document.querySelector("#player-name-form")?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  soundManager.playNextButton(); // sonido de click del boton
+  const input = document.querySelector("#player-name-input") as HTMLInputElement | null;
+  input?.blur(); // saca el foco del input ya mismo (la carga de datos de abajo es async y tarda)
+  // sin nombre: "Un1c0rN10" por defecto (Game igual descarta cadenas vacias,
+  // pero aca se elige un nombre concreto para que se vea y se guarde)
+  const name = (input?.value.trim() ?? "") || "Un1c0rN10";
+  savePlayerName(name);
+
+  // el modo dificil fuerza 30s de dia (el slider de duracion queda
+  // deshabilitado mientras esta activo, ver updateHardModeButton())
+  const durationMs = hardModeSelected ? DAY_DURATION_OPTIONS_MS[0] : selectedDayDurationMs;
+  beginGame(name, selectedTotalDays, hardModeSelected, Math.random, durationMs);
+});
+
+// --- modo dificil: toggle del menu, solo antes de arrancar una partida nueva ---
+function updateHardModeButton(): void {
+  const button = document.querySelector("#hard-mode-toggle-btn");
+  if (button !== null) {
+    button.textContent = hardModeSelected ? "Modo difícil: ON" : "Modo difícil: OFF";
+    button.setAttribute("aria-pressed", String(hardModeSelected));
+    button.classList.toggle("active", hardModeSelected);
+  }
+  // en modo dificil la duracion del dia esta fija en 30s, no tiene sentido
+  // dejar tocar el slider
+  const durationSlider = document.querySelector("#day-duration-slider") as HTMLInputElement | null;
+  if (durationSlider !== null) {
+    durationSlider.disabled = hardModeSelected;
+  }
+}
+
+document.querySelector("#hard-mode-toggle-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  hardModeSelected = !hardModeSelected;
+  updateHardModeButton();
+});
+
+// --- desafio diario: misma secuencia de visitantes para todos los que jueguen
+// --- hoy (semilla derivada de la fecha) - siempre modo normal, 7 dias y 90s,
+// --- para que la comparacion sea justa. Game no sabe nada de fechas ni de
+// --- "desafio": solo recibe un generador con semilla (ver src/ts/random.ts).
+document.querySelector("#daily-challenge-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  const name = loadPlayerName() || "Un1c0rN10";
+  beginGame(name, 7, false, mulberry32(todayChallengeSeed()), DAY_DURATION_OPTIONS_MS[2]);
 });
 
 // a donde vuelve el "Volver al menu" de options/credits/exit - "menu" salvo
@@ -360,6 +423,12 @@ document.querySelector("#credits-btn")?.addEventListener("click", () => {
 
 document.querySelector("#new-game-btn")?.addEventListener("click", () => {
   soundManager.playNextButton(); // sonido de click del boton
+  // precarga el input con el ultimo nombre usado - quien ya jugo no tiene que
+  // volver a tipearlo desde cero
+  const input = document.querySelector("#player-name-input") as HTMLInputElement | null;
+  if (input !== null) {
+    input.value = loadPlayerName();
+  }
   changeState("name-entry");
 });
 
@@ -424,7 +493,11 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
   soundManager.playNextButton(); // sonido de click del boton
   game = new Game(loadPlayerName());
   streak = 0;
+  maxStreakToday = 0;
   dayStreaks = loadDayStreaks();
+  // una partida guardada en modo dificil sigue con sus 30s de dia al retomarla
+  const savedGame = loadCurrentGame();
+  DAY_DURATION_MS = (savedGame !== null && savedGame.hardMode) ? DAY_DURATION_OPTIONS_MS[0] : selectedDayDurationMs;
   game.loadData(() => {
     if (game === null) {
       return;
@@ -450,24 +523,12 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
 // tiene que volver al visitante siguiente en vez de arrancar un dia nuevo
 let errorReactionPending = false;
 
-// instante en que se habilito decidir sobre el pasaporte actual (ver el click
-// de #passport-object en stampDrag.ts, que avisa con onPassportOpened) -
-// null mientras el pasaporte esta cerrado. Se usa en resolveDecision() para
-// detectar si el jugador decidio demasiado rapido como para haberlo revisado
-// de verdad (ver RUSH_THRESHOLD_MS y Game.decide(), parametro wasRushed).
-let passportOpenedAt: number | null = null;
-const RUSH_THRESHOLD_MS = 700;
-
 function renderVisitor(): void {
   if (game === null || game.currentVisitor === null) {
     return;
   }
 
   resetElementOffscreen(CHARACTER_ELEMENT);
-
-  // por si quedaba un resaltado de la pista de la tienda sin terminar de
-  // apagarse (ver #shop-hint-btn) - no tiene sentido sobre el visitante nuevo
-  document.querySelectorAll(".hint-highlight").forEach(el => el.classList.remove("hint-highlight"));
 
   // se mantienen deshabilitados hasta que el jugador abra el pasaporte (ver el
   // listener de click de #passport-object) - no se puede decidir a ciegas
@@ -497,7 +558,6 @@ function renderVisitor(): void {
     passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
     passportEl.classList.add("closed");
   }
-  passportOpenedAt = null;
 
   window.setTimeout(() => {
     if (passportEl !== null) {
@@ -578,21 +638,22 @@ function renderVisitor(): void {
   const streakEl = document.querySelector("#streak-counter");
   const sceneEl = document.querySelector("#character-scene") as HTMLElement | null;
 
+  // umbral de alerta: el ultimo error antes de perder (3/4 normal, 2/3 dificil)
+  const dangerThreshold = game.maxErrors - 1;
   if (dayEl !== null) dayEl.textContent = game.dayNumber + " / " + game.totalDays;
   if (errorsEl !== null) {
-    errorsEl.textContent = game.errors + " / 4";
-    if (game.errors >= 3) {
+    errorsEl.textContent = game.errors + " / " + game.maxErrors;
+    if (game.errors >= dangerThreshold) {
       errorsEl.classList.add("danger");
     } else {
       errorsEl.classList.remove("danger");
     }
   }
-  // modo alerta: con 3+ errores, el recuadro solido detras de fondoPantallaJuegoT.png
-  // (ver style.css .alerta) empieza a parpadear en rosa, lo que se lee como todo
-  // el borde de la pantalla en alerta - de momento solo visual, ver docs/ideas.md
-  // para un futuro "modo reducir errores"
+  // modo alerta: a un error de perder, el recuadro solido detras de
+  // fondoPantallaJuegoT.png (ver style.css .alerta) empieza a parpadear en
+  // rosa, lo que se lee como todo el borde de la pantalla en alerta
   if (sceneEl !== null) {
-    if (game.errors >= 3) {
+    if (game.errors >= dangerThreshold) {
       sceneEl.classList.add("alert");
     } else {
       sceneEl.classList.remove("alert");
@@ -675,11 +736,6 @@ function resolveDecision(accept: boolean, usedAlienStamp: boolean = false): void
   if (game === null) {
     return;
   }
-  // se mide ACA (apenas el jugador suelta el sello), no mas abajo cuando recien
-  // se llama a game.decide() - esa llamada esta atras de ~2s de animacion, no
-  // del tiempo que el jugador realmente tardo en revisar el pasaporte
-  const wasRushed = passportOpenedAt !== null && (performance.now() - passportOpenedAt) < RUSH_THRESHOLD_MS;
-
   // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
   // que seguir corriendo mientras se decide (ver dayTimer.start()). Se marca
   // que hay una decision en curso para que, si el dia vence en el medio, no
@@ -737,7 +793,7 @@ function resolveDecision(accept: boolean, usedAlienStamp: boolean = false): void
           if (game === null) {
             return;
           }
-          game.decide(accept, usedAlienStamp, wasRushed);
+          game.decide(accept, usedAlienStamp);
 
           const justErred = game.errors > errorsBefore;
           if (justErred) {
@@ -783,9 +839,7 @@ function resolveDecision(accept: boolean, usedAlienStamp: boolean = false): void
 
 // --- sellos: drag and drop real (reemplazan los botones Aceptar/Rechazar,
 // ver stampDrag.ts) - incluye el click sobre el pasaporte cerrado para abrirlo ---
-initStampDrag(soundManager, resolveDecision, () => {
-  passportOpenedAt = performance.now();
-});
+initStampDrag(soundManager, resolveDecision);
 
 // --- Day summary screen (resumen narrativo + estadisticas al terminar cada dia) ---
 
@@ -809,6 +863,13 @@ function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
   }
   typeDialogue(DAY_END_MESSAGES[dayNumber - 1], "#day-summary-text");
 
+  // el ultimo dia de la semana (sea partida de 5, 6 o 7 dias) no lleva a otro
+  // dia sino a la pantalla final - el boton lo dice
+  const continueBtn = document.querySelector("#day-summary-continue-btn");
+  if (continueBtn !== null) {
+    continueBtn.textContent = game.isWon() ? "Finalizar semana" : "Siguiente día";
+  }
+
   const statsEl = document.querySelector("#day-summary-stats");
   if (statsEl === null) {
     return;
@@ -816,7 +877,6 @@ function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
   statsEl.innerHTML = "";
   const money = game.lastDayMoney;
   const charge = game.lastDayCharge;
-  const rushPenalty = game.lastDayRushPenalty;
   const stats = [
     "Aceptados: " + game.lastDayAccepted,
     "Rechazados: " + game.lastDayRejected,
@@ -828,11 +888,6 @@ function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
   // linea si no hubo cobro
   if (charge > 0) {
     stats.push("Cobro diario: -" + charge);
-  }
-  // solo aparece si hubo al menos una decision demasiado rapida ese dia (ver
-  // RUSH_THRESHOLD_MS)
-  if (rushPenalty > 0) {
-    stats.push("Descuido (decidiste sin revisar): -" + rushPenalty);
   }
   stats.forEach(line => {
     const item = document.createElement("li");
@@ -869,7 +924,7 @@ function renderDayResultScreen(showSummary: boolean = true): void {
     const summaryHtmlEl = summaryEl as HTMLElement;
     if (showSummary) {
       summaryHtmlEl.classList.remove("hidden");
-      summaryEl.textContent = "Errores acumulados: " + game.errors + " / 4 — Dinero: " + game.money;
+      summaryEl.textContent = "Errores acumulados: " + game.errors + " / " + game.maxErrors + " — Dinero: " + game.money;
     } else {
       summaryHtmlEl.classList.add("hidden");
     }
@@ -1063,9 +1118,62 @@ function renderEndingBeat(): void {
   const hasMoreBeats = endingBeatIndex < endingBeats.length - 1;
   const continueBtn = document.querySelector("#final-continue-btn") as HTMLElement | null;
   const backBtn = document.querySelector("#back-to-menu-btn") as HTMLElement | null;
+  const shareBtn = document.querySelector("#share-result-btn") as HTMLElement | null;
   if (continueBtn !== null) continueBtn.classList.toggle("hidden", !hasMoreBeats);
   if (backBtn !== null) backBtn.classList.toggle("hidden", hasMoreBeats);
+  // "Copiar resultado" aparece junto a "Volver al menú", solo en el ultimo cuadro
+  if (shareBtn !== null) shareBtn.classList.toggle("hidden", hasMoreBeats);
 }
+
+// tarjeta de texto corta para compartir el resultado (estilo Wordle) - solo
+// lee getters que Game ya expone, no agrega nada a Game
+function buildResultCard(finished: Game): string {
+  const dayReached = finished.isWon() ? finished.totalDays : finished.dayNumber;
+  const lines = [
+    "Yokai Inspector 🔍",
+    (finished.isWon() ? "Victoria 🏆" : "Derrota 💀") + " — Día " + dayReached + " / " + finished.totalDays,
+    "❌ " + finished.errors + " errores · 💰 $" + finished.money + (finished.hardMode ? " · 🔥 Difícil" : ""),
+  ];
+  const leaked: string[] = [];
+  if (finished.letThroughOni) leaked.push("👹");
+  if (finished.letThroughKitsune) leaked.push("🦊");
+  if (finished.letThroughKappa) leaked.push("🐸");
+  if (leaked.length > 0) {
+    lines.push("Se me colaron: " + leaked.join(" "));
+  }
+  return lines.join("\n");
+}
+
+document.querySelector("#share-result-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  if (game === null) {
+    return;
+  }
+  const button = document.querySelector("#share-result-btn");
+  const card = buildResultCard(game);
+  // navigator.clipboard no existe en contextos no seguros (file://, http sin
+  // localhost) - ahi no se puede copiar y punto
+  if (navigator.clipboard === undefined) {
+    if (button !== null) {
+      button.textContent = "No se pudo copiar";
+      window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
+    }
+    return;
+  }
+  // navigator.clipboard.writeText devuelve una Promise - se resuelve con
+  // .then()/.catch() para no usar async/await (ver docs/convenciones.md)
+  navigator.clipboard.writeText(card).then(() => {
+    if (button !== null) {
+      button.textContent = "¡Copiado!";
+      window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
+    }
+  }).catch(() => {
+    if (button !== null) {
+      button.textContent = "No se pudo copiar";
+      window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
+    }
+  });
+});
 
 function renderFinalScreen(): void {
   if (game === null) {
@@ -1121,10 +1229,39 @@ document.querySelector("#back-to-menu-btn")?.addEventListener("click", () => {
   updateContinueButton();
 });
 
+// --- borrado manual desde la pantalla de creditos ---
+//
+// dos acciones separadas a proposito (mismo criterio que Storage.ts):
+// "partidas guardadas" = partida en curso + historial + rachas;
+// "creditos" = solo el ranking acumulado por jugador. Cada una pide
+// confirmacion nativa porque son las primeras acciones destructivas que el
+// jugador dispara el mismo desde un boton.
+document.querySelector("#clear-history-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  if (!window.confirm("¿Borrar la partida en curso, el historial y las rachas? No se puede deshacer.")) {
+    return;
+  }
+  clearSavedGames();
+  renderHistoryTable();
+  updateContinueButton();
+});
+
+document.querySelector("#clear-credits-btn")?.addEventListener("click", () => {
+  soundManager.playNextButton(); // sonido de click del boton
+  if (!window.confirm("¿Borrar el ranking de créditos de todos los inspectores? No se puede deshacer.")) {
+    return;
+  }
+  clearCredits();
+  renderCreditsScreen();
+});
+
 // --- Estado inicial al cargar la página ---
 
 updateContinueButton();
 updateTimerToggleButton();
+updateHardModeButton();
 renderHistoryTable();
 preloadCharacterImages();
 startCoinSpin();
+initKeyboardNav(() => currentState);
+focusFirstControl("start-gate");

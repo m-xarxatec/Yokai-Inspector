@@ -50,6 +50,13 @@ export function getAllCredits() {
     }
     return JSON.parse(rawData);
 }
+// borra SOLO el ranking de creditos acumulados por jugador (CREDITS_KEY). No
+// toca la partida en curso, el historial ni las rachas: eso lo hace
+// clearSavedGames(), son cosas separadas a proposito. La usa el boton "Borrar
+// créditos" de la pantalla de creditos.
+export function clearCredits() {
+    localStorage.removeItem(CREDITS_KEY);
+}
 // racha con la que termino cada dia de la partida en curso (un numero por dia
 // jugado, en orden) - todavia sin usarse para nada mas que guardarla; queda
 // preparada para una idea a futuro (ver docs/ideas.md): un final alternativo

@@ -77,6 +77,36 @@ section {
   margin: 0 auto;
 }
 
+/* ---------- gate de audio: pantalla negra con un boton antes del menu ---------- */
+
+/*
+  mismo criterio que #menu-screen: NUNCA un "display" directo por ID aca (le
+  ganaria a .hidden y changeState() no podria ocultarla). El centrado del boton
+  se resuelve con #start-gate-inner (position + flex), no tocando la seccion.
+*/
+#start-gate-screen {
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: #000;
+}
+
+#start-gate-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#start-gate-btn {
+  font-size: 2rem;
+  padding: 0.9rem 3rem;
+  letter-spacing: 0.12em;
+}
+
 /*
   a pantalla completa, mismo criterio que #menu-screen: fondoPantallaJuegoT.png
   esta pensado como el fondo de TODA la pantalla de juego (HUD, barra lateral
@@ -273,6 +303,30 @@ button:disabled {
   color: #f2ede3;
 }
 
+/* modos de partida en la barra lateral del menu (desafio diario + toggle de
+   modo dificil) - botones compactos para no competir con la tabla de partidas */
+#menu-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+#menu-modes button {
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+#hard-mode-toggle-btn.active {
+  background: #a0442f;
+}
+
+/* columna "Modo" del historial: resalta solo las partidas en dificil */
+#history-table td.mode-hard {
+  color: #e0a86a;
+  font-weight: 500;
+}
+
 #player-name-form {
   display: flex;
   flex-direction: column;
@@ -380,6 +434,22 @@ button:disabled {
 
 .back-link {
   background: #4a4658;
+}
+
+/* zona de borrado de la pantalla de creditos (partidas guardadas / creditos) */
+#credits-danger-zone {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.danger-btn {
+  background: #7a2e2e;
+}
+
+.danger-btn:hover {
+  background: #9a3a3a;
 }
 
 #paused-status {
@@ -835,18 +905,6 @@ button:disabled {
   background-position: center;
   cursor: pointer;
   z-index: 5;
-}
-
-/* resalta el campo del pasaporte (o el rasgo del personaje) que la pista de
-   la tienda senala como problematico - ver Game.buyHint() y
-   hintTargetSelector() en main.ts. Se saca sola a los pocos segundos. */
-.hint-highlight {
-  animation: hint-glow 0.6s ease-in-out 3;
-}
-
-@keyframes hint-glow {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 209, 102, 0)); }
-  50% { filter: drop-shadow(0 0 0.6rem rgba(255, 209, 102, 0.95)); }
 }
 
 .exit-to-menu-btn {

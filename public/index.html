@@ -8,7 +8,18 @@
 </head>
 <body>
 
-  <section id="menu-screen">
+  <!-- pantalla negra con un unico boton antes del menu: el primer click del
+       jugador es un gesto explicito que desbloquea el audio del navegador
+       (reemplaza el viejo parche de reintentar la musica en el primer
+       pointerdown, ver main.ts). "start-gate" nunca es un destino de
+       changeState(): es solo el estado inicial del HTML. -->
+  <section id="start-gate-screen">
+    <div id="start-gate-inner">
+      <button id="start-gate-btn">Start</button>
+    </div>
+  </section>
+
+  <section id="menu-screen" class="hidden">
     <div id="menu-layout">
       <!-- backgroundEnd.png (arte de Iralys) ya trae el titulo dibujado adentro,
            asi que el <h1> queda vacio (se mantiene el tag por si hace falta
@@ -30,6 +41,15 @@
       <aside id="menu-sidebar">
         <p id="paused-status" class="hidden"></p>
 
+        <!-- modos de partida: solo se eligen desde aca, antes de arrancar una
+             partida nueva (nunca a mitad de una). El modo dificil es un toggle
+             que afecta a la proxima "Nueva partida"; el desafio diario arranca
+             una partida con la misma secuencia de visitantes para todos ese dia. -->
+        <div id="menu-modes">
+          <button id="daily-challenge-btn" type="button">🗓️ Desafío diario</button>
+          <button id="hard-mode-toggle-btn" type="button" aria-pressed="false">Modo difícil: OFF</button>
+        </div>
+
         <div id="history-panel">
           <h2>Últimas partidas</h2>
           <div class="table-scroll">
@@ -41,6 +61,7 @@
                   <th>Errores</th>
                   <th>Dinero</th>
                   <th>Resultado</th>
+                  <th>Modo</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -97,7 +118,6 @@
     <div class="screen-panel">
       <h2>Tienda</h2>
       <p class="screen-subtitle">Dinero disponible: <span id="shop-money">-</span></p>
-      <button id="shop-hint-btn">Revisar pasaporte (-3)</button>
       <button id="shop-extra-time-btn">+15 segundos (-5)</button>
       <button id="shop-insurance-btn">Indulto (-8)</button>
       <button id="shop-continue-btn">Volver al juego</button>
@@ -109,6 +129,13 @@
       <h2>Créditos acumulados</h2>
       <p class="screen-subtitle">Dinero total ganado por cada inspector a lo largo de sus partidas.</p>
       <ul id="credits-list" class="styled-list"></ul>
+      <!-- borrado manual: cada boton pide confirmacion nativa antes de actuar.
+           "partidas guardadas" = partida en curso + historial + rachas (no toca
+           creditos); "créditos" = solo el ranking de aca. Ver main.ts. -->
+      <div id="credits-danger-zone">
+        <button id="clear-history-btn" type="button" class="danger-btn">Borrar partidas guardadas</button>
+        <button id="clear-credits-btn" type="button" class="danger-btn">Borrar créditos</button>
+      </div>
       <button id="back-to-menu-from-credits-btn" class="back-link">Volver al menú</button>
     </div>
   </section>
@@ -122,14 +149,19 @@
   </section>
 
   <section id="name-entry-screen" class="hidden">
-    <h2>Introduce tu nombre, detective</h2>
-    <form id="player-name-form">
-      <div id="player-name-row">
-        <input type="text" id="player-name-input" placeholder="Tu nombre" maxlength="24">
-        <button type="submit">Continuar</button>
-      </div>
-    </form>
-    <button class="exit-to-menu-btn">Volver al menú</button>
+    <div class="screen-panel">
+      <h2>Introduce tu nombre, detective</h2>
+      <form id="player-name-form">
+        <label for="player-name-input">Tu nombre</label>
+        <div id="player-name-row">
+          <!-- si se deja vacio, la partida usa "Un1c0rN10" por defecto (ver
+               el submit de #player-name-form en main.ts) -->
+          <input type="text" id="player-name-input" placeholder="Un1c0rN10" maxlength="24">
+          <button type="submit">Continuar</button>
+        </div>
+      </form>
+      <button class="exit-to-menu-btn">Volver al menú</button>
+    </div>
   </section>
 
   <section id="story-screen" class="hidden">
@@ -257,6 +289,10 @@
     <!-- solo visible cuando el final tiene mas de un cuadro (ver ENDING_* en
          main.ts) - avanza al siguiente cuadro en vez de volver al menu -->
     <button id="final-continue-btn" class="hidden">Siguiente</button>
+    <!-- arma una tarjeta de texto corta (dia, errores, dinero, yokais colados)
+         y la copia al portapapeles - solo visible en el ultimo cuadro del
+         final, junto a "Volver al menú" (ver renderEndingBeat() en main.ts) -->
+    <button id="share-result-btn" class="hidden">Copiar resultado</button>
     <button id="back-to-menu-btn">Volver al menú</button>
   </section>
 

@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_playerName, _Game_visitorGenerator, _Game_economy, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_startDay, _Game_recordDayVisitors, _Game_recordLetThrough;
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_hardMode, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_playerName, _Game_visitorGenerator, _Game_economy, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_startDay, _Game_recordDayVisitors, _Game_recordLetThrough;
 import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, addCredits, addResultToStreak } from "../Storage.js";
 import { Yokai } from "./Yokai.js";
 import { Rule } from "./Rule.js";
@@ -17,13 +17,20 @@ import { Day } from "./Day.js";
 import { VisitorGenerator } from "./VisitorGenerator.js";
 import { Economy } from "./Economy.js";
 export class Game {
-    constructor(playerName = "Jugador", totalDays = 7) {
+    // hardMode y randomFn son opcionales y con default "sin efecto" (modo normal
+    // y Math.random) a proposito: todo el codigo que ya llamaba new Game(nombre)
+    // o new Game(nombre, dias) -incluidos los tests- sigue comportandose igual.
+    constructor(playerName = "Jugador", totalDays = 7, hardMode = false, randomFn = Math.random) {
         _Game_instances.add(this);
         _Game_dayNumber.set(this, void 0);
         _Game_errors.set(this, void 0);
         _Game_money.set(this, void 0);
         _Game_maxErrors.set(this, void 0);
         _Game_totalDays.set(this, void 0);
+        // modo dificil: menos margen de error (#maxErrors 3 en vez de 4) y mas
+        // proporcion de visitantes problematicos (ver VisitorGenerator.generate()).
+        // Solo se elige antes de arrancar una partida nueva, nunca a mitad de una.
+        _Game_hardMode.set(this, void 0);
         _Game_days.set(this, void 0);
         _Game_currentVisitor.set(this, void 0);
         _Game_visitorsSeenToday.set(this, void 0);
@@ -54,12 +61,13 @@ export class Game {
         __classPrivateFieldSet(this, _Game_dayNumber, 1, "f");
         __classPrivateFieldSet(this, _Game_errors, 0, "f");
         __classPrivateFieldSet(this, _Game_money, 10, "f");
-        __classPrivateFieldSet(this, _Game_maxErrors, 4, "f");
+        __classPrivateFieldSet(this, _Game_hardMode, hardMode, "f");
+        __classPrivateFieldSet(this, _Game_maxErrors, hardMode ? 3 : 4, "f");
         __classPrivateFieldSet(this, _Game_totalDays, totalDays, "f");
         __classPrivateFieldSet(this, _Game_days, [], "f");
         __classPrivateFieldSet(this, _Game_currentVisitor, null, "f");
         __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
-        __classPrivateFieldSet(this, _Game_visitorGenerator, new VisitorGenerator(), "f");
+        __classPrivateFieldSet(this, _Game_visitorGenerator, new VisitorGenerator(randomFn), "f");
         __classPrivateFieldSet(this, _Game_economy, new Economy(), "f");
         __classPrivateFieldSet(this, _Game_letThroughOni, false, "f");
         __classPrivateFieldSet(this, _Game_letThroughKitsune, false, "f");
@@ -107,23 +115,6 @@ export class Game {
     alienStampRuleActive() {
         return this.currentDay.getActiveRules().some((rule) => rule.getProperty() === "selloAlien");
     }
-    get hintCost() {
-        return __classPrivateFieldGet(this, _Game_economy, "f").hintCost;
-    }
-    // tienda: revela que propiedad del visitante actual viola una regla hoy (o
-    // null si esta limpio - no hay nada que revelar, pero el costo se cobra
-    // igual, es el riesgo de comprarla "a ciegas"). Devuelve null tambien si no
-    // alcanza el dinero, sin cobrar nada (la UI ya deshabilita el boton en ese
-    // caso, esto es solo una segunda barrera).
-    buyHint() {
-        if (__classPrivateFieldGet(this, _Game_money, "f") < __classPrivateFieldGet(this, _Game_economy, "f").hintCost) {
-            return null;
-        }
-        __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - __classPrivateFieldGet(this, _Game_economy, "f").hintCost, "f");
-        const visitor = __classPrivateFieldGet(this, _Game_currentVisitor, "f");
-        const violatedRule = this.currentDay.evaluateCharacter(visitor);
-        return violatedRule === null ? null : violatedRule.getProperty();
-    }
     get extraTimeCost() {
         return __classPrivateFieldGet(this, _Game_economy, "f").extraTimeCost;
     }
@@ -161,11 +152,7 @@ export class Game {
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
     // opcional para no romper a quien llame decide(accept) a secas (los tests, y
     // todo el codigo anterior al dia 6).
-    // wasRushed = el jugador decidio casi al toque de abrir el pasaporte (ver
-    // RUSH_THRESHOLD_MS en main.ts) - senal de que no lo reviso de verdad. Resta
-    // dinero aparte, pero NO suma a #errors: es un descuido de procedimiento,
-    // distinto de si la decision en si fue correcta o no.
-    decide(accept, usedAlienStamp = false, wasRushed = false) {
+    decide(accept, usedAlienStamp = false) {
         const currentDay = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1];
         const visitor = __classPrivateFieldGet(this, _Game_currentVisitor, "f");
         const violatedRule = currentDay.evaluateCharacter(visitor);
@@ -192,9 +179,6 @@ export class Game {
                 __classPrivateFieldSet(this, _Game_dayErrors, __classPrivateFieldGet(this, _Game_dayErrors, "f") + 1, "f");
             }
         }
-        if (wasRushed) {
-            __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - __classPrivateFieldGet(this, _Game_economy, "f").recordRushPenalty(), "f");
-        }
         __classPrivateFieldSet(this, _Game_visitorsSeenToday, __classPrivateFieldGet(this, _Game_visitorsSeenToday, "f") + 1, "f");
         if (accept) {
             __classPrivateFieldSet(this, _Game_dayAccepted, __classPrivateFieldGet(this, _Game_dayAccepted, "f") + 1, "f");
@@ -205,13 +189,13 @@ export class Game {
         }
         if (this.isLost()) {
             __classPrivateFieldGet(this, _Game_instances, "m", _Game_recordDayVisitors).call(this);
-            saveToHistory({ day: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "derrota", name: __classPrivateFieldGet(this, _Game_playerName, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
+            saveToHistory({ day: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "derrota", name: __classPrivateFieldGet(this, _Game_playerName, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f"), hardMode: __classPrivateFieldGet(this, _Game_hardMode, "f") });
             addCredits(__classPrivateFieldGet(this, _Game_playerName, "f"), __classPrivateFieldGet(this, _Game_money, "f"));
             addResultToStreak("derrota");
             deleteCurrentGame();
             return;
         }
-        __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1]), "f");
+        __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1], __classPrivateFieldGet(this, _Game_hardMode, "f")), "f");
     }
     // el dia ya no termina por cantidad de visitantes: lo llama main.ts cuando se
     // acaba el temporizador del dia. Antes vivia adentro de decide(), atado a
@@ -227,7 +211,7 @@ export class Game {
         __classPrivateFieldGet(this, _Game_economy, "f").snapshotDayEnd();
         __classPrivateFieldSet(this, _Game_dayNumber, __classPrivateFieldGet(this, _Game_dayNumber, "f") + 1, "f");
         if (this.isWon()) {
-            saveToHistory({ day: __classPrivateFieldGet(this, _Game_totalDays, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "victoria", name: __classPrivateFieldGet(this, _Game_playerName, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
+            saveToHistory({ day: __classPrivateFieldGet(this, _Game_totalDays, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), result: "victoria", name: __classPrivateFieldGet(this, _Game_playerName, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f"), hardMode: __classPrivateFieldGet(this, _Game_hardMode, "f") });
             addCredits(__classPrivateFieldGet(this, _Game_playerName, "f"), __classPrivateFieldGet(this, _Game_money, "f"));
             addResultToStreak("victoria");
             deleteCurrentGame();
@@ -250,6 +234,14 @@ export class Game {
     }
     get errors() {
         return __classPrivateFieldGet(this, _Game_errors, "f");
+    }
+    // cuantos errores terminan la partida (4 normal, 3 en modo dificil) - lo lee
+    // main.ts para el "X / N" del HUD y el umbral de alerta
+    get maxErrors() {
+        return __classPrivateFieldGet(this, _Game_maxErrors, "f");
+    }
+    get hardMode() {
+        return __classPrivateFieldGet(this, _Game_hardMode, "f");
     }
     get money() {
         return __classPrivateFieldGet(this, _Game_money, "f");
@@ -295,9 +287,6 @@ export class Game {
     get lastDayCharge() {
         return __classPrivateFieldGet(this, _Game_economy, "f").lastDayCharge;
     }
-    get lastDayRushPenalty() {
-        return __classPrivateFieldGet(this, _Game_economy, "f").lastDayRushPenalty;
-    }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
     get daysCompleted() {
@@ -312,19 +301,21 @@ export class Game {
         __classPrivateFieldSet(this, _Game_errors, saved.errors, "f");
         __classPrivateFieldSet(this, _Game_money, saved.money, "f");
         __classPrivateFieldSet(this, _Game_totalDays, saved.totalDays ?? 7, "f"); // partidas guardadas de antes de este dato: 7 por defecto
+        __classPrivateFieldSet(this, _Game_hardMode, saved.hardMode ?? false, "f"); // idem: las partidas viejas eran siempre modo normal
+        __classPrivateFieldSet(this, _Game_maxErrors, __classPrivateFieldGet(this, _Game_hardMode, "f") ? 3 : 4, "f");
         __classPrivateFieldGet(this, _Game_instances, "m", _Game_startDay).call(this);
         return true;
     }
 }
-_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_playerName = new WeakMap(), _Game_visitorGenerator = new WeakMap(), _Game_economy = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
+_Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new WeakMap(), _Game_maxErrors = new WeakMap(), _Game_totalDays = new WeakMap(), _Game_hardMode = new WeakMap(), _Game_days = new WeakMap(), _Game_currentVisitor = new WeakMap(), _Game_visitorsSeenToday = new WeakMap(), _Game_playerName = new WeakMap(), _Game_visitorGenerator = new WeakMap(), _Game_economy = new WeakMap(), _Game_letThroughOni = new WeakMap(), _Game_letThroughKitsune = new WeakMap(), _Game_letThroughKappa = new WeakMap(), _Game_bestDayVisitors = new WeakMap(), _Game_bestDayNumber = new WeakMap(), _Game_dayAccepted = new WeakMap(), _Game_dayRejected = new WeakMap(), _Game_dayErrors = new WeakMap(), _Game_dayMoney = new WeakMap(), _Game_lastDayAccepted = new WeakMap(), _Game_lastDayRejected = new WeakMap(), _Game_lastDayErrors = new WeakMap(), _Game_lastDayMoney = new WeakMap(), _Game_instances = new WeakSet(), _Game_startDay = function _Game_startDay() {
     __classPrivateFieldSet(this, _Game_visitorsSeenToday, 0, "f");
     __classPrivateFieldSet(this, _Game_dayAccepted, 0, "f");
     __classPrivateFieldSet(this, _Game_dayRejected, 0, "f");
     __classPrivateFieldSet(this, _Game_dayErrors, 0, "f");
     __classPrivateFieldSet(this, _Game_dayMoney, 0, "f");
     __classPrivateFieldGet(this, _Game_economy, "f").resetForNewDay();
-    __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1]), "f");
-    saveCurrentGame({ dayNumber: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
+    __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1], __classPrivateFieldGet(this, _Game_hardMode, "f")), "f");
+    saveCurrentGame({ dayNumber: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f"), hardMode: __classPrivateFieldGet(this, _Game_hardMode, "f") });
 }, _Game_recordDayVisitors = function _Game_recordDayVisitors() {
     if (__classPrivateFieldGet(this, _Game_visitorsSeenToday, "f") > __classPrivateFieldGet(this, _Game_bestDayVisitors, "f")) {
         __classPrivateFieldSet(this, _Game_bestDayVisitors, __classPrivateFieldGet(this, _Game_visitorsSeenToday, "f"), "f");

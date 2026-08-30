@@ -62,6 +62,15 @@ export function renderHistoryTable(): void {
     }
     row.appendChild(resultCell);
 
+    // tipo de partida - las partidas guardadas de antes del modo dificil no
+    // traen el dato, se leen como "Normal"
+    const modeCell = document.createElement("td");
+    modeCell.textContent = entry.hardMode ? "Difícil" : "Normal";
+    if (entry.hardMode) {
+      modeCell.className = "mode-hard";
+    }
+    row.appendChild(modeCell);
+
     table.appendChild(row);
   });
 }

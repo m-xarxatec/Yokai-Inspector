@@ -12,7 +12,7 @@ Encapsulamiento: campos siempre privados con `#`, nunca `public` directo.
 Estilo de acceso a los campos:
 - `Character`, `Human`, `Yokai`, `Passport`: los getters simples son `get` accessors (se llaman sin paréntesis, ej. `personaje.obtainName`).
 - `Rule`, `Day`: los getters son métodos normales con paréntesis (ej. `regla.getDay()`).
-- `Game` y sus clases colaboradoras (`Economy`, `VisitorGenerator`): todo getter que solo devuelve un campo (sin calcular nada) es un `get` accessor — es el patrón que terminó usando toda la clase a medida que creció (día/racha, economía), no solo un puñado de campos "simples" como en una versión anterior de este documento. Lo que SÍ hace algo (`decide()`, `endDay()`, `buyHint()`, `alienStampRuleActive()`, `chargeDailyCost()`, etc.) sigue siendo un método normal con paréntesis.
+- `Game` y sus clases colaboradoras (`Economy`, `VisitorGenerator`): todo getter que solo devuelve un campo (sin calcular nada) es un `get` accessor — es el patrón que terminó usando toda la clase a medida que creció (día/racha, economía), no solo un puñado de campos "simples" como en una versión anterior de este documento. Lo que SÍ hace algo (`decide()`, `endDay()`, `buyExtraTime()`, `alienStampRuleActive()`, `chargeDailyCost()`, etc.) sigue siendo un método normal con paréntesis.
 
 Evitar `switch` — preferencia mencionada en clase por el profesor, usar cadenas de `if`/`else if` en su lugar. (Excepción: `Rule.isViolated()` quedó con `switch`, a cargo de Iralys si el profesor lo señala.)
 

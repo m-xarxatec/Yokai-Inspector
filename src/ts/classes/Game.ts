@@ -13,6 +13,10 @@ export class Game{
     #money: number;
     #maxErrors: number;
     #totalDays: number;
+    // modo dificil: menos margen de error (#maxErrors 3 en vez de 4) y mas
+    // proporcion de visitantes problematicos (ver VisitorGenerator.generate()).
+    // Solo se elige antes de arrancar una partida nueva, nunca a mitad de una.
+    #hardMode: boolean;
     #days: Day[];
     #currentVisitor: Character | null;
     #visitorsSeenToday: number;
@@ -40,17 +44,21 @@ export class Game{
     #lastDayErrors: number;
     #lastDayMoney: number;
 
-    constructor(playerName: string = "Jugador", totalDays: number = 7){
+    // hardMode y randomFn son opcionales y con default "sin efecto" (modo normal
+    // y Math.random) a proposito: todo el codigo que ya llamaba new Game(nombre)
+    // o new Game(nombre, dias) -incluidos los tests- sigue comportandose igual.
+    constructor(playerName: string = "Jugador", totalDays: number = 7, hardMode: boolean = false, randomFn: () => number = Math.random){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
         this.#dayNumber = 1;
         this.#errors = 0;
         this.#money = 10;
-        this.#maxErrors = 4;
+        this.#hardMode = hardMode;
+        this.#maxErrors = hardMode ? 3 : 4;
         this.#totalDays = totalDays;
         this.#days = [];
         this.#currentVisitor = null;
         this.#visitorsSeenToday = 0;
-        this.#visitorGenerator = new VisitorGenerator();
+        this.#visitorGenerator = new VisitorGenerator(randomFn);
         this.#economy = new Economy();
         this.#letThroughOni = false;
         this.#letThroughKitsune = false;
@@ -99,8 +107,8 @@ export class Game{
         this.#dayErrors = 0;
         this.#dayMoney = 0;
         this.#economy.resetForNewDay();
-        this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1]);
-        saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays})
+        this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1], this.#hardMode);
+        saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays, hardMode: this.#hardMode})
     }
 
     // guarda el dia con mas visitantes atendidos (premio de velocidad). Se llama
@@ -132,25 +140,6 @@ export class Game{
     // recien el dia en que empieza a hacer falta.
     alienStampRuleActive(): boolean {
         return this.currentDay.getActiveRules().some((rule: Rule) => rule.getProperty() === "selloAlien");
-    }
-
-    get hintCost(): number {
-        return this.#economy.hintCost;
-    }
-
-    // tienda: revela que propiedad del visitante actual viola una regla hoy (o
-    // null si esta limpio - no hay nada que revelar, pero el costo se cobra
-    // igual, es el riesgo de comprarla "a ciegas"). Devuelve null tambien si no
-    // alcanza el dinero, sin cobrar nada (la UI ya deshabilita el boton en ese
-    // caso, esto es solo una segunda barrera).
-    buyHint(): string | null {
-        if (this.#money < this.#economy.hintCost) {
-            return null;
-        }
-        this.#money -= this.#economy.hintCost;
-        const visitor = this.#currentVisitor as Character;
-        const violatedRule = this.currentDay.evaluateCharacter(visitor);
-        return violatedRule === null ? null : violatedRule.getProperty();
     }
 
     get extraTimeCost(): number {
@@ -194,11 +183,7 @@ export class Game{
     // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
     // opcional para no romper a quien llame decide(accept) a secas (los tests, y
     // todo el codigo anterior al dia 6).
-    // wasRushed = el jugador decidio casi al toque de abrir el pasaporte (ver
-    // RUSH_THRESHOLD_MS en main.ts) - senal de que no lo reviso de verdad. Resta
-    // dinero aparte, pero NO suma a #errors: es un descuido de procedimiento,
-    // distinto de si la decision en si fue correcta o no.
-    decide(accept: boolean, usedAlienStamp: boolean = false, wasRushed: boolean = false): void {
+    decide(accept: boolean, usedAlienStamp: boolean = false): void {
     const currentDay = this.#days[this.#dayNumber - 1];
     const visitor = this.#currentVisitor as Character;
     const violatedRule = currentDay.evaluateCharacter(visitor);
@@ -228,10 +213,6 @@ export class Game{
         }
     }
 
-    if (wasRushed) {
-        this.#money -= this.#economy.recordRushPenalty();
-    }
-
     this.#visitorsSeenToday += 1;
     if (accept) {
         this.#dayAccepted += 1;
@@ -242,14 +223,14 @@ export class Game{
 
     if (this.isLost()) {
         this.#recordDayVisitors();
-        saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota", name: this.#playerName, totalDays: this.#totalDays });
+        saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota", name: this.#playerName, totalDays: this.#totalDays, hardMode: this.#hardMode });
         addCredits(this.#playerName, this.#money);
         addResultToStreak("derrota");
         deleteCurrentGame();
         return;
     }
 
-    this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1]);
+    this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1], this.#hardMode);
     }
 
     // el dia ya no termina por cantidad de visitantes: lo llama main.ts cuando se
@@ -266,7 +247,7 @@ export class Game{
     this.#economy.snapshotDayEnd();
     this.#dayNumber += 1;
     if (this.isWon()) {
-        saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName, totalDays: this.#totalDays });
+        saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName, totalDays: this.#totalDays, hardMode: this.#hardMode });
         addCredits(this.#playerName, this.#money);
         addResultToStreak("victoria");
         deleteCurrentGame();
@@ -292,6 +273,14 @@ export class Game{
     }
     get errors(): number {
         return this.#errors;
+    }
+    // cuantos errores terminan la partida (4 normal, 3 en modo dificil) - lo lee
+    // main.ts para el "X / N" del HUD y el umbral de alerta
+    get maxErrors(): number {
+        return this.#maxErrors;
+    }
+    get hardMode(): boolean {
+        return this.#hardMode;
     }
     get money(): number {
         return this.#money;
@@ -337,9 +326,6 @@ export class Game{
     get lastDayCharge(): number {
         return this.#economy.lastDayCharge;
     }
-    get lastDayRushPenalty(): number {
-        return this.#economy.lastDayRushPenalty;
-    }
     // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
     // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
     get daysCompleted(): number {
@@ -355,6 +341,8 @@ export class Game{
     this.#errors = saved.errors;
     this.#money = saved.money;
     this.#totalDays = saved.totalDays ?? 7; // partidas guardadas de antes de este dato: 7 por defecto
+    this.#hardMode = saved.hardMode ?? false; // idem: las partidas viejas eran siempre modo normal
+    this.#maxErrors = this.#hardMode ? 3 : 4;
     this.#startDay();
     return true;
     }
