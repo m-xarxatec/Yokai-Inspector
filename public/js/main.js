@@ -410,6 +410,17 @@ function renderVisitor() {
     if (game === null || game.currentVisitor === null) {
         return;
     }
+    // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
+    // que seguir corriendo mientras el visitante espera una decision (ver
+    // dayTimer.start()). Se marca que hay una decision en curso DESDE que el
+    // visitante aparece en pantalla (no recien cuando se abre el pasaporte, ni
+    // cuando se suelta el sello) para que, si el dia vence mientras todavia no
+    // se decidio sobre el, no se lo salte de golpe - el dia se cierra recien
+    // cuando esa decision termine de procesarse (ver dayEndedWhileResolving en
+    // resolveDecision() y releaseResolving() en DayTimer.ts). Si el jugador deja
+    // el visitante actual sin decidir nunca, el dia tampoco cierra solo: a
+    // proposito, es preferible a saltarselo o cortarle la decision de golpe.
+    dayTimer.markResolving();
     resetElementOffscreen(CHARACTER_ELEMENT);
     // por si quedaba un resaltado de la pista de la tienda sin terminar de
     // apagarse (ver #shop-hint-btn) - no tiene sentido sobre el visitante nuevo
@@ -615,11 +626,6 @@ function resolveDecision(accept, usedAlienStamp = false) {
     // se llama a game.decide() - esa llamada esta atras de ~2s de animacion, no
     // del tiempo que el jugador realmente tardo en revisar el pasaporte
     const wasRushed = passportOpenedAt !== null && (performance.now() - passportOpenedAt) < RUSH_THRESHOLD_MS;
-    // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
-    // que seguir corriendo mientras se decide (ver dayTimer.start()). Se marca
-    // que hay una decision en curso para que, si el dia vence en el medio, no
-    // se corte a la mitad (ver dayEndedWhileResolving mas abajo y DayTimer.ts).
-    dayTimer.markResolving();
     const dayBefore = game.dayNumber;
     const errorsBefore = game.errors;
     const direction = accept ? "left" : "right";
@@ -708,6 +714,10 @@ function resolveDecision(accept, usedAlienStamp = false) {
 // --- sellos: drag and drop real (reemplazan los botones Aceptar/Rechazar,
 // ver stampDrag.ts) - incluye el click sobre el pasaporte cerrado para abrirlo ---
 initStampDrag(soundManager, resolveDecision, () => {
+    // el "marcar decision en curso" para el temporizador del dia ya se hizo
+    // antes, apenas aparecio este visitante (ver dayTimer.markResolving() en
+    // renderVisitor()) - aca solo queda registrar CUANDO se abrio, para medir
+    // si el jugador decidio demasiado rapido (ver RUSH_THRESHOLD_MS mas abajo)
     passportOpenedAt = performance.now();
 });
 // --- Day summary screen (resumen narrativo + estadisticas al terminar cada dia) ---
