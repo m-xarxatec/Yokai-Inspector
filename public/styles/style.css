@@ -614,12 +614,15 @@ button:disabled {
   typeDialogue() reescribe el textContent del parrafo en cada tick del
   efecto de tipeo y borraria cualquier hijo fijo que pusieramos ahi. Rotulo
   corto y fijo: "NUEVA REGLA" / "¡ERROR!", asignado desde setNoticeType() en
-  main.ts.
+  main.ts. Misma fuente que #next-day-message (--font-jefa, no --font-display)
+  y tamaño parecido - antes era 0.65rem (bastante mas chico que el 1.15rem del
+  mensaje de abajo), quedaba diminuto y poco legible comparado con el resto
+  del texto del juego.
 */
 #notice-kicker {
   display: block;
-  font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-family: var(--font-jefa);
+  font-size: 1rem;
   letter-spacing: 0.06em;
   margin-bottom: 0.4rem;
 }

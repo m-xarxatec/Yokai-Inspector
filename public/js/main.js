@@ -367,6 +367,16 @@ document.querySelector("#exit-btn")?.addEventListener("click", () => {
     backLinkTarget = "menu";
     changeState("exit");
 });
+// cierra la pestaña/ventana: por seguridad, los navegadores solo dejan que
+// window.close() funcione en pestañas que el propio script abrio (por ejemplo
+// con window.open()) - en una pestaña que el usuario abrio a mano (escribiendo
+// la URL, o con un marcador) casi todos los navegadores modernos ignoran el
+// pedido sin avisar, no tira error. Por eso este boton no siempre "hace algo"
+// visible: es una limitacion del navegador, no un bug de este codigo.
+document.querySelector("#close-window-btn")?.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
+    window.close();
+});
 document.querySelector("#credits-btn")?.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
     backLinkTarget = "menu";
@@ -460,6 +470,17 @@ function renderVisitor() {
     if (game === null || game.currentVisitor === null) {
         return;
     }
+    // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
+    // que seguir corriendo mientras el visitante espera una decision (ver
+    // dayTimer.start()). Se marca que hay una decision en curso DESDE que el
+    // visitante aparece en pantalla (no recien cuando se abre el pasaporte, ni
+    // cuando se suelta el sello) para que, si el dia vence mientras todavia no
+    // se decidio sobre el, no se lo salte de golpe - el dia se cierra recien
+    // cuando esa decision termine de procesarse (ver dayEndedWhileResolving en
+    // resolveDecision() y releaseResolving() en DayTimer.ts). Si el jugador deja
+    // el visitante actual sin decidir nunca, el dia tampoco cierra solo: a
+    // proposito, es preferible a saltarselo o cortarle la decision de golpe.
+    dayTimer.markResolving();
     resetElementOffscreen(CHARACTER_ELEMENT);
     // se mantienen deshabilitados hasta que el jugador abra el pasaporte (ver el
     // listener de click de #passport-object) - no se puede decidir a ciegas
@@ -658,11 +679,8 @@ function resolveDecision(accept, usedAlienStamp = false) {
     if (game === null) {
         return;
     }
-    // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
-    // que seguir corriendo mientras se decide (ver dayTimer.start()). Se marca
-    // que hay una decision en curso para que, si el dia vence en el medio, no
-    // se corte a la mitad (ver dayEndedWhileResolving mas abajo y DayTimer.ts).
-    dayTimer.markResolving();
+    // el "marcar decision en curso" para el temporizador del dia ya se hizo antes,
+    // apenas aparecio este visitante (ver dayTimer.markResolving() en renderVisitor())
     const dayBefore = game.dayNumber;
     const errorsBefore = game.errors;
     const direction = accept ? "left" : "right";
