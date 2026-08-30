@@ -310,6 +310,16 @@ document.querySelector("#exit-btn")?.addEventListener("click", () => {
     backLinkTarget = "menu";
     changeState("exit");
 });
+// cierra la pestaña/ventana: por seguridad, los navegadores solo dejan que
+// window.close() funcione en pestañas que el propio script abrio (por ejemplo
+// con window.open()) - en una pestaña que el usuario abrio a mano (escribiendo
+// la URL, o con un marcador) casi todos los navegadores modernos ignoran el
+// pedido sin avisar, no tira error. Por eso este boton no siempre "hace algo"
+// visible: es una limitacion del navegador, no un bug de este codigo.
+document.querySelector("#close-window-btn")?.addEventListener("click", () => {
+    soundManager.playNextButton(); // sonido de click del boton
+    window.close();
+});
 document.querySelector("#credits-btn")?.addEventListener("click", () => {
     soundManager.playNextButton(); // sonido de click del boton
     backLinkTarget = "menu";
