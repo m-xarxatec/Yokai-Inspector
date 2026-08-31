@@ -61,15 +61,18 @@ export class Game {
     }
 
     loadData(onComplete: () => void): void {
+        // ojo: data/yokais.json (id/nombre/rasgoReal de oni-kitsune-kappa) ya NO se
+        // usa - VisitorGenerator.generate() sortea los rasgos reales directo, sin
+        // pasar por ese archivo. Se dejo de pedir (fetch) porque bajarlo y no usarlo
+        // para nada era trabajo de mas.
         Promise.all([
             fetch("data/partes.json").then(r => r.json()),
-            fetch("data/yokais.json").then(r => r.json()),
             fetch("data/nombres.json").then(r => r.json()),
             fetch("data/frases.json").then(r => r.json()),
             fetch("data/reglas.json").then(r => r.json()),
             fetch("data/dias.json").then(r => r.json()),
             fetch("data/sellos.json").then(r => r.json()),
-            fetch("data/species.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) => {
+            fetch("data/species.json").then(r => r.json())]).then(([parts, names, phrases, rawRules, rawDays, stamps, species]) => {
                 this.#visitorGenerator.setData(parts, names, phrases, stamps, species);
 
                 const rules = rawRules.map((r: any) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
@@ -80,7 +83,9 @@ export class Game {
 
                 onComplete();
             }).catch(error => {
-                console.log("no se pudieron cargar los datos del juego");
+                // se deja el error real en la consola (antes se perdia) para poder
+                // ver QUE fallo, no solo que algo fallo
+                console.log("no se pudieron cargar los datos del juego", error);
                 window.alert("hubo un problema cargando el juego, mira la consola para detectarlo");
             });
     }
@@ -96,8 +101,14 @@ export class Game {
         this.#dayErrors = 0;
         this.#dayMoney = 0;
         this.#economy.resetForNewDay();
-        this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1]);
+        this.#generateNextVisitor();
         saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays });
+    }
+
+    // misma linea que hacia falta en #startDay() y al final de decide() -
+    // juntas en un solo lugar para no repetirla
+    #generateNextVisitor(): void {
+        this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1]);
     }
 
     #recordDayVisitors(): void {
@@ -213,7 +224,7 @@ export class Game {
             return;
         }
 
-        this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1]);
+        this.#generateNextVisitor();
     }
 
     endDay(): void {
