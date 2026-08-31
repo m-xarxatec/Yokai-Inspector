@@ -635,4 +635,30 @@ De paso, `Game.ts` perdió un import sin usar (`getHistory`, de `Storage.ts`) y 
 
 **Un intento fallido**: simplificar el tipo de retorno de `getAllCredits()` en `Storage.ts`, de `Record<string, number>` a `any`, rompió la compilación de `records.ts` (TypeScript perdía el tipo en `Object.entries(credits)`) — se revirtió. Ese `Record` no era capricho de más experiencia de la cuenta, hacía falta ahí para que el resto del código siguiera tipando bien.
 
+---
+
+2026-08-30 — investigación (falsa alarma) del control de tamaño de pantalla en Opciones:
+
+Iralys reportó que el slider "Tamaño de la pantalla de juego" (`#zoom-slider`, controla `--scene-zoom` sobre `#character-scene`, ver `style.css:1033-1048` y `main.ts:197-202`) andaba bien al agrandar pero desconfiguraba el layout al volver a un tamaño más chico. Diagnóstico inicial por lectura de código (`docs/diagnostico-tamano-pantalla.md`) no encontró ninguna causa de lógica (no hay acumulación de valores, ni `px` fijos, ni caché de tamaños viejos en JS — todo el HUD/pasaporte/sellos usa `%`/`cqw` relativos a `#character-scene`), así que quedó como hipótesis abierta un posible caso límite del motor de layout con `container-type: inline-size` + `aspect-ratio` + `calc(var())` en el mismo elemento.
+
+Se armó una prueba automatizada con Playwright (Chromium headless) contra el `public/` servido localmente: subir el slider a 140, bajarlo a 120 y volver a 100, midiendo `getBoundingClientRect()` de `#character-scene` y varios elementos hijos en cada paso, más capturas de pantalla. Primero sobre el escritorio vacío, después con una escena completa simulada (personaje con cara/ojos/boca/pelo/cuernos, pasaporte abierto con texto, los 3 sellos habilitados). En los dos casos el tamaño/posición volvió exactamente igual al bajar de nuevo a 100 (la única diferencia detectada, un `y` distinto en `#character-portrait`, resultó ser la animación `idle-bob` normal, no el zoom) y las capturas de los 3 pasos se veían proporcionadas, sin superposiciones.
+
+**Conclusión de Iralys, confirmada al probarlo de nuevo**: fue un error de su pantalla/navegador en el momento, no un bug real del juego. No se tocó código. Se deja documentado por si el diagnóstico (`docs/diagnostico-tamano-pantalla.md`) hace falta de referencia más adelante, pero no representa un bug pendiente.
+
+---
+
+2026-08-30 (parte 2) — tanda de 3 bugs + 1 reportado sobre la marcha, todos en zona de Iralys:
+
+Se ejecutó un prompt de corrección de bugs (con las restricciones del curso: nada de `interface`/genéricos/uniones/`try-catch`/`async-await`/`Map`/`Set`, comentarios en español, solo clases básicas) paso a paso, con revisión y commit de Iralys después de cada uno.
+
+**Bug 1 — botón para cerrar la ventana en la pantalla de salir**: agregado `#close-window-btn` en `#exit-screen` ([public/index.html](../public/index.html)) con su listener en `main.ts`, que llama `window.close()`. Documentada la limitación real: los navegadores solo dejan cerrar así una pestaña que el propio script abrió, en el resto lo ignoran en silencio (sin excepción, no hace falta `try/catch`).
+
+**Bug 2 — el día podía cortar una decisión a la mitad**: el reporte original ("al cambiar de día no se puede decidir sobre el primer pasajero") no se pudo reproducir tal cual estaba escrito — probado con Playwright (temporizador del día acelerado), el primer visitante de cada día siempre se pudo decidir con normalidad. El bug real, que Iralys precisó después de ver el resultado de esa primera prueba, era otro: si el temporizador del día vencía **mientras un visitante seguía sin decidir** (pasaporte sin abrir, o abierto pero sin soltar el sello), `game.endDay()` se disparaba igual y se lo saltaba de golpe — reproducido en el día 4 jugando de verdad. Corregido moviendo `dayTimer.markResolving()` (existía, pero recién se activaba al soltar el sello) al principio de `renderVisitor()`, así el día queda protegido desde que el visitante aparece en pantalla hasta que termina de decidirse, sin importar cuánto tarde el jugador. Verificado con Playwright en los dos escenarios (pasaporte nunca abierto, y abierto sin decidir) más el caso normal, sin regresiones.
+
+**Bug 3 — "NUEVA REGLA"/"¡ERROR!" chico e inconsistente**: confirmado que `#notice-kicker` estaba en 0.65rem (casi la mitad del 1.15rem de `#next-day-message`, el texto de abajo) con una fuente de fallback distinta. Parejado a `--font-jefa` y subido a 1rem.
+
+**Cursor parpadeando en la pantalla de derrota/victoria (reportado por Iralys sobre la marcha, no estaba en el prompt original)**: investigado a fondo sin lograr reproducirlo — 6 pruebas con Playwright distintas (derrota por teclado, derrota arrastrando el sello con mouse real, victoria vía `Game.isWon()` parcheado, tocar `#player-name-input` sin enviar el formulario y perder después, y presionar Tab ya parado en la pantalla final) siempre dieron `document.activeElement === document.body`, sin ningún input con foco. No hay un solo `.focus()` en todo el código: el único input real (`#player-name-input`) se remueve el foco explícitamente al enviar el formulario, y `changeState()` remueve el foco de cualquier elemento activo en cada cambio de pantalla, sin excepciones. Iralys dio por cerrado el tema sin evidencia adicional — no se tocó código para esto.
+
+Los 3 bugs corregidos quedan en 3 commits separados en `actualiralys` (uno por bug), cada uno revisado por Iralys antes de commitear.
+
 Verificado con `npm run build` limpio y los 52 tests de `docs/test-temporal.mjs`, todos en verde — ningún cambio de comportamiento, solo comentarios, un import muerto y formato.
