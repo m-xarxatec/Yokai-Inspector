@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_playerName, _Game_visitorGenerator, _Game_economy, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_startDay, _Game_recordDayVisitors, _Game_recordLetThrough;
+var _Game_instances, _Game_dayNumber, _Game_errors, _Game_money, _Game_maxErrors, _Game_totalDays, _Game_days, _Game_currentVisitor, _Game_visitorsSeenToday, _Game_playerName, _Game_visitorGenerator, _Game_economy, _Game_letThroughOni, _Game_letThroughKitsune, _Game_letThroughKappa, _Game_bestDayVisitors, _Game_bestDayNumber, _Game_dayAccepted, _Game_dayRejected, _Game_dayErrors, _Game_dayMoney, _Game_lastDayAccepted, _Game_lastDayRejected, _Game_lastDayErrors, _Game_lastDayMoney, _Game_startDay, _Game_generateNextVisitor, _Game_recordDayVisitors, _Game_recordLetThrough;
 import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, addCredits, addResultToStreak } from "../Storage.js";
 import { Yokai } from "./Yokai.js";
 import { Rule } from "./Rule.js";
@@ -69,16 +69,19 @@ export class Game {
         __classPrivateFieldSet(this, _Game_lastDayMoney, 0, "f");
     }
     loadData(onComplete) {
+        // ojo: data/yokais.json (id/nombre/rasgoReal de oni-kitsune-kappa) ya NO se
+        // usa - VisitorGenerator.generate() sortea los rasgos reales directo, sin
+        // pasar por ese archivo. Se dejo de pedir (fetch) porque bajarlo y no usarlo
+        // para nada era trabajo de mas.
         Promise.all([
             fetch("data/partes.json").then(r => r.json()),
-            fetch("data/yokais.json").then(r => r.json()),
             fetch("data/nombres.json").then(r => r.json()),
             fetch("data/frases.json").then(r => r.json()),
             fetch("data/reglas.json").then(r => r.json()),
             fetch("data/dias.json").then(r => r.json()),
             fetch("data/sellos.json").then(r => r.json()),
             fetch("data/species.json").then(r => r.json())
-        ]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) => {
+        ]).then(([parts, names, phrases, rawRules, rawDays, stamps, species]) => {
             __classPrivateFieldGet(this, _Game_visitorGenerator, "f").setData(parts, names, phrases, stamps, species);
             const rules = rawRules.map((r) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
             __classPrivateFieldSet(this, _Game_days, rawDays.map((d) => {
@@ -87,7 +90,9 @@ export class Game {
             }), "f");
             onComplete();
         }).catch(error => {
-            console.log("no se pudieron cargar los datos del juego");
+            // se deja el error real en la consola (antes se perdia) para poder
+            // ver QUE fallo, no solo que algo fallo
+            console.log("no se pudieron cargar los datos del juego", error);
             window.alert("hubo un problema cargando el juego, mira la consola para detectarlo");
         });
     }
@@ -176,7 +181,7 @@ export class Game {
             deleteCurrentGame();
             return;
         }
-        __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1]), "f");
+        __classPrivateFieldGet(this, _Game_instances, "m", _Game_generateNextVisitor).call(this);
     }
     endDay() {
         __classPrivateFieldGet(this, _Game_instances, "m", _Game_recordDayVisitors).call(this);
@@ -279,8 +284,10 @@ _Game_dayNumber = new WeakMap(), _Game_errors = new WeakMap(), _Game_money = new
     __classPrivateFieldSet(this, _Game_dayErrors, 0, "f");
     __classPrivateFieldSet(this, _Game_dayMoney, 0, "f");
     __classPrivateFieldGet(this, _Game_economy, "f").resetForNewDay();
-    __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1]), "f");
+    __classPrivateFieldGet(this, _Game_instances, "m", _Game_generateNextVisitor).call(this);
     saveCurrentGame({ dayNumber: __classPrivateFieldGet(this, _Game_dayNumber, "f"), errors: __classPrivateFieldGet(this, _Game_errors, "f"), money: __classPrivateFieldGet(this, _Game_money, "f"), totalDays: __classPrivateFieldGet(this, _Game_totalDays, "f") });
+}, _Game_generateNextVisitor = function _Game_generateNextVisitor() {
+    __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1]), "f");
 }, _Game_recordDayVisitors = function _Game_recordDayVisitors() {
     if (__classPrivateFieldGet(this, _Game_visitorsSeenToday, "f") > __classPrivateFieldGet(this, _Game_bestDayVisitors, "f")) {
         __classPrivateFieldSet(this, _Game_bestDayVisitors, __classPrivateFieldGet(this, _Game_visitorsSeenToday, "f"), "f");

@@ -5,15 +5,21 @@ const PLAYER_NAME_KEY = "yokaiInspector_playerName";
 const CREDITS_KEY = "yokaiInspector_credits";
 const DAY_STREAKS_KEY = "yokaiInspector_dayStreaks";
 const RESULT_STREAK_KEY = "yokaiInspector_resultStreak";
+// varias funciones de aca abajo repetian el mismo patron: leer una key de
+// localStorage, y si no habia nada guardado todavia devolver un valor por
+// defecto en vez de romper con JSON.parse(null) - juntado en un solo lugar
+function loadJson(key, fallback) {
+    const rawData = localStorage.getItem(key);
+    if (rawData === null) {
+        return fallback;
+    }
+    return JSON.parse(rawData);
+}
 export function saveCurrentGame(data) {
     localStorage.setItem(CURRENT_GAME_KEY, JSON.stringify(data));
 }
 export function loadCurrentGame() {
-    const rawData = localStorage.getItem(CURRENT_GAME_KEY);
-    if (rawData === null) {
-        return null;
-    }
-    return JSON.parse(rawData);
+    return loadJson(CURRENT_GAME_KEY, null);
 }
 export function deleteCurrentGame() {
     localStorage.removeItem(CURRENT_GAME_KEY);
@@ -25,11 +31,7 @@ export function saveToHistory(result) {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmedHistory));
 }
 export function getHistory() {
-    const rawData = localStorage.getItem(HISTORY_KEY);
-    if (rawData === null) {
-        return [];
-    }
-    return JSON.parse(rawData);
+    return loadJson(HISTORY_KEY, []);
 }
 export function savePlayerName(name) {
     localStorage.setItem(PLAYER_NAME_KEY, name);
@@ -44,21 +46,13 @@ export function addCredits(name, amount) {
     localStorage.setItem(CREDITS_KEY, JSON.stringify(credits));
 }
 export function getAllCredits() {
-    const rawData = localStorage.getItem(CREDITS_KEY);
-    if (rawData === null) {
-        return {};
-    }
-    return JSON.parse(rawData);
+    return loadJson(CREDITS_KEY, {});
 }
 export function saveDayStreaks(streaks) {
     localStorage.setItem(DAY_STREAKS_KEY, JSON.stringify(streaks));
 }
 export function loadDayStreaks() {
-    const rawData = localStorage.getItem(DAY_STREAKS_KEY);
-    if (rawData === null) {
-        return [];
-    }
-    return JSON.parse(rawData);
+    return loadJson(DAY_STREAKS_KEY, []);
 }
 export function addResultToStreak(result) {
     const previous = getResultStreak();
@@ -73,10 +67,6 @@ export function clearSavedGames() {
     localStorage.removeItem(RESULT_STREAK_KEY);
 }
 export function getResultStreak() {
-    const rawData = localStorage.getItem(RESULT_STREAK_KEY);
-    if (rawData === null) {
-        return { result: "", count: 0 };
-    }
-    return JSON.parse(rawData);
+    return loadJson(RESULT_STREAK_KEY, { result: "", count: 0 });
 }
 //# sourceMappingURL=Storage.js.map
