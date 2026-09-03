@@ -38,17 +38,18 @@
         </div>
       </div>
 
+      <!-- modos de partida (esquina superior derecha): solo se eligen desde el
+           menu, antes de arrancar una partida nueva. El modo dificil es un
+           toggle que afecta a la proxima "Nueva partida"; el desafio diario
+           arranca una partida con la misma secuencia de visitantes para todos
+           ese dia. -->
+      <div id="menu-modes">
+        <button id="daily-challenge-btn" type="button">Desafío diario</button>
+        <button id="hard-mode-toggle-btn" type="button" aria-pressed="false">Modo difícil: OFF</button>
+      </div>
+
       <aside id="menu-sidebar">
         <p id="paused-status" class="hidden"></p>
-
-        <!-- modos de partida: solo se eligen desde aca, antes de arrancar una
-             partida nueva (nunca a mitad de una). El modo dificil es un toggle
-             que afecta a la proxima "Nueva partida"; el desafio diario arranca
-             una partida con la misma secuencia de visitantes para todos ese dia. -->
-        <div id="menu-modes">
-          <button id="daily-challenge-btn" type="button">🗓️ Desafío diario</button>
-          <button id="hard-mode-toggle-btn" type="button" aria-pressed="false">Modo difícil: OFF</button>
-        </div>
 
         <div id="history-panel">
           <h2>Últimas partidas</h2>
@@ -79,7 +80,7 @@
       <!-- controla el volumen de la musica y los efectos de sonido juntos -->
       <div class="slider-row">
         <label for="volume-slider">Volumen</label>
-        <input type="range" id="volume-slider" min="0" max="100" value="100">
+        <input type="range" id="volume-slider" min="0" max="100" value="50">
       </div>
       <!-- controla el tamano de la pantalla de juego (que tan cerca se ve) -->
       <div class="slider-row">
@@ -93,8 +94,8 @@
            #pause-options-btn/#options-btn en main.ts) -->
       <div id="new-game-options">
         <div class="slider-row">
-          <label for="day-duration-slider">Duración del día: <span id="day-duration-value">90s</span></label>
-          <input type="range" id="day-duration-slider" min="0" max="3" step="1" value="2">
+          <label for="day-duration-slider">Duración del día: <span id="day-duration-value">60s</span></label>
+          <input type="range" id="day-duration-slider" min="0" max="3" step="1" value="1">
         </div>
         <div class="slider-row">
           <label for="total-days-slider">Días de la partida: <span id="total-days-value">7</span></label>
@@ -108,7 +109,7 @@
   <section id="pause-screen" class="hidden">
     <div class="screen-panel">
       <h2>Pausa</h2>
-      <button id="pause-continue-btn">Continuar</button>
+      <button id="pause-continue-btn" class="next-btn">Continuar</button>
       <button id="pause-options-btn">Opciones</button>
       <button class="exit-to-menu-btn">Salir al menú</button>
     </div>
@@ -118,7 +119,7 @@
     <div class="screen-panel">
       <h2>Tienda</h2>
       <p class="screen-subtitle">Dinero disponible: <span id="shop-money">-</span></p>
-      <button id="shop-extra-time-btn">+15 segundos (-5)</button>
+      <button id="shop-extra-time-btn">+15 seg (-5)</button>
       <button id="shop-insurance-btn">Indulto (-8)</button>
       <button id="shop-continue-btn">Volver al juego</button>
     </div>
@@ -133,7 +134,7 @@
            "partidas guardadas" = partida en curso + historial + rachas (no toca
            creditos); "créditos" = solo el ranking de aca. Ver main.ts. -->
       <div id="credits-danger-zone">
-        <button id="clear-history-btn" type="button" class="danger-btn">Borrar partidas guardadas</button>
+        <button id="clear-history-btn" type="button" class="danger-btn">Borrar partidas</button>
         <button id="clear-credits-btn" type="button" class="danger-btn">Borrar créditos</button>
       </div>
       <button id="back-to-menu-from-credits-btn" class="back-link">Volver al menú</button>
@@ -146,7 +147,7 @@
       <p class="screen-subtitle">Gracias por proteger el equilibrio entre humanos y yokais.</p>
       <!-- cierra la pestaña/ventana del juego (ver el listener en main.ts: solo
            funciona en algunos navegadores, hay mas detalle ahi) -->
-      <button id="close-window-btn">Cerrar ventana del juego</button>
+      <button id="close-window-btn">Cerrar juego</button>
       <button id="back-to-menu-from-exit-btn" class="back-link">Volver al menú</button>
     </div>
   </section>
@@ -170,7 +171,7 @@
   <section id="story-screen" class="hidden">
     <div id="story-portrait"></div>
     <p id="story-text"></p>
-    <button id="story-next-btn">Siguiente</button>
+    <button id="story-next-btn" class="next-btn">Siguiente</button>
     <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
 
@@ -255,7 +256,7 @@
       <h2>Día <span id="day-summary-number"></span> terminado</h2>
       <p id="day-summary-text"></p>
       <ul id="day-summary-stats" class="styled-list"></ul>
-      <button id="day-summary-continue-btn">Siguiente día</button>
+      <button id="day-summary-continue-btn" class="next-btn">Siguiente día</button>
       <button class="exit-to-menu-btn">Volver al menú</button>
     </div>
   </section>
@@ -268,15 +269,19 @@
     <p id="day-result-summary"></p>
     <span id="notice-kicker"></span>
     <p id="next-day-message"></p>
-    <button id="continue-day-btn">Continuar</button>
+    <button id="continue-day-btn" class="next-btn">Continuar</button>
     <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
 
   <section id="day-start-screen" class="hidden">
+    <!-- solo el titulo + la lista de reglas van SOBRE la pizarra; los botones
+         quedan debajo de la imagen (ver .day-start-actions) -->
     <div class="screen-panel">
       <h2>Día <span id="day-start-number"></span></h2>
       <ul id="day-start-rules" class="styled-list"></ul>
-      <button id="day-start-continue-btn">Empezar día</button>
+    </div>
+    <div class="day-start-actions">
+      <button id="day-start-continue-btn" class="next-btn">Empezar día</button>
       <button class="exit-to-menu-btn">Volver al menú</button>
     </div>
   </section>
@@ -291,7 +296,7 @@
     <p id="final-message"></p>
     <!-- solo visible cuando el final tiene mas de un cuadro (ver ENDING_* en
          main.ts) - avanza al siguiente cuadro en vez de volver al menu -->
-    <button id="final-continue-btn" class="hidden">Siguiente</button>
+    <button id="final-continue-btn" class="hidden next-btn">Siguiente</button>
     <!-- arma una tarjeta de texto corta (dia, errores, dinero, yokais colados)
          y la copia al portapapeles - solo visible en el ultimo cuadro del
          final, junto a "Volver al menú" (ver renderEndingBeat() en main.ts) -->

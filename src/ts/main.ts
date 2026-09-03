@@ -106,12 +106,13 @@ const DECISION_STAMP_FLASH_MS = 400;
 
 // tiempo del dia completo (ya no es por visitante) - la dificultad ya sube
 // sola por la proporcion de problematicos y la cantidad de reglas activas
-// por dia. Elegible desde el menu principal (ver #day-duration-slider).
-let DAY_DURATION_MS = 90000;
+// por dia. Por defecto 60s, elegible desde el menu principal (ver
+// #day-duration-slider, que arranca en el indice 1 = 60s).
+let DAY_DURATION_MS = 60000;
 // valor elegido en el slider de Opciones - lo aplica beginGame() al arrancar
 // una partida normal. El modo dificil lo ignora (fuerza 30s) y el desafio
-// diario tambien (fija 90s para que sea igual para todos).
-let selectedDayDurationMs = 90000;
+// diario tambien (fija 60s para que sea igual para todos).
+let selectedDayDurationMs = 60000;
 
 // true en modo dificil - solo se puede cambiar en el menu, antes de arrancar
 // una partida nueva (ver #hard-mode-toggle-btn)
@@ -187,9 +188,9 @@ function updateTimerToggleButton(): void {
     return;
   }
   if (timerEnabled) {
-    button.textContent = "Desactivar temporizador";
+    button.textContent = "Temporizador ON";
   } else {
-    button.textContent = "Activar temporizador";
+    button.textContent = "Temporizador OFF";
   }
 }
 
@@ -200,14 +201,27 @@ document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
 });
 
 // --- volumen: un solo control para la musica y todos los efectos juntos ---
-document.querySelector("#volume-slider")?.addEventListener("input", (event) => {
-  const raw = Number((event.target as HTMLInputElement).value) / 100;
+function applyVolume(sliderValue: number): void {
+  const raw = sliderValue / 100;
   // curva cuadratica: el oido percibe el volumen de forma logaritmica, no
   // lineal - sin esto, valores "bajos" del slider seguian sonando fuerte
   const volume = raw * raw;
   soundManager.setVolume(volume);
   musicManager.setVolume(volume);
+}
+
+document.querySelector("#volume-slider")?.addEventListener("input", (event) => {
+  applyVolume(Number((event.target as HTMLInputElement).value));
 });
+
+// al cargar la pagina se aplica el valor inicial del slider (50 por defecto),
+// no el 100% con el que arrancan SoundManager/MusicManager - "el sonido
+// siempre al 50% salvo que alguien lo suba". Corre antes de que suene nada
+// (ningun sonido se dispara durante la carga del modulo).
+const volumeSliderEl = document.querySelector("#volume-slider") as HTMLInputElement | null;
+if (volumeSliderEl !== null) {
+  applyVolume(Number(volumeSliderEl.value));
+}
 
 // --- zoom de la pantalla de juego: agranda #character-scene entero (HUD,
 // --- personaje, pasaporte, todo junto - ya escala solo, ver --scene-zoom en style.css) ---
@@ -250,7 +264,7 @@ function updateFullscreenButton(): void {
   if (document.fullscreenElement === null) {
     button.textContent = "Pantalla completa";
   } else {
-    button.textContent = "Salir de pantalla completa";
+    button.textContent = "Salir de pantalla";
   }
 }
 
@@ -272,6 +286,19 @@ document.querySelector("#fullscreen-toggle-btn")?.addEventListener("click", () =
 // submit del nombre (partida normal, con o sin modo dificil) y el boton de
 // desafio diario (semilla fija). randomFn = Math.random para una partida
 // comun, o un generador con semilla para el desafio diario.
+// fondo de la pantalla de juego: uno de los 4 (fondoJuego1..4) al azar, fijo
+// para TODA la partida - no cambia entre dias, solo al arrancar una partida
+// nueva o al retomar una guardada. Es puramente decorativo (rellena el margen
+// alrededor de #character-scene), no toca la jugabilidad.
+const GAME_BACKGROUND_COUNT = 4;
+function pickGameBackground(): void {
+  const n = Math.floor(Math.random() * GAME_BACKGROUND_COUNT) + 1;
+  const gameScreenEl = document.querySelector("#game-screen") as HTMLElement | null;
+  if (gameScreenEl !== null) {
+    gameScreenEl.style.backgroundImage = "url(\"img/backgrounds/fondoJuego" + n + ".png\")";
+  }
+}
+
 function beginGame(name: string, totalDays: number, hardMode: boolean, randomFn: () => number, dayDurationMs: number): void {
   game = new Game(name, totalDays, hardMode, randomFn);
   streak = 0;
@@ -279,6 +306,7 @@ function beginGame(name: string, totalDays: number, hardMode: boolean, randomFn:
   dayStreaks = [];
   saveDayStreaks(dayStreaks);
   DAY_DURATION_MS = dayDurationMs;
+  pickGameBackground();
   game.loadData(() => {
     if (game === null) {
       return;
@@ -330,13 +358,13 @@ document.querySelector("#hard-mode-toggle-btn")?.addEventListener("click", () =>
 });
 
 // --- desafio diario: misma secuencia de visitantes para todos los que jueguen
-// --- hoy (semilla derivada de la fecha) - siempre modo normal, 7 dias y 90s,
+// --- hoy (semilla derivada de la fecha) - siempre modo normal, 7 dias y 60s,
 // --- para que la comparacion sea justa. Game no sabe nada de fechas ni de
 // --- "desafio": solo recibe un generador con semilla (ver src/ts/random.ts).
 document.querySelector("#daily-challenge-btn")?.addEventListener("click", () => {
   soundManager.playNextButton(); // sonido de click del boton
   const name = loadPlayerName() || "Un1c0rN10";
-  beginGame(name, 7, false, mulberry32(todayChallengeSeed()), DAY_DURATION_OPTIONS_MS[2]);
+  beginGame(name, 7, false, mulberry32(todayChallengeSeed()), DAY_DURATION_OPTIONS_MS[1]);
 });
 
 // a donde vuelve el "Volver al menu" de options/credits/exit - "menu" salvo
@@ -509,6 +537,7 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
   // una partida guardada en modo dificil sigue con sus 30s de dia al retomarla
   const savedGame = loadCurrentGame();
   DAY_DURATION_MS = (savedGame !== null && savedGame.hardMode) ? DAY_DURATION_OPTIONS_MS[0] : selectedDayDurationMs;
+  pickGameBackground(); // fondo nuevo al azar para la partida retomada (no se guarda cual era)
   game.loadData(() => {
     if (game === null) {
       return;
@@ -1010,7 +1039,27 @@ function renderDayStartScreen(): void {
     return;
   }
   rulesEl.innerHTML = "";
-  game.currentDay.getActiveRules().forEach(rule => {
+
+  const activeRules = game.currentDay.getActiveRules();
+  // las 4 reglas de "especie declarada prohibida" (dia 4) se muestran juntas en
+  // UNA sola linea con la lista de especies, en vez de 4 renglones casi
+  // identicos - las demas reglas siguen mostrando su descripcion tal cual
+  const bannedSpecies = activeRules
+    .filter(rule => rule.getProperty() === "especieProhibida")
+    .map(rule => String(rule.getForbiddenValue()));
+  let bannedSpeciesShown = false;
+
+  activeRules.forEach(rule => {
+    if (rule.getProperty() === "especieProhibida") {
+      if (bannedSpeciesShown) {
+        return;
+      }
+      bannedSpeciesShown = true;
+      const item = document.createElement("li");
+      item.textContent = "Rechazar si el pasaporte declara la especie: " + bannedSpecies.join(", ") + ".";
+      rulesEl.appendChild(item);
+      return;
+    }
     const item = document.createElement("li");
     item.textContent = rule.getDescription();
     rulesEl.appendChild(item);

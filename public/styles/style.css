@@ -36,6 +36,20 @@
   --font-body: "Jersey 10", "Pixelify Sans", system-ui, sans-serif;
   /* zoom de #character-scene (barra en #options-screen) - 1 = tamaño normal */
   --scene-zoom: 1;
+  /* skins de boton (placas recortadas a su bbox, ver public/img/backgrounds/):
+     morado = boton general (menu, opciones, etc.), rojo = salir/volver,
+     verde = siguiente / pasar de dia. La CAJA del boton tiene una proporcion
+     fija cercana a la de la placa (~2.15:1) para que la imagen NO se estire;
+     el texto es el que se adapta (se achica y salta de linea si hace falta). */
+  --btn-morado: url("../img/backgrounds/botonMorado.png");
+  --btn-rojo: url("../img/backgrounds/botonRojo.png");
+  --btn-verde: url("../img/backgrounds/botonVerde.png");
+  /* ancho estandar de boton: SIN piso en rem -> se achica con la pantalla
+     19vw hasta un tope de 14rem (solo en pantallas anchas > ~1180px). La altura
+     sale sola de --btn-ar, asi la PLACA entera (no solo la letra) encoge con la
+     ventana en todo el rango de escritorio. */
+  --btn-w: min(14rem, 19vw);
+  --btn-ar: 2.15;
 }
 
 * {
@@ -102,8 +116,10 @@ section {
 }
 
 #start-gate-btn {
-  font-size: 2rem;
-  padding: 0.9rem 3rem;
+  width: min(22rem, 40vw);
+  aspect-ratio: 2.4;
+  padding: 0 10%;
+  font-size: clamp(1rem, 5vw, 2.6rem);
   letter-spacing: 0.12em;
 }
 
@@ -121,29 +137,173 @@ section {
   max-width: none;
   margin: 0;
   padding: 0;
-  background: #140c24;
+  /* uno de los 4 fondoJuego lo pone main.ts (pickGameBackground()) al arrancar
+     la partida, fijo para toda la partida - #140c24 queda de respaldo mientras
+     carga la imagen. Rellena el margen alrededor de #character-scene. */
+  background-color: #140c24;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   /* sin esto, arrastrar el sello (o cualquier drag con el mouse) dispara una
      seleccion de texto nativa del navegador y aparece un cursor de texto
      parpadeando - se hereda a todo lo de adentro (escena, pasaporte, sellos) */
   user-select: none;
 }
 
+/* boton general = placa MORADA, caja de tamaño estandar (--btn-w x proporcion
+   --btn-ar) para que la imagen no se estire. El texto se centra y se adapta.
+   Excepciones con su propia caja: #start-gate-btn, #shop-btn, #pause-btn (#hud),
+   #menu-modes button, #player-name-row button. Cambian solo la imagen:
+   .exit-to-menu-btn/.back-link/.danger-btn = ROJA, .next-btn = VERDE. */
 button {
-  padding: 0.6rem 1.2rem;
-  margin: 0.4rem 0.4rem 0.4rem 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--btn-w);
+  aspect-ratio: var(--btn-ar);
+  margin: 0.35rem;
+  /* mas arriba que abajo = baja la letra para que quede centrada en la placa;
+     6% lateral = mas sitio para el texto en una sola linea */
+  padding: 0.5rem 6% 0.14rem;
   border: none;
-  border-radius: 6px;
-  background: #6b4fa0;
+  border-radius: 0;
+  background: transparent var(--btn-morado) center / 100% 100% no-repeat;
   color: #fff;
+  font-size: clamp(0.5rem, 1.5vw, 1.05rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-align: center;
+  /* SIEMPRE una sola linea: no salta, no envuelve; si el texto es largo hay que
+     acortarlo (no se deja estirar la placa ni romper la palabra) */
+  white-space: nowrap;
+  text-shadow: 0 2px 5px rgba(53, 28, 47, 0.85);
   cursor: pointer;
-  /* Jersey 10 dibuja mas chico que Pixelify Sans al mismo tamano (ver
-     comentario del @font-face) - subido de 1rem para compensar */
-  font-size: 1.15rem;
+  transition: filter 0.15s ease, transform 0.08s ease;
+}
+
+/* hover: la placa se ilumina */
+button:hover:not(:disabled) {
+  filter: brightness(1.22) saturate(1.08);
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 button:disabled {
-  background: #4a4658;
+  filter: grayscale(0.55) brightness(0.55);
   cursor: not-allowed;
+}
+
+/* salir / volver al menu = placa ROJA */
+.exit-to-menu-btn,
+.back-link,
+.danger-btn,
+#close-window-btn {
+  background-image: var(--btn-rojo);
+}
+
+/* siguiente / empezar dia / pasar de dia = placa VERDE */
+.next-btn {
+  background-image: var(--btn-verde);
+}
+
+/* ================ TAMAÑO DE LOS BOTONES · UNA LÍNEA POR PANTALLA ================
+   La PLACA y la LETRA escalan juntas con el ANCHO de su caja (unidad cqi = % de
+   ese ancho), igual que .menu-real-btn en el menu -> el texto LLENA el boton.
+
+   Para ajustar UNA pantalla, tocá SOLO su línea de aquí abajo:
+     --scr-btn-w   ancho de la placa (mas cqi = mas grande)
+     --scr-btn-fs  tamaño de la letra (el Xcqi del medio del clamp)
+     --bk-btn-w / --bk-btn-fs   idem para su "Volver al menú" (si la pantalla lo tiene)
+   El aspecto/forma y el padding son comunes (reglas de mas abajo).                */
+
+#options-screen     { --scr-btn-w: 62cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.3rem);  --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
+#shop-screen        { --scr-btn-w: 62cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.3rem); }
+#pause-screen       { --scr-btn-w: 60cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.35rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
+#exit-screen        { --scr-btn-w: 64cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.3rem);  --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
+#name-entry-screen  { --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
+#day-summary-screen { --scr-btn-w: 62cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.35rem); }
+#credits-screen     { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0.5rem, 4.2cqi, 1.05rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
+#story-screen       { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0.6rem, 3.8cqi, 1.3rem); }
+#day-result-screen  { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0.6rem, 3.8cqi, 1.3rem); }
+#day-start-screen   { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0.6rem, 3.8cqi, 1.3rem); }
+#final-screen       { --scr-btn-w: 34cqi; --scr-btn-fs: clamp(0.7rem, 4cqi, 1.5rem); }
+
+/* ---- reglas comunes: NO se tocan para cambiar tamaños (usar las líneas de arriba) ---- */
+
+/* pantallas CON panel (opciones, tienda, pausa, salir, resumen del dia) */
+.screen-panel > button:not(.back-link):not(.exit-to-menu-btn) {
+  align-self: center;
+  width: var(--scr-btn-w, 62cqi);
+  aspect-ratio: 2.8;
+  margin: 0 auto;
+  /* mas arriba que abajo = baja la letra para centrarla en la placa */
+  padding: 0.5rem 4% 0.14rem;
+  font-size: var(--scr-btn-fs, clamp(0.6rem, 6cqi, 1.3rem));
+}
+
+/* los 2 botones de borrado de creditos: uno al lado del otro dentro de
+   #credits-danger-zone -> mas angostos para que entren los dos en la fila */
+#credits-danger-zone > button {
+  align-self: auto;
+  width: var(--scr-btn-w, 44cqi);
+  aspect-ratio: 2.6;
+  margin: 0;
+  padding: 0.45rem 4% 0.12rem;
+  font-size: var(--scr-btn-fs, clamp(0.5rem, 4.2cqi, 1.05rem));
+}
+#credits-screen .screen-panel {
+  /* separacion VERTICAL: lista de creditos <-> zona de borrado */
+  gap: 0.8rem;
+}
+
+/* pantallas SIN panel (historia, resultado del dia, reglas del dia, final):
+   se declaran container para que sus botones escalen con el mismo criterio */
+#story-screen,
+#day-result-screen,
+#day-start-screen,
+#final-screen {
+  container-type: inline-size;
+}
+
+#story-screen > button,
+#day-result-screen > button,
+#day-start-screen .day-start-actions > button,
+#final-screen > button {
+  width: var(--scr-btn-w, 36cqi);
+  aspect-ratio: 2.8;
+  margin: 0.5rem auto;
+  padding: 0.5rem 5% 0.14rem;
+  font-size: var(--scr-btn-fs, clamp(0.6rem, 4cqi, 1.3rem));
+}
+
+/* ---- "Volver al menú" / "Salir al menú": chico y colgando DEBAJO del panel ----
+   Sale del cuadro de color y queda pegado abajo-izquierda de ESE cuadro (no de
+   la ventana entera). NO entran: #pause-btn (el ⏸ del HUD, que pausa y no sale)
+   ni #back-to-menu-btn de la pantalla final (ahí es un boton normal). */
+.back-link,
+#pause-screen .exit-to-menu-btn,
+#name-entry-screen .exit-to-menu-btn {
+  position: absolute;
+  left: 0;
+  top: 100%;            /* justo debajo del borde inferior del panel */
+  margin: 0.55rem 0 0;
+  align-self: auto;
+  z-index: 5;
+  width: var(--bk-btn-w, 40cqi);
+  aspect-ratio: 2.8;
+  padding: 0.4rem 6% 0.12rem;
+  font-size: var(--bk-btn-fs, clamp(0.5rem, 3.8cqi, 1rem));
+}
+
+/* en las pantallas de transicion (historia, reglas del dia, resumen y resultado
+   del dia) NO se muestra "Volver al menú": solo queda el boton verde de avanzar */
+#story-screen .exit-to-menu-btn,
+#day-summary-screen .exit-to-menu-btn,
+#day-result-screen .exit-to-menu-btn,
+#day-start-screen .exit-to-menu-btn {
+  display: none;
 }
 
 /* ---------- menu: backgroundEnd.png a pantalla completa, sin scroll ---------- */
@@ -211,13 +371,16 @@ button:disabled {
    titulo/kanji de la parte superior */
 #menu-buttons {
   position: absolute;
-  left: 5%;
-  top: 62%;
+  left: 10%;
+  top:57%;
   transform: translateY(-50%);
-  width: min(58%, 300px);
+  /* % del ancho de #menu-layout (que ya es fluido) - SIN tope en px, si no la
+     columna de botones se quedaba clavada en 300px en todo el escritorio */
+  width: 28%;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  /* separacion entre botones del menu - subir/bajar para juntarlos o separarlos */
+  gap: 0.05rem;
   z-index: 2;
 }
 
@@ -228,33 +391,36 @@ button:disabled {
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
 }
 
+/* botones del menu principal: misma placa MORADA que el resto, un poco mas
+   angostos que la columna para que la proporcion de la placa quede casi sin
+   estirar y entren los 5 apilados */
 .menu-real-btn {
+  width: 60%;
+  aspect-ratio: 2.8;
   margin: 0;
-  text-align: left;
-  /* cqw = % del ancho real de #menu-layout (ver container-type ahi) - antes
-     fijo en rem, no se achicaba con la caja en pantallas chicas/angostas y
-     terminaba "comiendose" el espacio disponible */
-  padding: clamp(0.4rem, 0.86cqw, 0.9rem) clamp(0.6rem, 1.32cqw, 1.3rem);
-  background: rgba(15, 12, 24, 0.55);
-  border: 1px solid rgba(216, 181, 107, 0.6);
-  color: #f2ede3;
-  font-size: clamp(0.75rem, 1.45cqw, 1.3rem);
-  font-weight: 400;
-  letter-spacing: 0.03em;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: background 0.2s ease, border-color 0.2s ease;
+  padding: 0.7rem 5% 0.1rem ;
+  background: transparent var(--btn-morado) center / 100% 100% no-repeat;
+  border: none;
+  border-radius: 0;
+  color: #ceafd6;
+  /* cqw = % del ancho real de #menu-layout -> caja y letra escalan juntas */
+  font-size: clamp(0.5rem, 2cqw, 1.7rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-shadow: 0 2px 5px rgba(53, 28, 47, 0.85);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: filter 0.18s ease;
 }
 
-.menu-real-btn:hover {
-  background: rgba(74, 70, 88, 0.65);
-  border-color: #f2ede3;
+.menu-real-btn:hover:not(:disabled) {
+  filter: brightness(1.40) saturate(1.1);
 }
 
 .menu-real-btn:disabled {
-  background: rgba(20, 16, 31, 0.35);
-  border-color: rgba(74, 70, 88, 0.5);
-  color: #8a8598;
+  filter: grayscale(0.8) brightness(0.5);
+  color: #d8cfc0;
 }
 
 @media (max-width: 599px) {
@@ -262,7 +428,7 @@ button:disabled {
      siguen el ancho real de #menu-layout solos. Esto es un ajuste aparte,
      de posicion/columna, no de escala. */
   #menu-buttons {
-    top: 66%;
+    top: 6%;
     width: min(72%, 280px);
   }
 }
@@ -303,22 +469,48 @@ button:disabled {
   color: #f2ede3;
 }
 
-/* modos de partida en la barra lateral del menu (desafio diario + toggle de
-   modo dificil) - botones compactos para no competir con la tabla de partidas */
+/* modos de partida (desafio diario + toggle de modo dificil): uno AL LADO del
+   otro en la esquina superior derecha del menu, sobre la imagen. Misma
+   configuracion visual que .menu-real-btn (grupo A) pero placas mas chicas. */
 #menu-modes {
+  position: absolute;
+  top: 2.5%;
+  right: 2.5%;
+  z-index: 3;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-direction: row;
+  align-items: center;
+  /* separacion entre los dos botones de modo - subir/bajar para juntarlos o separarlos */
+  gap: 0.3rem;
 }
 
 #menu-modes button {
+  /* TAMAÑO DE LA PLACA: cqw = % del ancho real de #menu-layout (que ya es
+     fluido) -> caja Y letra encogen juntas con la ventana. Tocá el 15cqw para
+     hacerlos mas grandes/chicos (grupo A ~17cqw efectivo, estos van mas chicos). */
+  width: 15cqw;
+  aspect-ratio: 2.8;
   margin: 0;
-  padding: 0.4rem 0.7rem;
-  font-size: 0.9rem;
+  /* mismo truco que grupo A: mas padding arriba que abajo baja la letra para
+     que quede centrada en la placa */
+  padding: 0.55rem 5% 0.1rem;
+  background: transparent var(--btn-morado) center / 100% 100% no-repeat;
+  color: #ceafd6;
+  font-size: clamp(0.45rem, 1.6cqw, 1.3rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-shadow: 0 2px 5px rgba(53, 28, 47, 0.85);
+  transition: filter 0.18s ease;
 }
 
+#menu-modes button:hover:not(:disabled) {
+  filter: brightness(1.40) saturate(1.1);
+}
+
+/* modo dificil activo: se tiñe la placa morada hacia el rojo (sin taparla) */
 #hard-mode-toggle-btn.active {
-  background: #a0442f;
+  filter: brightness(1.08) saturate(1.7) hue-rotate(-32deg);
 }
 
 /* columna "Modo" del historial: resalta solo las partidas en dificil */
@@ -355,8 +547,13 @@ button:disabled {
 }
 
 #player-name-row button {
+  width: auto;
+  aspect-ratio: auto;
+  align-self: stretch;
   margin: 0;
-  padding: 0.55rem 0.9rem;
+  padding: 0.6rem 1.7rem;
+  min-width: 7rem;
+  font-size: 1.05rem;
 }
 
 /* ---------- pantalla para poner el nombre (al empezar partida nueva) ---------- */
@@ -382,6 +579,11 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
+  /* ancla para el "Volver al menú" que cuelga debajo del panel */
+  position: relative;
+  /* los botones de adentro escalan (placa Y letra) con el ancho del panel,
+     igual que .menu-real-btn con el menu -> el texto LLENA el boton */
+  container-type: inline-size;
 }
 
 .screen-panel h2 {
@@ -432,9 +634,8 @@ button:disabled {
   border-bottom: 1px solid #4a4658;
 }
 
-.back-link {
-  background: #4a4658;
-}
+/* .back-link ya usa la placa roja (ver el bloque de skins de boton arriba) -
+   no se le vuelve a poner un color solido aca para no pisar la imagen */
 
 /* zona de borrado de la pantalla de creditos (partidas guardadas / creditos) */
 #credits-danger-zone {
@@ -444,12 +645,58 @@ button:disabled {
   justify-content: center;
 }
 
-.danger-btn {
-  background: #7a2e2e;
+/* .danger-btn tambien es placa roja (ver skins de boton arriba); solo se
+   distingue en el hover, un poco mas oscuro */
+.danger-btn:hover {
+  filter: brightness(0.85);
 }
 
-.danger-btn:hover {
-  background: #9a3a3a;
+/* ---------- pantalla de reglas antes de empezar el dia (pizarra) ----------
+   SOLO el titulo + la lista de reglas van sobre la imagen (proporcion real
+   1122x1402); los botones quedan debajo (.day-start-actions). Si el texto no
+   entra, la lista scrollea adentro. */
+#day-start-screen .screen-panel {
+  background: url("../img/backgrounds/pizarraReglas.png") center / 100% 100% no-repeat;
+  border-radius: 0;
+  max-width: min(92vw, 460px);
+  aspect-ratio: 1122 / 1402;
+  /* padding TOP mas grande = el bloque de texto arranca mas abajo dentro de la
+     imagen. Tocá el primer valor para subirlo/bajarlo. */
+  padding: 21% 12% 9%;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+#day-start-screen .screen-panel h2 {
+  color: #f7ecd8;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.55);
+}
+
+#day-start-screen #day-start-rules {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  color: #f4e9d6;
+}
+
+#day-start-screen #day-start-rules li {
+  border-bottom-color: rgba(247, 236, 216, 0.22);
+  padding: 0.3rem 0.35rem;
+  /* tamaño del texto de las reglas en la pizarra - escala con el ancho de la
+     pizarra hasta un tope de 1.15rem */
+  font-size: clamp(0.6rem, 2.6vw, 1.15rem);
+  line-height: 1.35;
+}
+
+/* botones de la pantalla de reglas, ahora DEBAJO de la pizarra (no encima) */
+.day-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0.6rem auto 0;
 }
 
 #paused-status {
@@ -832,15 +1079,23 @@ button:disabled {
   font-weight: bold;
 }
 
+/* el boton de pausa del HUD (#pause-btn, lleva .exit-to-menu-btn pero PAUSA,
+   no sale) - se le saca la placa roja generica y queda como un iconito chico
+   semitransparente para no tapar la escena */
 #hud .exit-to-menu-btn {
   position: absolute;
   right: 1.5%;
   top: 50%;
   transform: translateY(-50%);
   pointer-events: auto;
+  width: auto;
+  aspect-ratio: auto;
   margin: 0;
   padding: 0.3rem 0.55rem;
   font-size: 0.75rem;
+  background: rgba(20, 16, 31, 0.55);
+  border-radius: 6px;
+  text-shadow: none;
 }
 
 /* moneda + dinero: antes flotaba fuera del canvas, pegado al costado de la
@@ -888,21 +1143,26 @@ button:disabled {
 /* debajo del reloj de arena, misma columna que #coin-widget/#day-clock
    (left: 10.9%) - la flor es la misma que ya aparece junto a DIA/ERRORES/
    RACHA en fondoPantallaJuegoT.png, recortada aparte (ver public/img/tienda/
-   florHud.png) porque ahi vive pintada en el fondo, no como icono suelto.
-   Sin el estilo generico de boton (fondo/borde/padding): es un icono solo. */
+   nuevo icono de puesto de mercado, ver public/img/backgrounds/iconoTienda.png)
+   Sin el estilo generico de boton (fondo/borde/padding): es un icono solo.
+   Un poco mas grande que la flor vieja pero SIN llegar a tocar el reloj de
+   arena de arriba (#day-clock, top 63% + 8% de alto ~= 71%; este arranca en
+   ~75.7%) ni salirse del escritorio. */
 #shop-btn {
   position: absolute;
   left: 10.9%;
   top: 80%;
   transform: translate(-50%, -50%);
-  width: 7%;
+  width: 9%;
   aspect-ratio: 1;
   margin: 0;
   padding: 0;
   border: none;
   border-radius: 0;
+  min-height: 0;
+  text-shadow: none;
   background-color: transparent;
-  background-image: url("../img/tienda/florHud.png");
+  background-image: url("../img/backgrounds/iconoTienda.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -910,9 +1170,8 @@ button:disabled {
   z-index: 5;
 }
 
-.exit-to-menu-btn {
-  background: #4a4658;
-}
+/* .exit-to-menu-btn ya usa la placa roja (ver skins de boton arriba) - sin
+   color solido aca para no pisar la imagen */
 
 /* ---------- reloj de arena del dia (reemplaza la barra de tiempo, por visitante antes) ----------
    4 etapas (full/medio/casi/vacio), cada una con 2 cuadros que main.ts va

@@ -1,61 +1,61 @@
 [
   {
     "dia": 1,
-    "descripcion": "Rechazar a cualquier visitante con cuernos visibles (rasgo exclusivo de los Oni; el sello negro NO es prueba por sí solo).",
+    "descripcion": "Rechazar a quien tenga cuernos visibles (Oni).",
     "propiedad": "tieneCuernos",
     "valorProhibido": true
   },
   {
     "dia": 2,
-    "descripcion": "Rechazar a cualquier visitante con ojos amarillos (rasgo exclusivo de los Kitsune).",
+    "descripcion": "Rechazar a quien tenga ojos amarillos (Kitsune).",
     "propiedad": "ojosAmarillos",
     "valorProhibido": true
   },
   {
     "dia": 3,
-    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la región 'rio' (rasgo exclusivo de los Kappa; orejas grandes NO son prueba por sí solas).",
+    "descripcion": "Rechazar si el pasaporte declara la región 'río' (Kappa).",
     "propiedad": "region",
     "valorProhibido": "rio"
   },
   {
     "dia": 4,
-    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la especie 'kitsune', sea verdad o mentira: la agencia prohibió que conste esa palabra en el documento.",
+    "descripcion": "Rechazar si el pasaporte declara la especie 'kitsune'.",
     "propiedad": "especieProhibida",
     "valorProhibido": "kitsune"
   },
   {
     "dia": 4,
-    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la especie 'oni', sea verdad o mentira: misma prohibición.",
+    "descripcion": "Rechazar si el pasaporte declara la especie 'oni'.",
     "propiedad": "especieProhibida",
     "valorProhibido": "oni"
   },
   {
     "dia": 4,
-    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la especie 'kappa', sea verdad o mentira: misma prohibición.",
+    "descripcion": "Rechazar si el pasaporte declara la especie 'kappa'.",
     "propiedad": "especieProhibida",
     "valorProhibido": "kappa"
   },
   {
     "dia": 4,
-    "descripcion": "Rechazar a cualquier visitante cuyo pasaporte declare la especie 'poseido': la agencia no deja pasar a nadie que admita estar poseído, sin excepciones.",
+    "descripcion": "Rechazar si el pasaporte declara la especie 'poseido'.",
     "propiedad": "especieProhibida",
     "valorProhibido": "poseido"
   },
   {
     "dia": 5,
-    "descripcion": "Rechazar a cualquier visitante con sello negro en el pasaporte: la agencia descubrió que es el sello de los documentos falsificados en el inframundo. Aplica a todos por igual, sin importar la especie ni si ya habían pasado antes con ese sello.",
+    "descripcion": "Rechazar a quien tenga sello negro en el pasaporte (falsificación del inframundo).",
     "propiedad": "sello",
     "valorProhibido": "negro"
   },
   {
     "dia": 6,
-    "descripcion": "Rechazar a cualquier visitante con sello plateado en el pasaporte: es la falsificación de una aduana rival que la agencia acaba de detectar. El resto de las reglas se mantiene igual, sin excepciones.",
+    "descripcion": "Rechazar a quien tenga sello plateado en el pasaporte (falsificación de una aduana rival).",
     "propiedad": "sello",
     "valorProhibido": "plateado"
   },
   {
     "dia": 7,
-    "descripcion": "A los visitantes de la vía láctea (alien) ya no alcanza con dejarlos pasar: hay que sellarles el pasaporte con el sello AZUL. El sello verde de siempre no vale para ellos, y el azul no vale para nadie más.",
+    "descripcion": "A los alien (vía láctea) hay que aprobarlos con el sello AZUL, no el verde. El azul no vale para nadie más.",
     "propiedad": "selloAlien",
     "valorProhibido": null
   }
