@@ -93,7 +93,10 @@ section {
   max-width: none;
   margin: 0;
   padding: 0;
-  background: #000;
+  background: rgba(0, 0, 0, 0.45);
+  /* el menu ya esta visible detras (ver index.html) - sin esto quedaria tapado,
+     #menu-screen tambien es "position: fixed" y va despues en el HTML */
+  z-index: 10;
 }
 
 #start-gate-inner {

@@ -8,18 +8,20 @@
 </head>
 <body>
 
-  <!-- pantalla negra con un unico boton antes del menu: el primer click del
-       jugador es un gesto explicito que desbloquea el audio del navegador
-       (reemplaza el viejo parche de reintentar la musica en el primer
-       pointerdown, ver main.ts). "start-gate" nunca es un destino de
-       changeState(): es solo el estado inicial del HTML. -->
+  <!-- pantalla negra semitransparente con un unico boton antes del menu: el
+       primer click del jugador es un gesto explicito que desbloquea el audio
+       del navegador (reemplaza el viejo parche de reintentar la musica en el
+       primer pointerdown, ver main.ts). "start-gate" nunca es un destino de
+       changeState(): es solo el estado inicial del HTML. El menu ya se ve
+       (a media luz) detras del velo, para que se note que hay una pantalla
+       apilada sobre la otra en vez de un cuadro negro suelto. -->
   <section id="start-gate-screen">
     <div id="start-gate-inner">
-      <button id="start-gate-btn">Start</button>
+      <button id="start-gate-btn">Comenzar</button>
     </div>
   </section>
 
-  <section id="menu-screen" class="hidden">
+  <section id="menu-screen">
     <div id="menu-layout">
       <!-- backgroundEnd.png (arte de Iralys) ya trae el titulo dibujado adentro,
            asi que el <h1> queda vacio (se mantiene el tag por si hace falta
