@@ -1639,14 +1639,31 @@ button:disabled {
   sensacion de que esta parado justo detras suyo. Si hace falta afinar mas,
   este es el lugar (y PORTRAIT_REST_LEFT/PASSPORT_ARC_BASE en main.ts si se
   toca el "left" o de donde sale el pasaporte).
+
+  REARMADO (set de personajes nuevo, 2026-09): el lienzo viejo (rostro-N.png)
+  era vertical, 500x806 (aspect 0.62); el nuevo es apaisado, 3313x2420 (aspect
+  1.369). "aspect-ratio" fuerza la caja a la proporcion EXACTA del lienzo nuevo
+  (asi "contain" lo llena completo, sin franjas vacias arriba/abajo - ver el
+  comentario de cuernos mas abajo, ese bug es justo este), y "bottom" (no
+  "top") ancla la BASE del personaje en el mismo punto de siempre contra el
+  escritorio. Con esto width/height/anchura de cara+ojos+boca (los 3 son
+  100%x100% de ESTA caja, ver .part-face/.part-eyes/.part-mouth mas abajo)
+  quedan controlados por UNA sola linea:
+
+  ---> "width" de aca abajo es LA perilla de tamaño del personaje entero <---
+  Subirlo agranda cara+ojos+boca juntos y hace crecer la caja HACIA ARRIBA
+  (bottom se queda fijo, no se hunde mas en el escritorio). Como crece
+  tambien hacia la derecha (ensancha desde "left"), si se lo sube mucho hay
+  que revisar que no tape el pasaporte (~50-70% de #character-scene) o la
+  barra lateral - probar en el juego y ajustar.
 */
 #character-portrait {
   position: absolute;
   z-index: 2;
   left: 49%;
-  top: 9%;
-  width: 21%;
-  height: 75%;
+  bottom: 42%;
+  width: 38%;
+  aspect-ratio: 3313 / 2420;
   /* la duracion tiene que coincidir con PORTRAIT_ANIM_MS en main.ts */
   transition: left 0.45s ease;
   animation: idle-bob 2.6s ease-in-out infinite;
@@ -1721,6 +1738,7 @@ button:disabled {
 .part-face.rostro-46 { background-image: url("../img/baseCharacters/rostro-46.png"); }
 .part-face.rostro-47 { background-image: url("../img/baseCharacters/rostro-47.png"); }
 .part-face.rostro-48 { background-image: url("../img/baseCharacters/rostro-48.png"); }
+.part-face.rostro-49 { background-image: url("../img/baseCharacters/rostro-49.png"); }
 
 /* rostros de alien (partes.json -> "alienes"): mismo tamano y encuadre que los
    rostro-N, pero se sortean de un pool aparte porque su pasaporte es fijo
@@ -1731,8 +1749,6 @@ button:disabled {
 .part-face.alien4 { background-image: url("../img/baseCharacters/alien4.png"); }
 .part-face.alien5 { background-image: url("../img/baseCharacters/alien5.png"); }
 .part-face.alien6 { background-image: url("../img/baseCharacters/alien6.png"); }
-.part-face.alien7 { background-image: url("../img/baseCharacters/alien7.png"); }
-.part-face.alien8 { background-image: url("../img/baseCharacters/alien8.png"); }
 
 /*
   ojos: son imagenes de canvas completo (mismo tamaño que rostro-N), dibujadas ya
@@ -1742,7 +1758,7 @@ button:disabled {
   Los ojos amarillos (Kitsune) NO son un color aplicado sobre una forma al azar -
   son una imagen propia (yellowEyes.png). Quien arme main.ts tiene que elegir la
   clase segun corresponda: si personaje.obtainYellowEyes es true, usar la clase
-  "yellowEyes"; si no, usar el valor de personaje.obtainEyes (una de "eyes-1".."eyes-17").
+  "yellowEyes"; si no, usar el valor de personaje.obtainEyes (una de "eyes-1".."eyes-15").
 */
 .part-eyes {
   width: 100%;
@@ -1765,8 +1781,6 @@ button:disabled {
 .part-eyes.eyes-13 { background-image: url("../img/eyes/eyes-13.png"); }
 .part-eyes.eyes-14 { background-image: url("../img/eyes/eyes-14.png"); }
 .part-eyes.eyes-15 { background-image: url("../img/eyes/eyes-15.png"); }
-.part-eyes.eyes-16 { background-image: url("../img/eyes/eyes-16.png"); }
-.part-eyes.eyes-17 { background-image: url("../img/eyes/eyes-17.png"); }
 .part-eyes.yellowEyes { background-image: url("../img/eyes/yellowEyes.png"); }
 
 /*
@@ -1796,7 +1810,6 @@ button:disabled {
 .part-mouth.mouth-15 { background-image: url("../img/mouth/mouth-15.png"); }
 .part-mouth.mouth-16 { background-image: url("../img/mouth/mouth-16.png"); }
 .part-mouth.mouth-17 { background-image: url("../img/mouth/mouth-17.png"); }
-.part-mouth.mouth-18 { background-image: url("../img/mouth/mouth-18.png"); }
 
 /*
   cuernos: top/height recalculados (no a ojo) para el nuevo tamaño de
@@ -1821,6 +1834,13 @@ button:disabled {
   72% = justo sobre el pelo (medido componiendo rostro+ojos+boca+cuernos con la
   misma matematica del CSS, ver diario.md). "width" y "left" quedan como los
   habia dejado ajustados Mike.
+
+  OJO (set de personajes nuevo, 2026-09): este 72% se midio contra el rostro-N.png
+  VIEJO. #character-portrait ahora tiene otra proporcion (ver el comentario ahi
+  arriba - ya NO deja franjas vacias, "contain" llena la caja entera) y el rostro
+  es arte nuevo con la linea del pelo en otro lugar, asi que este valor casi
+  seguro hay que volver a ajustarlo a ojo mirando el juego (subir el % = cuernos
+  mas abajo, hacia la cara).
 */
 .part-horns {
   width: 22%;

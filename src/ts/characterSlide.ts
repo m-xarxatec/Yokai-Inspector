@@ -3,7 +3,7 @@
 
 type SlidableElement = { selector: string; restLeft: string };
 
-const PORTRAIT_REST_LEFT = "49%";
+const PORTRAIT_REST_LEFT = "39%";
 
 export const CHARACTER_ELEMENT: SlidableElement = { selector: "#character-portrait", restLeft: PORTRAIT_REST_LEFT };
 const SLIDING_ELEMENTS: SlidableElement[] = [CHARACTER_ELEMENT];
