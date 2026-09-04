@@ -9,13 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Economy_dayCharge, _Economy_lastDayCharge, _Economy_dayRushPenalty, _Economy_lastDayRushPenalty, _Economy_usedExtraTimeToday, _Economy_hasInsurance;
-// penalizacion por decidir sin revisar el pasaporte (ver Game.decide(),
-// parametro wasRushed) - chica a proposito, es un descuido, no un error de reglas
-const RUSH_PENALTY = 1;
-// costo de la pista de la tienda (ver Game.buyHint()) - la mas barata de las 3
-// compras, porque no garantiza nada si el visitante esta limpio
-const HINT_COST = 3;
+var _Economy_dayCharge, _Economy_lastDayCharge, _Economy_usedExtraTimeToday, _Economy_hasInsurance;
 // costo del tiempo extra de la tienda (ver tryBuyExtraTime()) - los segundos
 // que suma los pone main.ts (EXTRA_TIME_MS), esta clase solo controla el
 // dinero y el limite de una vez por dia
@@ -31,11 +25,6 @@ export class Economy {
         // #dayMoney/#lastDayMoney en Game
         _Economy_dayCharge.set(this, void 0);
         _Economy_lastDayCharge.set(this, void 0);
-        // penalizacion de "decidiste sin revisar" (ver Game.decide(), parametro wasRushed) -
-        // NO suma a #errors, es un descuido de procedimiento aparte de si la decision
-        // en si fue correcta o no. Mismo patron dia/lastDay que #dayCharge.
-        _Economy_dayRushPenalty.set(this, void 0);
-        _Economy_lastDayRushPenalty.set(this, void 0);
         // limite de 1 tiempo extra comprado por dia (ver tryBuyExtraTime()) -
         // se resetea en resetForNewDay(), no sobrevive al dia siguiente
         _Economy_usedExtraTimeToday.set(this, void 0);
@@ -45,13 +34,8 @@ export class Economy {
         _Economy_hasInsurance.set(this, void 0);
         __classPrivateFieldSet(this, _Economy_dayCharge, 0, "f");
         __classPrivateFieldSet(this, _Economy_lastDayCharge, 0, "f");
-        __classPrivateFieldSet(this, _Economy_dayRushPenalty, 0, "f");
-        __classPrivateFieldSet(this, _Economy_lastDayRushPenalty, 0, "f");
         __classPrivateFieldSet(this, _Economy_usedExtraTimeToday, false, "f");
         __classPrivateFieldSet(this, _Economy_hasInsurance, false, "f");
-    }
-    get hintCost() {
-        return HINT_COST;
     }
     get extraTimeCost() {
         return EXTRA_TIME_COST;
@@ -68,9 +52,6 @@ export class Economy {
     get lastDayCharge() {
         return __classPrivateFieldGet(this, _Economy_lastDayCharge, "f");
     }
-    get lastDayRushPenalty() {
-        return __classPrivateFieldGet(this, _Economy_lastDayRushPenalty, "f");
-    }
     // calcula y guarda el cobro del dia que arranca - escala con la cantidad de
     // reglas activas de ese dia (mas reglas, mas visitantes, mas presion
     // economica). Devuelve el monto para que Game se lo reste a #money (esta
@@ -81,12 +62,6 @@ export class Economy {
         const cost = 2 + activeRulesCount;
         __classPrivateFieldSet(this, _Economy_dayCharge, cost, "f");
         return cost;
-    }
-    // devuelve el monto de la penalizacion y lo registra - Game decide si
-    // corresponde llamarlo (wasRushed) y le resta el resultado a #money
-    recordRushPenalty() {
-        __classPrivateFieldSet(this, _Economy_dayRushPenalty, __classPrivateFieldGet(this, _Economy_dayRushPenalty, "f") + RUSH_PENALTY, "f");
-        return RUSH_PENALTY;
     }
     // true si habia un indulto activo y lo consume (Game no suma a #errors en
     // ese caso); false si no habia ninguno (Game suma el error normal)
@@ -117,7 +92,6 @@ export class Economy {
     }
     // llamado desde Game.#startDay()
     resetForNewDay() {
-        __classPrivateFieldSet(this, _Economy_dayRushPenalty, 0, "f");
         __classPrivateFieldSet(this, _Economy_usedExtraTimeToday, false, "f");
         __classPrivateFieldSet(this, _Economy_hasInsurance, false, "f");
     }
@@ -125,8 +99,7 @@ export class Economy {
     // mismo endDay()) resetee el dia - ver pantalla de resumen en main.ts
     snapshotDayEnd() {
         __classPrivateFieldSet(this, _Economy_lastDayCharge, __classPrivateFieldGet(this, _Economy_dayCharge, "f"), "f");
-        __classPrivateFieldSet(this, _Economy_lastDayRushPenalty, __classPrivateFieldGet(this, _Economy_dayRushPenalty, "f"), "f");
     }
 }
-_Economy_dayCharge = new WeakMap(), _Economy_lastDayCharge = new WeakMap(), _Economy_dayRushPenalty = new WeakMap(), _Economy_lastDayRushPenalty = new WeakMap(), _Economy_usedExtraTimeToday = new WeakMap(), _Economy_hasInsurance = new WeakMap();
+_Economy_dayCharge = new WeakMap(), _Economy_lastDayCharge = new WeakMap(), _Economy_usedExtraTimeToday = new WeakMap(), _Economy_hasInsurance = new WeakMap();
 //# sourceMappingURL=Economy.js.map

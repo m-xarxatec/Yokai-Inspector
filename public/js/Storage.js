@@ -48,6 +48,10 @@ export function addCredits(name, amount) {
 export function getAllCredits() {
     return loadJson(CREDITS_KEY, {});
 }
+// distinto de clearSavedGames(): borra solo el ranking de creditos, no la partida/historial/rachas
+export function clearCredits() {
+    localStorage.removeItem(CREDITS_KEY);
+}
 export function saveDayStreaks(streaks) {
     localStorage.setItem(DAY_STREAKS_KEY, JSON.stringify(streaks));
 }

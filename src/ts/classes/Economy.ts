@@ -1,11 +1,3 @@
-// penalizacion por decidir sin revisar el pasaporte (ver Game.decide(),
-// parametro wasRushed) - chica a proposito, es un descuido, no un error de reglas
-const RUSH_PENALTY = 1;
-
-// costo de la pista de la tienda (ver Game.buyHint()) - la mas barata de las 3
-// compras, porque no garantiza nada si el visitante esta limpio
-const HINT_COST = 3;
-
 // costo del tiempo extra de la tienda (ver tryBuyExtraTime()) - los segundos
 // que suma los pone main.ts (EXTRA_TIME_MS), esta clase solo controla el
 // dinero y el limite de una vez por dia
@@ -22,11 +14,6 @@ export class Economy {
     // #dayMoney/#lastDayMoney en Game
     #dayCharge: number;
     #lastDayCharge: number;
-    // penalizacion de "decidiste sin revisar" (ver Game.decide(), parametro wasRushed) -
-    // NO suma a #errors, es un descuido de procedimiento aparte de si la decision
-    // en si fue correcta o no. Mismo patron dia/lastDay que #dayCharge.
-    #dayRushPenalty: number;
-    #lastDayRushPenalty: number;
     // limite de 1 tiempo extra comprado por dia (ver tryBuyExtraTime()) -
     // se resetea en resetForNewDay(), no sobrevive al dia siguiente
     #usedExtraTimeToday: boolean;
@@ -38,15 +25,10 @@ export class Economy {
     constructor() {
         this.#dayCharge = 0;
         this.#lastDayCharge = 0;
-        this.#dayRushPenalty = 0;
-        this.#lastDayRushPenalty = 0;
         this.#usedExtraTimeToday = false;
         this.#hasInsurance = false;
     }
 
-    get hintCost(): number {
-        return HINT_COST;
-    }
     get extraTimeCost(): number {
         return EXTRA_TIME_COST;
     }
@@ -62,9 +44,6 @@ export class Economy {
     get lastDayCharge(): number {
         return this.#lastDayCharge;
     }
-    get lastDayRushPenalty(): number {
-        return this.#lastDayRushPenalty;
-    }
 
     // calcula y guarda el cobro del dia que arranca - escala con la cantidad de
     // reglas activas de ese dia (mas reglas, mas visitantes, mas presion
@@ -76,13 +55,6 @@ export class Economy {
         const cost = 2 + activeRulesCount;
         this.#dayCharge = cost;
         return cost;
-    }
-
-    // devuelve el monto de la penalizacion y lo registra - Game decide si
-    // corresponde llamarlo (wasRushed) y le resta el resultado a #money
-    recordRushPenalty(): number {
-        this.#dayRushPenalty += RUSH_PENALTY;
-        return RUSH_PENALTY;
     }
 
     // true si habia un indulto activo y lo consume (Game no suma a #errors en
@@ -117,7 +89,6 @@ export class Economy {
 
     // llamado desde Game.#startDay()
     resetForNewDay(): void {
-        this.#dayRushPenalty = 0;
         this.#usedExtraTimeToday = false;
         this.#hasInsurance = false;
     }
@@ -126,6 +97,5 @@ export class Economy {
     // mismo endDay()) resetee el dia - ver pantalla de resumen en main.ts
     snapshotDayEnd(): void {
         this.#lastDayCharge = this.#dayCharge;
-        this.#lastDayRushPenalty = this.#dayRushPenalty;
     }
 }

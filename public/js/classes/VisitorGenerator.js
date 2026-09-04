@@ -9,22 +9,27 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _VisitorGenerator_instances, _VisitorGenerator_parts, _VisitorGenerator_names, _VisitorGenerator_phrases, _VisitorGenerator_stamps, _VisitorGenerator_species, _VisitorGenerator_pickPhrase, _VisitorGenerator_pickAlienFace;
+var _VisitorGenerator_instances, _VisitorGenerator_parts, _VisitorGenerator_names, _VisitorGenerator_phrases, _VisitorGenerator_stamps, _VisitorGenerator_species, _VisitorGenerator_random, _VisitorGenerator_pickPhrase, _VisitorGenerator_pickAlienFace;
 import { Passport } from "./Passport.js";
 import { Human } from "./Human.js";
 import { Yokai } from "./Yokai.js";
 export class VisitorGenerator {
-    constructor() {
+    constructor(randomFn = Math.random) {
         _VisitorGenerator_instances.add(this);
         _VisitorGenerator_parts.set(this, void 0);
         _VisitorGenerator_names.set(this, void 0);
         _VisitorGenerator_phrases.set(this, void 0);
         _VisitorGenerator_stamps.set(this, void 0);
         _VisitorGenerator_species.set(this, void 0);
+        // fuente de azar: Math.random por defecto (identico a siempre), o un
+        // generador con semilla si Game recibio uno (desafio diario, ver
+        // src/ts/random.ts). Todo el sorteo de este archivo pasa por this.#random().
+        _VisitorGenerator_random.set(this, void 0);
         __classPrivateFieldSet(this, _VisitorGenerator_names, [], "f");
         __classPrivateFieldSet(this, _VisitorGenerator_phrases, [], "f");
         __classPrivateFieldSet(this, _VisitorGenerator_stamps, [], "f");
         __classPrivateFieldSet(this, _VisitorGenerator_species, [], "f");
+        __classPrivateFieldSet(this, _VisitorGenerator_random, randomFn, "f");
     }
     // llamado desde Game.loadData() apenas terminan de llegar los 8 fetch,
     // mismo momento en que antes se asignaban estos campos directo en Game
@@ -39,21 +44,29 @@ export class VisitorGenerator {
     // (Game ya los tiene, no hace falta duplicarlos aca) - mismo indexado
     // (this.#days[this.#dayNumber - 1]) que ya usaba Game, sin pasar por el
     // getter currentDay (que clampea contra totalDays) para no cambiar nada
-    generate(dayNumber, day) {
+    // hardMode = modo dificil (ver Game): adelanta la curva de problematicos,
+    // sube un extra fijo la proporcion de visitantes que hay que rechazar. Es
+    // opcional para no romper a quien llame generate(dia, day) a secas (los
+    // tests, y todo el codigo anterior al modo dificil).
+    generate(dayNumber, day, hardMode = false) {
         // el dia ya no tiene una cantidad fija de visitantes (dura por tiempo, no
         // por conteo) - "goal" queda solo como el denominador de la proporcion de
         // problematicos, calibrada por dia; en vez de repartir una cantidad exacta
         // en un array pre-armado, se sortea de nuevo en cada visitante.
+        const HARD_MODE_EXTRA_RATIO = 0.15;
         const goal = day.getVisitorGoal();
-        const problematicRatio = Math.min(dayNumber + 1, goal - 1) / goal;
-        const isProblematic = Math.random() < problematicRatio;
-        const name = __classPrivateFieldGet(this, _VisitorGenerator_names, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _VisitorGenerator_names, "f").length)];
+        let problematicRatio = Math.min(dayNumber + 1, goal - 1) / goal;
+        if (hardMode) {
+            problematicRatio = Math.min(problematicRatio + HARD_MODE_EXTRA_RATIO, 0.95);
+        }
+        const isProblematic = __classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) < problematicRatio;
+        const name = __classPrivateFieldGet(this, _VisitorGenerator_names, "f")[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * __classPrivateFieldGet(this, _VisitorGenerator_names, "f").length)];
         const phrase = __classPrivateFieldGet(this, _VisitorGenerator_instances, "m", _VisitorGenerator_pickPhrase).call(this);
-        let face = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").rostro[Math.floor(Math.random() * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").rostro.length)];
-        const eyesShape = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").ojos[Math.floor(Math.random() * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").ojos.length)];
-        const mouth = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").boca[Math.floor(Math.random() * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").boca.length)];
-        const horns = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").cuernos[Math.floor(Math.random() * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").cuernos.length)];
-        const hair = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").sombrero[Math.floor(Math.random() * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").sombrero.length)];
+        let face = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").rostro[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").rostro.length)];
+        const eyesShape = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").ojos[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").ojos.length)];
+        const mouth = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").boca[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").boca.length)];
+        const horns = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").cuernos[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").cuernos.length)];
+        const hair = __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").sombrero[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").sombrero.length)];
         const activeRules = day.getActiveRules();
         // pool completo menos lo que la regla de esa propiedad prohiba HOY: asi un dato
         // (region, sello, especie) puede aparecer en el pasaporte desde el dia 1 sin
@@ -82,14 +95,14 @@ export class VisitorGenerator {
             const safeRegions = withoutForbiddenToday(allRegions, "region");
             const safeStamps = withoutForbiddenToday(allStamps, "sello");
             const safeSpecies = withoutForbiddenToday(__classPrivateFieldGet(this, _VisitorGenerator_species, "f"), "especieProhibida").filter((specie) => specie !== "alien");
-            let region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
-            const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)];
-            let declaredSpecie = safeSpecies[Math.floor(Math.random() * safeSpecies.length)];
+            let region = safeRegions[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * safeRegions.length)];
+            const stamp = safeStamps[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * safeStamps.length)];
+            let declaredSpecie = safeSpecies[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * safeSpecies.length)];
             // un alien "en regla": ni "via lactea" ni "alien" estan prohibidos por
             // ninguna regla, asi que sigue siendo un visitante seguro - lo unico
             // distinto es que desde el dia 6 hay que aprobarlo con el sello azul
             // (eso no lo decide el pasaporte, lo decide el jugador, ver decide())
-            if (Math.random() < ALIEN_CHANCE) {
+            if (__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) < ALIEN_CHANCE) {
                 face = __classPrivateFieldGet(this, _VisitorGenerator_instances, "m", _VisitorGenerator_pickAlienFace).call(this);
                 region = "via lactea";
                 declaredSpecie = "alien";
@@ -110,9 +123,9 @@ export class VisitorGenerator {
             .map((rule) => rule.getProperty())
             .filter((property, index, properties) => properties.indexOf(property) === index)
             .filter((property) => property !== "selloAlien");
-        const targetProperty = activeProperties[Math.floor(Math.random() * activeProperties.length)];
+        const targetProperty = activeProperties[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * activeProperties.length)];
         const rulesForProperty = activeRules.filter((rule) => rule.getProperty() === targetProperty);
-        const targetRule = rulesForProperty[Math.floor(Math.random() * rulesForProperty.length)];
+        const targetRule = rulesForProperty[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * rulesForProperty.length)];
         let yokaiType = "oni";
         let declaredSpecie = "";
         let region = "campo";
@@ -125,7 +138,7 @@ export class VisitorGenerator {
         // Con cuernos, ojos amarillos o sello prohibido no hay conflicto: el rasgo
         // sobrevive igual al pasaporte forzado.
         const canBeAlien = property !== "region" && property !== "especieProhibida";
-        const isAlien = canBeAlien && Math.random() < ALIEN_CHANCE;
+        const isAlien = canBeAlien && __classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) < ALIEN_CHANCE;
         if (isAlien) {
             face = __classPrivateFieldGet(this, _VisitorGenerator_instances, "m", _VisitorGenerator_pickAlienFace).call(this);
         }
@@ -153,7 +166,7 @@ export class VisitorGenerator {
         if (property === "tieneCuernos" || property === "ojosAmarillos" || property === "region") {
             const especieProhibidaHoy = activeRules.filter((rule) => rule.getProperty() === "especieProhibida").map((rule) => rule.getForbiddenValue());
             const lieOptions = __classPrivateFieldGet(this, _VisitorGenerator_species, "f").filter((specie) => specie !== yokaiType && !especieProhibidaHoy.includes(specie));
-            declaredSpecie = lieOptions[Math.floor(Math.random() * lieOptions.length)];
+            declaredSpecie = lieOptions[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * lieOptions.length)];
         }
         if (property === "sello") {
             declaredSpecie = "humano";
@@ -183,17 +196,17 @@ export class VisitorGenerator {
         if (property !== "especieProhibida" && bannedSpecieRules.length > 0) {
             extraTraitOptions.push("especieProhibida");
         }
-        if (extraTraitOptions.length > 0 && Math.random() < EXTRA_TRAIT_CHANCE) {
-            const extraTrait = extraTraitOptions[Math.floor(Math.random() * extraTraitOptions.length)];
+        if (extraTraitOptions.length > 0 && __classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) < EXTRA_TRAIT_CHANCE) {
+            const extraTrait = extraTraitOptions[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * extraTraitOptions.length)];
             if (extraTrait === "region") {
                 region = "rio";
             }
             if (extraTrait === "sello") {
-                const extraStampRule = stampRules[Math.floor(Math.random() * stampRules.length)];
+                const extraStampRule = stampRules[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * stampRules.length)];
                 stamp = extraStampRule.getForbiddenValue();
             }
             if (extraTrait === "especieProhibida") {
-                const extraBannedSpecieRule = bannedSpecieRules[Math.floor(Math.random() * bannedSpecieRules.length)];
+                const extraBannedSpecieRule = bannedSpecieRules[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * bannedSpecieRules.length)];
                 declaredSpecie = extraBannedSpecieRule.getForbiddenValue();
             }
         }
@@ -212,9 +225,9 @@ export class VisitorGenerator {
         return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
     }
 }
-_VisitorGenerator_parts = new WeakMap(), _VisitorGenerator_names = new WeakMap(), _VisitorGenerator_phrases = new WeakMap(), _VisitorGenerator_stamps = new WeakMap(), _VisitorGenerator_species = new WeakMap(), _VisitorGenerator_instances = new WeakSet(), _VisitorGenerator_pickPhrase = function _VisitorGenerator_pickPhrase() {
-    return __classPrivateFieldGet(this, _VisitorGenerator_phrases, "f")[Math.floor(Math.random() * __classPrivateFieldGet(this, _VisitorGenerator_phrases, "f").length)];
+_VisitorGenerator_parts = new WeakMap(), _VisitorGenerator_names = new WeakMap(), _VisitorGenerator_phrases = new WeakMap(), _VisitorGenerator_stamps = new WeakMap(), _VisitorGenerator_species = new WeakMap(), _VisitorGenerator_random = new WeakMap(), _VisitorGenerator_instances = new WeakSet(), _VisitorGenerator_pickPhrase = function _VisitorGenerator_pickPhrase() {
+    return __classPrivateFieldGet(this, _VisitorGenerator_phrases, "f")[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * __classPrivateFieldGet(this, _VisitorGenerator_phrases, "f").length)];
 }, _VisitorGenerator_pickAlienFace = function _VisitorGenerator_pickAlienFace() {
-    return __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").alienes[Math.floor(Math.random() * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").alienes.length)];
+    return __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").alienes[Math.floor(__classPrivateFieldGet(this, _VisitorGenerator_random, "f").call(this) * __classPrivateFieldGet(this, _VisitorGenerator_parts, "f").alienes.length)];
 };
 //# sourceMappingURL=VisitorGenerator.js.map

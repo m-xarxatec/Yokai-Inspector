@@ -431,86 +431,8 @@ console.log("dinero negativo antes del cobro:", 10 - 15, "| dinero real tras cob
   gameL.money < 0 ? "[OK: el cobro diario puede dejar el dinero mas negativo todavia]" : "[FALLO]");
 console.log("isLost() con 3 errores y dinero negativo:", gameL.isLost(), gameL.isLost() === false ? "[OK: quedar en negativo no es motivo de derrota]" : "[FALLO]");
 
-// ================= TEST 12: penalizacion por decidir sin revisar (wasRushed) =================
-console.log("\n========== TEST 12: decidir muy rapido (wasRushed) resta dinero aparte, sin sumar a #errors ==========");
-resetMocks();
-const gameM = new Game();
-await loadDataAsync(gameM);
-gameM.startNewGame();
-// decision CORRECTA pero apurada: dinero solo deberia bajar el RUSH_PENALTY (1),
-// no el -5 de un error - #errors tiene que quedar en 0
-const erroresAntesM = gameM.errors;
-const dineroAntesM = gameM.money;
-const violationM = gameM.currentDay.evaluateCharacter(gameM.currentVisitor);
-gameM.decide(violationM === null, false, true); // acierta la decision, pero apurado
-console.log("dinero tras acierto apurado:", gameM.money, "| esperado (10 + 2 - 1 de penalizacion):", dineroAntesM + 2 - 1,
-  gameM.money === dineroAntesM + 2 - 1 ? "[OK]" : "[FALLO]");
-console.log("errores tras acierto apurado:", gameM.errors, gameM.errors === erroresAntesM ? "[OK: la penalizacion no suma a #errors]" : "[FALLO]");
-gameM.endDay();
-console.log("resumen del dia, descuido acumulado:", gameM.lastDayRushPenalty, gameM.lastDayRushPenalty === 1 ? "[OK]" : "[FALLO]");
-
-// una decision SIN apurar (wasRushed por defecto en false) no debe restar nada aparte
-const gameN = new Game();
-await loadDataAsync(gameN);
-gameN.startNewGame();
-const dineroAntesN = gameN.money;
-const violationN = gameN.currentDay.evaluateCharacter(gameN.currentVisitor);
-gameN.decide(violationN === null); // sin tercer parametro, como todo el codigo anterior a este cambio
-console.log("dinero sin apurar:", gameN.money, "| esperado (10 + 2, sin penalizacion):", dineroAntesN + 2,
-  gameN.money === dineroAntesN + 2 ? "[OK: wasRushed=false por defecto no rompe las llamadas viejas]" : "[FALLO]");
-
-// ================= TEST 13: tienda - pista (buyHint) =================
-console.log("\n========== TEST 13: la pista de la tienda revela la propiedad violada, cobra igual si el visitante esta limpio ==========");
-const gameO = await partidaEnDia(4); // dia 4: ya hay varias propiedades distintas en juego
-// el cobro diario acumulado hasta el dia 4 (4+5+9=18) ya deja el dinero casi en
-// 0 o negativo con solo la decision minima que hace partidaEnDia() por dia -
-// se juega un poco mas de margen antes de probar la pista, para no confundir
-// "no le alcanza" con un fallo real de buyHint()
-for (let i = 0; i < 15; i++) {
-  decidirBien(gameO);
-}
-const sucio = buscarVisitante(gameO, (visitor, violation) => violation !== null);
-if (sucio === null) {
-  console.log("[AVISO] no salio ningun visitante sucio, se saltea el chequeo");
-} else {
-  const violacionEsperada = gameO.currentDay.evaluateCharacter(sucio).getProperty();
-  const dineroAntesO = gameO.money;
-  const pista = gameO.buyHint();
-  console.log("pista devuelta:", pista, "| propiedad violada real:", violacionEsperada, pista === violacionEsperada ? "[OK]" : "[FALLO]");
-  console.log("dinero descontado:", dineroAntesO - gameO.money, "(esperado " + gameO.hintCost + ")", dineroAntesO - gameO.money === gameO.hintCost ? "[OK]" : "[FALLO]");
-}
-
-const gameP = await partidaEnDia(4);
-for (let i = 0; i < 15; i++) {
-  decidirBien(gameP); // mismo colchon de dinero que gameO, ver comentario arriba
-}
-const limpio = buscarVisitante(gameP, (visitor, violation) => violation === null);
-if (limpio === null) {
-  console.log("[AVISO] no salio ningun visitante limpio, se saltea el chequeo");
-} else {
-  const dineroAntesP = gameP.money;
-  const pistaLimpia = gameP.buyHint();
-  console.log("pista sobre visitante limpio:", pistaLimpia, pistaLimpia === null ? "[OK: nada que revelar]" : "[FALLO]");
-  console.log("igual se cobro:", dineroAntesP - gameP.money === gameP.hintCost ? "[OK: el riesgo de comprarla a ciegas]" : "[FALLO]");
-}
-
-// sin dinero suficiente: no cobra nada y devuelve null (aunque la UI ya deshabilita
-// el boton en ese caso, esto es la segunda barrera del lado de Game.ts)
-const gameQ = new Game();
-await loadDataAsync(gameQ);
-gameQ.startNewGame();
-for (let i = 0; i < 3; i++) {
-  const violation = gameQ.currentDay.evaluateCharacter(gameQ.currentVisitor);
-  gameQ.decide(violation !== null); // fuerza la respuesta incorrecta, sin llegar a los 4 errores que pierden la partida
-}
-console.log("dinero tras 3 errores:", gameQ.money, "(por debajo del costo de la pista,", gameQ.hintCost + ")");
-const dineroAntesQ = gameQ.money;
-const pistaSinFondos = gameQ.buyHint();
-console.log("pista sin fondos:", pistaSinFondos, "| dinero sin cambios:", gameQ.money === dineroAntesQ,
-  pistaSinFondos === null && gameQ.money === dineroAntesQ ? "[OK: no cobra si no alcanza]" : "[FALLO]");
-
-// ================= TEST 14: tienda - tiempo extra (buyExtraTime) =================
-console.log("\n========== TEST 14: tiempo extra cobra una vez por dia, se niega la segunda vez y sin fondos ==========");
+// ================= TEST 12: tienda - tiempo extra (buyExtraTime) =================
+console.log("\n========== TEST 12: tiempo extra cobra una vez por dia, se niega la segunda vez y sin fondos ==========");
 const gameR = new Game();
 await loadDataAsync(gameR);
 gameR.startNewGame();
@@ -542,8 +464,8 @@ const compraSinFondos = gameS.buyExtraTime();
 console.log("tiempo extra sin fondos:", compraSinFondos, "| dinero sin cambios:", gameS.money === dineroAntesS,
   compraSinFondos === false && gameS.money === dineroAntesS ? "[OK: no cobra si no alcanza]" : "[FALLO]");
 
-// ================= TEST 15: tienda - indulto (buyInsurance) =================
-console.log("\n========== TEST 15: el indulto absorbe el proximo error sin sumar a #errors, resta dinero igual, y se consume ==========");
+// ================= TEST 13: tienda - indulto (buyInsurance) =================
+console.log("\n========== TEST 13: el indulto absorbe el proximo error sin sumar a #errors, resta dinero igual, y se consume ==========");
 const gameT = new Game();
 await loadDataAsync(gameT);
 gameT.startNewGame();

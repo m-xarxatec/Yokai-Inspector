@@ -11,12 +11,17 @@ export class VisitorGenerator {
     #phrases: string[];
     #stamps: any[];
     #species: string[];
+    // fuente de azar: Math.random por defecto (identico a siempre), o un
+    // generador con semilla si Game recibio uno (desafio diario, ver
+    // src/ts/random.ts). Todo el sorteo de este archivo pasa por this.#random().
+    #random: () => number;
 
-    constructor() {
+    constructor(randomFn: () => number = Math.random) {
         this.#names = [];
         this.#phrases = [];
         this.#stamps = [];
         this.#species = [];
+        this.#random = randomFn;
     }
 
     // llamado desde Game.loadData() apenas terminan de llegar los 8 fetch,
@@ -33,21 +38,29 @@ export class VisitorGenerator {
     // (Game ya los tiene, no hace falta duplicarlos aca) - mismo indexado
     // (this.#days[this.#dayNumber - 1]) que ya usaba Game, sin pasar por el
     // getter currentDay (que clampea contra totalDays) para no cambiar nada
-    generate(dayNumber: number, day: Day): Character {
+    // hardMode = modo dificil (ver Game): adelanta la curva de problematicos,
+    // sube un extra fijo la proporcion de visitantes que hay que rechazar. Es
+    // opcional para no romper a quien llame generate(dia, day) a secas (los
+    // tests, y todo el codigo anterior al modo dificil).
+    generate(dayNumber: number, day: Day, hardMode: boolean = false): Character {
         // el dia ya no tiene una cantidad fija de visitantes (dura por tiempo, no
         // por conteo) - "goal" queda solo como el denominador de la proporcion de
         // problematicos, calibrada por dia; en vez de repartir una cantidad exacta
         // en un array pre-armado, se sortea de nuevo en cada visitante.
+        const HARD_MODE_EXTRA_RATIO = 0.15;
         const goal = day.getVisitorGoal();
-        const problematicRatio = Math.min(dayNumber + 1, goal - 1) / goal;
-        const isProblematic = Math.random() < problematicRatio;
-        const name = this.#names[Math.floor(Math.random() * this.#names.length)];
+        let problematicRatio = Math.min(dayNumber + 1, goal - 1) / goal;
+        if (hardMode) {
+            problematicRatio = Math.min(problematicRatio + HARD_MODE_EXTRA_RATIO, 0.95);
+        }
+        const isProblematic = this.#random() < problematicRatio;
+        const name = this.#names[Math.floor(this.#random() * this.#names.length)];
         const phrase = this.#pickPhrase();
-        let face = this.#parts.rostro[Math.floor(Math.random() * this.#parts.rostro.length)];
-        const eyesShape = this.#parts.ojos[Math.floor(Math.random() * this.#parts.ojos.length)];
-        const mouth = this.#parts.boca[Math.floor(Math.random() * this.#parts.boca.length)];
-        const horns = this.#parts.cuernos[Math.floor(Math.random() * this.#parts.cuernos.length)];
-        const hair = this.#parts.sombrero[Math.floor(Math.random() * this.#parts.sombrero.length)];
+        let face = this.#parts.rostro[Math.floor(this.#random() * this.#parts.rostro.length)];
+        const eyesShape = this.#parts.ojos[Math.floor(this.#random() * this.#parts.ojos.length)];
+        const mouth = this.#parts.boca[Math.floor(this.#random() * this.#parts.boca.length)];
+        const horns = this.#parts.cuernos[Math.floor(this.#random() * this.#parts.cuernos.length)];
+        const hair = this.#parts.sombrero[Math.floor(this.#random() * this.#parts.sombrero.length)];
 
         const activeRules = day.getActiveRules();
 
@@ -82,15 +95,15 @@ export class VisitorGenerator {
             const safeStamps = withoutForbiddenToday(allStamps, "sello");
             const safeSpecies = withoutForbiddenToday(this.#species, "especieProhibida").filter((specie: string) => specie !== "alien");
 
-            let region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
-            const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)];
-            let declaredSpecie = safeSpecies[Math.floor(Math.random() * safeSpecies.length)];
+            let region = safeRegions[Math.floor(this.#random() * safeRegions.length)];
+            const stamp = safeStamps[Math.floor(this.#random() * safeStamps.length)];
+            let declaredSpecie = safeSpecies[Math.floor(this.#random() * safeSpecies.length)];
 
             // un alien "en regla": ni "via lactea" ni "alien" estan prohibidos por
             // ninguna regla, asi que sigue siendo un visitante seguro - lo unico
             // distinto es que desde el dia 6 hay que aprobarlo con el sello azul
             // (eso no lo decide el pasaporte, lo decide el jugador, ver decide())
-            if (Math.random() < ALIEN_CHANCE) {
+            if (this.#random() < ALIEN_CHANCE) {
                 face = this.#pickAlienFace();
                 region = "via lactea";
                 declaredSpecie = "alien";
@@ -114,9 +127,9 @@ export class VisitorGenerator {
             .map((rule: Rule) => rule.getProperty())
             .filter((property: string, index: number, properties: string[]) => properties.indexOf(property) === index)
             .filter((property: string) => property !== "selloAlien");
-        const targetProperty = activeProperties[Math.floor(Math.random() * activeProperties.length)];
+        const targetProperty = activeProperties[Math.floor(this.#random() * activeProperties.length)];
         const rulesForProperty = activeRules.filter((rule: Rule) => rule.getProperty() === targetProperty);
-        const targetRule = rulesForProperty[Math.floor(Math.random() * rulesForProperty.length)];
+        const targetRule = rulesForProperty[Math.floor(this.#random() * rulesForProperty.length)];
 
         let yokaiType = "oni";
         let declaredSpecie = "";
@@ -132,7 +145,7 @@ export class VisitorGenerator {
         // Con cuernos, ojos amarillos o sello prohibido no hay conflicto: el rasgo
         // sobrevive igual al pasaporte forzado.
         const canBeAlien = property !== "region" && property !== "especieProhibida";
-        const isAlien = canBeAlien && Math.random() < ALIEN_CHANCE;
+        const isAlien = canBeAlien && this.#random() < ALIEN_CHANCE;
         if (isAlien) {
             face = this.#pickAlienFace();
         }
@@ -164,7 +177,7 @@ export class VisitorGenerator {
         if (property === "tieneCuernos" || property === "ojosAmarillos" || property === "region") {
         const especieProhibidaHoy = activeRules.filter((rule: Rule) => rule.getProperty() === "especieProhibida").map((rule: Rule) => rule.getForbiddenValue());
         const lieOptions = this.#species.filter((specie: string) => specie !== yokaiType && !especieProhibidaHoy.includes(specie));
-        declaredSpecie = lieOptions[Math.floor(Math.random() * lieOptions.length)];
+        declaredSpecie = lieOptions[Math.floor(this.#random() * lieOptions.length)];
         }
 
         if (property === "sello") {
@@ -200,17 +213,17 @@ export class VisitorGenerator {
         extraTraitOptions.push("especieProhibida");
         }
 
-        if (extraTraitOptions.length > 0 && Math.random() < EXTRA_TRAIT_CHANCE) {
-        const extraTrait = extraTraitOptions[Math.floor(Math.random() * extraTraitOptions.length)];
+        if (extraTraitOptions.length > 0 && this.#random() < EXTRA_TRAIT_CHANCE) {
+        const extraTrait = extraTraitOptions[Math.floor(this.#random() * extraTraitOptions.length)];
         if (extraTrait === "region") {
         region = "rio";
         }
         if (extraTrait === "sello") {
-        const extraStampRule = stampRules[Math.floor(Math.random() * stampRules.length)];
+        const extraStampRule = stampRules[Math.floor(this.#random() * stampRules.length)];
         stamp = extraStampRule.getForbiddenValue();
         }
         if (extraTrait === "especieProhibida") {
-        const extraBannedSpecieRule = bannedSpecieRules[Math.floor(Math.random() * bannedSpecieRules.length)];
+        const extraBannedSpecieRule = bannedSpecieRules[Math.floor(this.#random() * bannedSpecieRules.length)];
         declaredSpecie = extraBannedSpecieRule.getForbiddenValue();
         }
         }
@@ -233,10 +246,10 @@ export class VisitorGenerator {
     }
 
     #pickPhrase(): string {
-        return this.#phrases[Math.floor(Math.random() * this.#phrases.length)];
+        return this.#phrases[Math.floor(this.#random() * this.#phrases.length)];
     }
 
     #pickAlienFace(): string {
-        return this.#parts.alienes[Math.floor(Math.random() * this.#parts.alienes.length)];
+        return this.#parts.alienes[Math.floor(this.#random() * this.#parts.alienes.length)];
     }
 }
