@@ -157,11 +157,12 @@
       <form id="player-name-form">
         <label for="player-name-input">Tu nombre</label>
         <div id="player-name-row">
-          <!-- si se deja vacio, la partida usa "Un1c0rN10" por defecto (ver
-               el submit de #player-name-form en main.ts) -->
-          <input type="text" id="player-name-input" placeholder="Un1c0rN10" maxlength="24">
+          <!-- solo se aceptan letras, sin dejarlo en blanco (ver el submit de
+               #player-name-form en main.ts) -->
+          <input type="text" id="player-name-input" placeholder="Ej: Iralys" maxlength="24">
           <button type="submit">Continuar</button>
         </div>
+        <p id="player-name-error" class="hidden">Escribe tu nombre usando solo letras.</p>
       </form>
       <button class="exit-to-menu-btn">Volver al menú</button>
     </div>

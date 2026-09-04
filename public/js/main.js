@@ -125,6 +125,10 @@ function changeState(newState) {
         section.classList.add("hidden");
     });
     document.querySelector(`#${newState}-screen`)?.classList.remove("hidden");
+    // al volver a la pantalla del nombre no debe quedar el error de una visita anterior
+    if (newState === "name-entry") {
+        document.querySelector("#player-name-error")?.classList.add("hidden");
+    }
     // la musica de fondo suena SOLO en el menu principal - en cualquier otra
     // pantalla (nombre, historia, intro del dia, juego, etc.) se corta
     if (newState === "menu") {
@@ -256,16 +260,22 @@ function beginGame(name, totalDays, hardMode, randomFn, dayDurationMs) {
         changeState("story");
     });
 }
+// el nombre solo puede tener letras (incluye acentos/ñ) y espacios entre palabras
+const ONLY_LETTERS_REGEX = /^[A-Za-zÁÉÍÓÚÑÜáéíóúñü ]+$/;
 // al confirmar el nombre arranca la partida nueva (esto reemplaza lo que antes
 // hacia el click de "Nueva partida" directamente)
 document.querySelector("#player-name-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
-    soundManager.playNextButton(); // sonido de click del boton
     const input = document.querySelector("#player-name-input");
+    const errorText = document.querySelector("#player-name-error");
+    const name = input?.value.trim() ?? "";
+    if (name === "" || !ONLY_LETTERS_REGEX.test(name)) {
+        errorText?.classList.remove("hidden");
+        return;
+    }
+    errorText?.classList.add("hidden");
+    soundManager.playNextButton(); // sonido de click del boton
     input?.blur(); // saca el foco del input ya mismo (la carga de datos de abajo es async y tarda)
-    // sin nombre: "Un1c0rN10" por defecto (Game igual descarta cadenas vacias,
-    // pero aca se elige un nombre concreto para que se vea y se guarde)
-    const name = (input?.value.trim() ?? "") || "Un1c0rN10";
     savePlayerName(name);
     // el modo dificil fuerza 30s de dia (el slider de duracion queda
     // deshabilitado mientras esta activo, ver updateHardModeButton())
