@@ -1,6 +1,6 @@
 // El pasaporte NO usa este mecanismo: viaja en un arco parabolico propio, ver
 // bezierArc.ts y su uso en renderVisitor()/resolveDecision() (en main.ts).
-const PORTRAIT_REST_LEFT = "49%";
+const PORTRAIT_REST_LEFT = "39%";
 export const CHARACTER_ELEMENT = { selector: "#character-portrait", restLeft: PORTRAIT_REST_LEFT };
 const SLIDING_ELEMENTS = [CHARACTER_ELEMENT];
 export function resetElementOffscreen(element) {
