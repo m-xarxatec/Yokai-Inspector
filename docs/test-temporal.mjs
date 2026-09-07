@@ -507,3 +507,118 @@ for (let i = 0; i < 15; i++) {
 }
 gameV.endDay();
 console.log("indulto sin usar, tras terminar el dia:", gameV.hasInsurance, gameV.hasInsurance === false ? "[OK: no se acumula para el dia siguiente]" : "[FALLO]");
+
+// comprobar la velocidad de carga de las imagenes 
+// ================= TEST 14: rendimiento de carga de recursos gráficos =================
+// mide el peso total de las imagenes y simula/analiza el impacto que pueden tener
+// sobre la carga inicial del juego. El objetivo es establecer una referencia antes
+// de aplicar compresion y poder comparar posteriormente los resultados.
+
+console.log("\n========== TEST 14: rendimiento de carga y peso de recursos gráficos ==========");
+
+import { readdirSync, statSync } from "node:fs";
+
+const imagesDir = path.join(publicDir, "img");
+
+function getFilesRecursively(dir) {
+  let results = [];
+
+  if (!statSync(dir).isDirectory()) {
+    return results;
+  }
+
+  const files = readdirSync(dir);
+
+  files.forEach((file) => {
+    const filePath = path.join(dir, file);
+    const stat = statSync(filePath);
+
+    if (stat.isDirectory()) {
+      results = results.concat(getFilesRecursively(filePath));
+    } else {
+      results.push(filePath);
+    }
+  });
+
+  return results;
+}
+
+const imageExtensions = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
+
+try {
+  const startPerformanceTest = performance.now();
+
+  const allFiles = getFilesRecursively(imagesDir);
+
+  const imageFiles = allFiles.filter((file) => {
+    const extension = path.extname(file).toLowerCase();
+    return imageExtensions.includes(extension);
+  });
+
+  let totalImageSize = 0;
+
+  const imageDetails = imageFiles.map((file) => {
+    const size = statSync(file).size;
+    totalImageSize += size;
+
+    return {
+      file: path.basename(file),
+      size,
+      sizeKB: (size / 1024).toFixed(2)
+    };
+  });
+
+  const endPerformanceTest = performance.now();
+  const analysisTime = endPerformanceTest - startPerformanceTest;
+
+  console.log("\n--- Resultado del análisis de assets gráficos ---");
+
+  console.log("Cantidad total de imágenes:", imageFiles.length);
+
+  console.log(
+    "Peso total de imágenes:",
+    (totalImageSize / 1024 / 1024).toFixed(2),
+    "MB"
+  );
+
+  console.log(
+    "Tiempo empleado en analizar los recursos:",
+    analysisTime.toFixed(2),
+    "ms"
+  );
+
+  console.log("\n--- Las 10 imágenes más pesadas ---");
+
+  imageDetails
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 10)
+    .forEach((image, index) => {
+      console.log(
+        `${index + 1}. ${image.file} -> ${image.sizeKB} KB`
+      );
+    });
+
+  console.log("\n--- Evaluación ---");
+
+  if (totalImageSize > 10 * 1024 * 1024) {
+    console.log(
+      "[AVISO] El peso total de los recursos gráficos es elevado y puede afectar " +
+      "el tiempo de carga inicial del juego."
+    );
+  } else {
+    console.log(
+      "[OK] El peso total de los recursos gráficos se encuentra dentro de un rango moderado."
+    );
+  }
+
+  console.log(
+    "\nEste resultado servirá como referencia para comparar una futura versión " +
+    "con las imágenes comprimidas."
+  );
+
+} catch (error) {
+  console.log(
+    "[AVISO] No se pudo ejecutar el análisis de imágenes:",
+    error.message
+  );
+}
