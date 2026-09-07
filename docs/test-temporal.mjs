@@ -2,6 +2,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from "fs";
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
@@ -508,7 +510,7 @@ for (let i = 0; i < 15; i++) {
 gameV.endDay();
 console.log("indulto sin usar, tras terminar el dia:", gameV.hasInsurance, gameV.hasInsurance === false ? "[OK: no se acumula para el dia siguiente]" : "[FALLO]");
 
-// comprobar la velocidad de carga de las imagenes 
+
 // ================= TEST 14: rendimiento de carga de recursos gráficos =================
 // mide el peso total de las imagenes y simula/analiza el impacto que pueden tener
 // sobre la carga inicial del juego. El objetivo es establecer una referencia antes
@@ -620,5 +622,284 @@ try {
   console.log(
     "[AVISO] No se pudo ejecutar el análisis de imágenes:",
     error.message
+  );
+}
+
+
+const cssPath = path.join(publicDir, "styles", "style.css");
+
+if (!fs.existsSync(cssPath)) {
+  console.log("[ERROR] No se encontró el archivo CSS:", cssPath);
+} else {
+  const css = fs.readFileSync(cssPath, "utf8");
+
+  const fontWeightHigh = [];
+  const fontSizeSmall = [];
+  const lineHeightSmall = [];
+  const letterSpacingHigh = [];
+
+  let totalFontSizes = 0;
+  let totalFontWeights = 0;
+  let totalLineHeights = 0;
+
+  // Analizar bloques CSS
+  const rules = css.match(/[^{}]+\{[^{}]*\}/g) || [];
+
+  for (const rule of rules) {
+    const parts = rule.split("{");
+    const selector = parts[0].trim();
+    const body = parts[1] || "";
+
+    // =========================
+    // FONT-WEIGHT
+    // =========================
+    const weightMatch = body.match(/font-weight\s*:\s*([^;]+)/i);
+
+    if (weightMatch) {
+      const weightValue = weightMatch[1].trim();
+      const numericWeight = parseInt(weightValue, 10);
+
+      if (!Number.isNaN(numericWeight)) {
+        totalFontWeights++;
+
+        if (numericWeight >= 700) {
+          fontWeightHigh.push({
+            selector,
+            value: weightValue
+          });
+        }
+      }
+    }
+
+    // =========================
+    // FONT-SIZE
+    // =========================
+    const sizeMatches = body.matchAll(/font-size\s*:\s*([^;]+)/gi);
+
+    for (const match of sizeMatches) {
+      const value = match[1].trim();
+      totalFontSizes++;
+
+      let suspicious = false;
+
+      // px
+      const pxMatches = value.matchAll(/([\d.]+)px/gi);
+
+      for (const pxMatch of pxMatches) {
+        const px = parseFloat(pxMatch[1]);
+
+        if (px < 12) {
+          suspicious = true;
+        }
+      }
+
+      // rem
+      const remMatches = value.matchAll(/([\d.]+)rem/gi);
+
+      for (const remMatch of remMatches) {
+        const rem = parseFloat(remMatch[1]);
+
+        // 1rem ≈ 16px
+        if (rem * 16 < 12) {
+          suspicious = true;
+        }
+      }
+
+      // clamp()
+      const clampMatch = value.match(
+        /clamp\(\s*([\d.]+)(rem|px)\s*,/i
+      );
+
+      if (clampMatch) {
+        const number = parseFloat(clampMatch[1]);
+        const unit = clampMatch[2].toLowerCase();
+
+        const minimumPx =
+          unit === "rem" ? number * 16 : number;
+
+        if (minimumPx < 12) {
+          suspicious = true;
+        }
+      }
+
+      if (suspicious) {
+        fontSizeSmall.push({
+          selector,
+          value
+        });
+      }
+    }
+
+    // =========================
+    // LINE-HEIGHT
+    // =========================
+    const lineHeightMatch = body.match(
+      /line-height\s*:\s*([^;]+)/i
+    );
+
+    if (lineHeightMatch) {
+      const value = lineHeightMatch[1].trim();
+      totalLineHeights++;
+
+      const numericLineHeight = parseFloat(value);
+
+      if (
+        !Number.isNaN(numericLineHeight) &&
+        numericLineHeight < 1.2
+      ) {
+        lineHeightSmall.push({
+          selector,
+          value
+        });
+      }
+    }
+
+    // =========================
+    // LETTER-SPACING
+    // =========================
+    const letterSpacingMatch = body.match(
+      /letter-spacing\s*:\s*([^;]+)/i
+    );
+
+    if (letterSpacingMatch) {
+      const value = letterSpacingMatch[1].trim();
+
+      const emMatch = value.match(/([\d.]+)em/i);
+
+      if (emMatch) {
+        const em = parseFloat(emMatch[1]);
+
+        if (em >= 0.1) {
+          letterSpacingHigh.push({
+            selector,
+            value
+          });
+        }
+      }
+    }
+  }
+
+  // =========================
+  // RESULTADOS
+  // =========================
+
+  console.log(
+    "--- TEST 15: análisis de legibilidad tipográfica ---\n"
+  );
+
+  console.log(
+    `Archivo analizado: ${cssPath}`
+  );
+
+  console.log(
+    `Reglas con font-size analizadas: ${totalFontSizes}`
+  );
+
+  console.log(
+    `Reglas con font-weight analizadas: ${totalFontWeights}`
+  );
+
+  console.log(
+    `Reglas con line-height analizadas: ${totalLineHeights}`
+  );
+
+  // =========================
+  // FONT-WEIGHT
+  // =========================
+
+  console.log("\n--- Pesos de fuente elevados ---");
+
+  if (fontWeightHigh.length === 0) {
+    console.log(
+      "[OK] No se encontraron pesos de fuente >= 700."
+    );
+  } else {
+    for (const item of fontWeightHigh) {
+      console.log(
+        `[AVISO] ${item.selector} -> font-weight: ${item.value}`
+      );
+    }
+  }
+
+  // =========================
+  // FONT-SIZE
+  // =========================
+
+  console.log("\n--- Tamaños de fuente pequeños ---");
+
+  if (fontSizeSmall.length === 0) {
+    console.log(
+      "[OK] No se encontraron tamaños de fuente potencialmente pequeños."
+    );
+  } else {
+    for (const item of fontSizeSmall) {
+      console.log(
+        `[AVISO] ${item.selector} -> font-size: ${item.value}`
+      );
+    }
+  }
+
+  // =========================
+  // LINE-HEIGHT
+  // =========================
+
+  console.log("\n--- Line-height reducido ---");
+
+  if (lineHeightSmall.length === 0) {
+    console.log(
+      "[OK] No se encontraron line-height inferiores a 1.2."
+    );
+  } else {
+    for (const item of lineHeightSmall) {
+      console.log(
+        `[AVISO] ${item.selector} -> line-height: ${item.value}`
+      );
+    }
+  }
+
+  // =========================
+  // LETTER-SPACING
+  // =========================
+
+  console.log("\n--- Letter-spacing elevado ---");
+
+  if (letterSpacingHigh.length === 0) {
+    console.log(
+      "[OK] No se encontraron valores de letter-spacing >= 0.1em."
+    );
+  } else {
+    for (const item of letterSpacingHigh) {
+      console.log(
+        `[REVISION] ${item.selector} -> letter-spacing: ${item.value}`
+      );
+    }
+  }
+
+  // =========================
+  // EVALUACIÓN FINAL
+  // =========================
+
+  console.log("\n--- Evaluación ---");
+
+  if (
+    fontWeightHigh.length === 0 &&
+    fontSizeSmall.length === 0 &&
+    lineHeightSmall.length === 0
+  ) {
+    console.log(
+      "[OK] No se detectaron problemas técnicos evidentes de legibilidad."
+    );
+  } else {
+    console.log(
+      "[AVISO] Se han detectado reglas CSS que podrían afectar a la legibilidad."
+    );
+
+    console.log(
+      "Se recomienda revisar visualmente los elementos señalados en escritorio y dispositivos móviles."
+    );
+  }
+
+  console.log(
+    "\nNOTA: Este test detecta posibles riesgos técnicos, pero no puede determinar por sí solo si una persona considera la tipografía fácil de leer."
   );
 }
