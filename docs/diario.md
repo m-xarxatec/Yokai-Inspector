@@ -726,3 +726,13 @@ Dos pedidos de Iralys en la misma sesión sobre `#start-gate-screen` (la pantall
 **El gate sigue bloqueando clicks igual que antes**: al ser `position: fixed; inset: 0`, cubre toda la pantalla y absorbe los clicks aunque se vea el menú de fondo, así que no se puede arrancar partida "por accidente" antes de tocar "Comenzar". El audio tampoco se desbloquea antes de tiempo: `musicManager.playMenu()` sigue atado al click de `#start-gate-btn`, no a que el menú sea visible.
 
 Verificado con Playwright (Chromium ya cacheado en el equipo de una sesión anterior, sin reinstalar nada) contra `public/` servido con `python -m http.server`: captura confirmando que el menú completo se ve de fondo, atenuado, con el botón "Comenzar" flotando encima. Los 43 tests de `docs/test-temporal.mjs` siguen en verde (cambio de solo HTML/CSS, no toca `Game.ts` ni ningún `.ts`).
+
+2026-09-07 — prueba de rendimiento de recursos gráficos y peso de las imágenes por Iralys:
+
+Se realizó un test sobre los recursos gráficos del juego para comprobar su peso y detectar posibles problemas relacionados con el rendimiento y el tiempo de carga inicial.
+
+El análisis se realizó sobre **185 imágenes**, obteniendo un peso total de **389,37 MB**. El tiempo empleado por el test para analizar los recursos fue de **18,42 ms**.
+
+Entre los recursos más pesados se identificaron `finalConvertidoYokai.png` (9,71 MB), `fondoPantallaJuegoT.png` (9,47 MB), `general_background.png` (7,20 MB) y `pantallaIntermedia6.png` (7,01 MB).
+
+El resultado mostró que el peso total de los recursos gráficos es elevado y puede afectar al tiempo de carga inicial del juego. Este resultado se utilizará como referencia para comparar posteriormente el rendimiento después de optimizar y comprimir las imágenes.
