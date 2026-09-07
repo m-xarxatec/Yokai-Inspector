@@ -229,7 +229,7 @@ button:disabled {
 #pause-screen       { --scr-btn-w: 60cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.35rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
 #exit-screen        { --scr-btn-w: 64cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.3rem);  --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
 #name-entry-screen  { --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
-#day-summary-screen { --scr-btn-w: 62cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.35rem); }
+#day-summary-screen { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0.55rem, 5cqi, 1.15rem); }
 #credits-screen     { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0.5rem, 4.2cqi, 1.05rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
 #story-screen       { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0.6rem, 3.8cqi, 1.3rem); }
 #day-result-screen  { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0.6rem, 3.8cqi, 1.3rem); }
@@ -589,9 +589,9 @@ button:disabled {
 /* ---------- opciones / creditos / salir ---------- */
 
 .screen-panel {
-  max-width: 420px;
+  max-width: 400px;
   margin: 2rem auto;
-  background: #2a2640;
+  background: #332640;
   border-radius: 10px;
   padding: 1.5rem;
   text-align: center;
@@ -673,11 +673,17 @@ button:disabled {
 /* ---------- pantalla de reglas antes de empezar el dia (pizarra) ----------
    SOLO el titulo + la lista de reglas van sobre la imagen (proporcion real
    1122x1402); los botones quedan debajo (.day-start-actions). Si el texto no
-   entra, la lista scrollea adentro. */
+   entra, la lista scrollea adentro.
+   El termino calc(62vh * 1122/1402) es lo que hace que ESTA pantalla se
+   achique con el ALTO de la ventana (no solo con el ancho, como antes) -
+   mismo criterio que #character-scene/#menu-layout, que ya se adaptan asi.
+   62vh le deja aire a .day-start-actions (los botones de debajo) para que
+   toda la pantalla entre sin scroll. Tocá ese numero para dejarle mas/menos
+   sitio a los botones. */
 #day-start-screen .screen-panel {
   background: url("../img/backgrounds/pizarraReglas.png") center / 100% 100% no-repeat;
   border-radius: 0;
-  max-width: min(92vw, 460px);
+  max-width: min(92vw, calc(62vh * 1122 / 1402), 560px);
   aspect-ratio: 1122 / 1402;
   /* padding TOP mas grande = el bloque de texto arranca mas abajo dentro de la
      imagen. Tocá el primer valor para subirlo/bajarlo. */
@@ -783,10 +789,13 @@ button:disabled {
 
 /* ---------- pantalla de historia ---------- */
 
-/* proporcion real de protaFeliz.png ya recortada a su contenido (703x900) */
+/* proporcion real de protaFeliz.png ya recortada a su contenido (703x900) -
+   el calc(45vh * 703/900) es lo que la achica con el ALTO de la ventana
+   (mismo criterio que #character-scene/#menu-layout), para que en una
+   ventana baja el retrato + #story-text + el boton entren sin scroll */
 #story-portrait {
   width: 60%;
-  max-width: 280px;
+  max-width: min(280px, calc(45vh * 703 / 900));
   aspect-ratio: 703 / 900;
   margin: 0 auto 1rem;
   background-image: url("../img/protagonista/protaFeliz.png");
@@ -806,14 +815,89 @@ button:disabled {
   font-size: 1.15rem;
 }
 
+/* ---------- pantalla de resumen de fin de dia: imagen + dialogo fuera del
+   recuadro (mismo criterio que #jefa-scene/#next-day-message de aca abajo) ----------
+   pantallaIntermediaN.png no comparten todas la misma proporcion (ver
+   renderDaySummaryScreen() en main.js), asi que se usa "contain" en vez del
+   "100% 100%" de la pizarra de reglas - cada imagen se ve completa y sin
+   deformar, aunque le sobre aire a los lados.
+   #day-end-scene es el contenedor (un poco mas chico que el #jefa-scene de
+   mas abajo - tocá max-width para ajustar el tamaño); #day-end-backdrop es el
+   mismo fondo difuminado que usa la Jefa detras suyo (general_background.png
+   + blur), y #day-end-portrait es la imagen real del dia, encima. El fondo
+   solo se muestra cuando la pantallaIntermediaN de ese dia lo necesita (ver el
+   toggle de la clase "hidden" en renderDaySummaryScreen()).
+   calc(38vh * 1) = el termino que la achica con el ALTO de la ventana (mismo
+   criterio que #character-scene/#menu-layout) - esta pantalla es la que mas
+   contenido apila debajo (dialogo + el recuadro entero de resultados), por
+   eso el numero es mas chico que en las otras pantallas de este tipo. */
+#day-end-scene {
+  position: relative;
+  width: 100%;
+  max-width: min(600px, calc(38vh * 1 / 1));
+  aspect-ratio: 1 / 1;
+  margin: 1rem auto;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #2a2640;
+}
+
+#day-end-backdrop {
+  position: absolute;
+  inset: 0;
+  background-image: url("../img/backgrounds/general_background.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  filter: blur(6px) brightness(0.6);
+  transform: scale(1.05); /* tapa el borde que el blur deja transparente */
+}
+
+#day-end-portrait {
+  position: absolute;
+  inset: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* mismo tratamiento que #next-day-message: parrafo simple, sin placa, tipeado
+   con typeDialogue() */
+#day-summary-text {
+  font-size: 1.15rem;
+  line-height: 1.5;
+}
+
+/* el recuadro de resultados (Dia X terminado + estadisticas) tambien tiene
+   que adaptarse al ALTO de la ventana, no solo #day-end-scene de arriba -
+   mismo truco que ya usa la pizarra de reglas con #day-start-rules: el panel
+   se capea con un max-height y overflow:hidden, y quien realmente absorbe el
+   recorte es la lista de adentro (flex:1 1 auto + su propio scroll), asi el
+   titulo y el boton de "Siguiente dia" quedan siempre fijos y visibles. Asi,
+   sea cual sea el alto de pantalla, esta pantalla entera (imagen + dialogo +
+   recuadro) entra sin que la pagina necesite scrollear. */
+#day-summary-screen .screen-panel {
+  max-height: 40vh;
+  overflow: hidden;
+}
+
+#day-summary-stats {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
 /* ---------- pantalla de resultado del dia: la Jefa explica ---------- */
 
 /* mismo canvas que #character-scene (3670x2446) para el fondo, mas grande que
-   la del personaje porque la Jefa es la protagonista de esta pantalla */
+   la del personaje porque la Jefa es la protagonista de esta pantalla.
+   calc(50vh * 3670/2446) = el termino que la achica con el ALTO de la
+   ventana (mismo criterio que #character-scene/#menu-layout), asi le queda
+   aire al kicker/mensaje/boton de debajo en una ventana baja. */
 #jefa-scene {
   position: relative;
   width: 100%;
-  max-width: 720px;
+  max-width: min(720px, calc(50vh * 3670 / 2446));
   aspect-ratio: 3670 / 2446;
   margin: 1rem auto;
   border-radius: 8px;
@@ -920,10 +1004,15 @@ button:disabled {
   cuando el final no necesita uno, ej. la derrota o el primer cuadro del final
   "regular"). Ver renderFinalScreen()/ENDING_* en main.ts para que combinacion
   de backdrop+portrait corresponde a cada final.
+
+  max-width: calc(55vh * 1536/1024) = el termino que la achica con el ALTO de
+  la ventana (mismo criterio que #character-scene/#menu-layout), asi le queda
+  aire a #final-award y a los botones de debajo en una ventana baja.
 */
 #final-scene {
   position: relative;
   width: 100%;
+  max-width: calc(55vh * 1536 / 1024);
   aspect-ratio: 1536 / 1024;
   margin: 0 auto 1rem;
   border-radius: 10px;

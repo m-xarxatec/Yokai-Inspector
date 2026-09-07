@@ -254,10 +254,17 @@
     </div>
   </section>
 
+  <!-- igual que #story-screen/#day-result-screen: la imagen y el dialogo del
+       dia terminado van FUERA del recuadro (ver #day-end-scene en style.css);
+       el recuadro de resultados (Dia X terminado + estadisticas) queda debajo -->
   <section id="day-summary-screen" class="hidden">
+    <div id="day-end-scene">
+      <div id="day-end-backdrop"></div>
+      <div id="day-end-portrait"></div>
+    </div>
+    <p id="day-summary-text"></p>
     <div class="screen-panel">
       <h2>Día <span id="day-summary-number"></span> terminado</h2>
-      <p id="day-summary-text"></p>
       <ul id="day-summary-stats" class="styled-list"></ul>
       <button id="day-summary-continue-btn" class="next-btn">Siguiente día</button>
       <button class="exit-to-menu-btn">Volver al menú</button>

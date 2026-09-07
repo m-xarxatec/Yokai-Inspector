@@ -916,6 +916,22 @@ const DAY_END_MESSAGES: string[] = [
   "Fin del día 7... buen trabajo.",
 ];
 
+// una pantallaIntermediaN.png por dia, en el mismo orden que DAY_END_MESSAGES
+// (no es 1..7 en orden porque asi las pidio el arte - ver imagenes en
+// public/img/backgrounds/). backdrop = true para las que vienen sin fondo
+// propio (necesitan el mismo general_background.png difuminado que usa la
+// Jefa detras suyo, ver #day-end-backdrop en style.css) - pantallaIntermedia4
+// y pantallaIntermedia6 ya traen su propia escena completa, no lo necesitan.
+const DAY_END_IMAGES: { file: string; backdrop: boolean }[] = [
+  { file: "pantallaIntermedia1.png", backdrop: true },
+  { file: "pantallaIntermedia2.png", backdrop: true },
+  { file: "pantallaIntermedia3.png", backdrop: true },
+  { file: "pantallaIntermedia5.png", backdrop: true },
+  { file: "pantallaIntermedia4.png", backdrop: false },
+  { file: "pantallaIntermedia0.png", backdrop: true },
+  { file: "pantallaIntermedia6.png", backdrop: false },
+];
+
 function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
   if (game === null) {
     return;
@@ -923,6 +939,15 @@ function renderDaySummaryScreen(dayNumber: number, maxStreak: number): void {
   const numberEl = document.querySelector("#day-summary-number");
   if (numberEl !== null) {
     numberEl.textContent = String(dayNumber);
+  }
+  const dayImage = DAY_END_IMAGES[dayNumber - 1];
+  const portraitEl = document.querySelector<HTMLElement>("#day-end-portrait");
+  if (portraitEl !== null) {
+    portraitEl.style.backgroundImage = "url(\"img/backgrounds/" + dayImage.file + "\")";
+  }
+  const backdropEl = document.querySelector<HTMLElement>("#day-end-backdrop");
+  if (backdropEl !== null) {
+    backdropEl.classList.toggle("hidden", !dayImage.backdrop);
   }
   typeDialogue(DAY_END_MESSAGES[dayNumber - 1], "#day-summary-text");
 
