@@ -736,3 +736,14 @@ El análisis se realizó sobre **185 imágenes**, obteniendo un peso total de **
 Entre los recursos más pesados se identificaron `finalConvertidoYokai.png` (9,71 MB), `fondoPantallaJuegoT.png` (9,47 MB), `general_background.png` (7,20 MB) y `pantallaIntermedia6.png` (7,01 MB).
 
 El resultado mostró que el peso total de los recursos gráficos es elevado y puede afectar al tiempo de carga inicial del juego. Este resultado se utilizará como referencia para comparar posteriormente el rendimiento después de optimizar y comprimir las imágenes.
+
+2026-09-07 — prueba de legibilidad tipográfica:
+
+Se realizó un test sobre los estilos CSS del juego para detectar posibles problemas relacionados con la legibilidad de los textos, especialmente tamaños de fuente demasiado pequeños, pesos de fuente elevados y valores de `line-height` reducidos.
+
+El análisis se realizó sobre el archivo `public/styles/style.css`, comprobando las reglas que utilizan `font-size`, `font-weight`, `line-height` y `letter-spacing`.
+
+El objetivo de esta prueba es identificar elementos que puedan resultar difíciles de leer para el usuario y disponer de una referencia técnica antes de realizar posibles ajustes de tipografía. Los resultados del test se utilizarán para determinar qué elementos requieren una revisión visual en escritorio y dispositivos móviles.
+
+Se aclaró que esta prueba automatizada permite detectar posibles riesgos técnicos de legibilidad, pero no puede determinar por sí sola si una persona considera que una tipografía es fácil de leer.
+
