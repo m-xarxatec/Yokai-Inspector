@@ -903,3 +903,581 @@ if (!fs.existsSync(cssPath)) {
     "\nNOTA: Este test detecta posibles riesgos técnicos, pero no puede determinar por sí solo si una persona considera la tipografía fácil de leer."
   );
 }
+
+
+
+// ================= TEST 16: AUDITORÍA BÁSICA DE SEGURIDAD DEL CLIENTE =================
+
+console.log(
+  "\n========== TEST 16: AUDITORÍA BÁSICA DE SEGURIDAD DEL CLIENTE =========="
+);
+
+// Directorio raíz del proyecto
+const securityProjectRoot = path.join(__dirname, "..");
+
+// Directorios que se analizarán
+const securityDirectoriesToScan = [
+  path.join(securityProjectRoot, "public"),
+  path.join(securityProjectRoot, "src")
+];
+
+// Extensiones relevantes
+const securityAllowedExtensions = new Set([
+  ".js",
+  ".mjs",
+  ".ts",
+  ".html",
+  ".json"
+]);
+
+// --------------------------------------------------
+// FUNCIÓN: buscar archivos recursivamente
+// Nombre único para evitar conflictos con otros tests
+// --------------------------------------------------
+
+function getSecurityFilesRecursively(directory) {
+  const files = [];
+
+  if (!fs.existsSync(directory)) {
+    return files;
+  }
+
+  const entries = fs.readdirSync(directory, {
+    withFileTypes: true
+  });
+
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      // Ignorar carpetas que no deben analizarse
+      if (
+        entry.name !== "node_modules" &&
+        entry.name !== ".git"
+      ) {
+        files.push(
+          ...getSecurityFilesRecursively(fullPath)
+        );
+      }
+    } else if (
+      entry.isFile() &&
+      securityAllowedExtensions.has(
+        path.extname(entry.name).toLowerCase()
+      )
+    ) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+// --------------------------------------------------
+// OBTENER ARCHIVOS
+// --------------------------------------------------
+
+const securityFiles = [];
+
+for (const directory of securityDirectoriesToScan) {
+  securityFiles.push(
+    ...getSecurityFilesRecursively(directory)
+  );
+}
+
+console.log("\n--- Archivos analizados ---");
+console.log(`Cantidad total: ${securityFiles.length}`);
+
+const securityJsFiles = securityFiles.filter((file) => {
+  const extension = path.extname(file).toLowerCase();
+
+  return (
+    extension === ".js" ||
+    extension === ".mjs" ||
+    extension === ".ts"
+  );
+});
+
+const securityHtmlFiles = securityFiles.filter((file) => {
+  return path.extname(file).toLowerCase() === ".html";
+});
+
+console.log(
+  `JavaScript / TypeScript: ${securityJsFiles.length}`
+);
+
+console.log(`HTML: ${securityHtmlFiles.length}`);
+
+// --------------------------------------------------
+// RESULTADOS
+// --------------------------------------------------
+
+const securityResults = {
+  evalUsage: [],
+  functionConstructor: [],
+  innerHTML: [],
+  outerHTML: [],
+  insertAdjacentHTML: [],
+  localStorage: [],
+  sessionStorage: [],
+  windowExposure: [],
+  privateFields: [],
+  possibleSecrets: [],
+  globalStateVariables: []
+};
+
+// Variables relacionadas con el estado del juego
+const securityStateVariableNames = [
+  "money",
+  "score",
+  "points",
+  "lives",
+  "life",
+  "errors",
+  "progress",
+  "level",
+  "streak",
+  "day",
+  "dayNumber",
+  "gameState"
+];
+
+// Patrones de posibles secretos
+const securitySecretPatterns = [
+  /api[_-]?key\s*[:=]/i,
+  /secret\s*[:=]/i,
+  /password\s*[:=]/i,
+  /access[_-]?token\s*[:=]/i,
+  /auth[_-]?token\s*[:=]/i,
+  /bearer\s+[a-z0-9._-]{10,}/i
+];
+
+// --------------------------------------------------
+// ANALIZAR ARCHIVOS
+// --------------------------------------------------
+
+for (const filePath of securityFiles) {
+  let content = "";
+
+  try {
+    content = fs.readFileSync(filePath, "utf8");
+  } catch (error) {
+    console.log(
+      `[AVISO] No se pudo leer: ${filePath}`
+    );
+    continue;
+  }
+
+  const relativePath = path.relative(
+    securityProjectRoot,
+    filePath
+  );
+
+  // eval()
+  if (/\beval\s*\(/.test(content)) {
+    securityResults.evalUsage.push(relativePath);
+  }
+
+  // new Function()
+  if (/\bnew\s+Function\s*\(/.test(content)) {
+    securityResults.functionConstructor.push(
+      relativePath
+    );
+  }
+
+  // innerHTML
+  if (/\.innerHTML\s*=/.test(content)) {
+    securityResults.innerHTML.push(relativePath);
+  }
+
+  // outerHTML
+  if (/\.outerHTML\s*=/.test(content)) {
+    securityResults.outerHTML.push(relativePath);
+  }
+
+  // insertAdjacentHTML
+  if (/\.insertAdjacentHTML\s*\(/.test(content)) {
+    securityResults.insertAdjacentHTML.push(
+      relativePath
+    );
+  }
+
+  // localStorage
+  if (/\blocalStorage\./.test(content)) {
+    securityResults.localStorage.push(relativePath);
+  }
+
+  // sessionStorage
+  if (/\bsessionStorage\./.test(content)) {
+    securityResults.sessionStorage.push(relativePath);
+  }
+
+  // Estado crítico expuesto directamente en window
+  if (
+    /\bwindow\.(money|score|points|lives|errors|progress|gameState)\b/i.test(
+      content
+    )
+  ) {
+    securityResults.windowExposure.push(relativePath);
+  }
+
+  // Campos privados de clases
+const fileExtension = path.extname(filePath).toLowerCase();
+
+const isJavaScriptFile =
+  fileExtension === ".js" ||
+  fileExtension === ".mjs" ||
+  fileExtension === ".ts";
+
+if (isJavaScriptFile) {
+  const privateFieldMatches = [
+    ...content.matchAll(
+      /(?:^|[;\n\r{}])\s*#([a-zA-Z_$][\w$]*)\s*(?:=|;|\()/gm
+    )
+  ];
+
+  for (const match of privateFieldMatches) {
+    securityResults.privateFields.push({
+      file: relativePath,
+      field: `#${match[1]}`
+    });
+  }
+}
+
+  // Posibles secretos
+  for (const pattern of securitySecretPatterns) {
+    if (pattern.test(content)) {
+      securityResults.possibleSecrets.push(
+        relativePath
+      );
+      break;
+    }
+  }
+
+  // Variables de estado potencialmente expuestas
+  for (const variableName of securityStateVariableNames) {
+    const variablePattern = new RegExp(
+      `\\b(?:let|var)\\s+${variableName}\\b`,
+      "i"
+    );
+
+    if (variablePattern.test(content)) {
+      securityResults.globalStateVariables.push({
+        file: relativePath,
+        variable: variableName
+      });
+    }
+  }
+}
+
+// --------------------------------------------------
+// ELIMINAR DUPLICADOS
+// --------------------------------------------------
+
+function uniqueSecurityArray(array) {
+  return [...new Set(array)];
+}
+
+securityResults.evalUsage = uniqueSecurityArray(
+  securityResults.evalUsage
+);
+
+securityResults.functionConstructor = uniqueSecurityArray(
+  securityResults.functionConstructor
+);
+
+securityResults.innerHTML = uniqueSecurityArray(
+  securityResults.innerHTML
+);
+
+securityResults.outerHTML = uniqueSecurityArray(
+  securityResults.outerHTML
+);
+
+securityResults.insertAdjacentHTML = uniqueSecurityArray(
+  securityResults.insertAdjacentHTML
+);
+
+securityResults.localStorage = uniqueSecurityArray(
+  securityResults.localStorage
+);
+
+securityResults.sessionStorage = uniqueSecurityArray(
+  securityResults.sessionStorage
+);
+
+securityResults.windowExposure = uniqueSecurityArray(
+  securityResults.windowExposure
+);
+
+securityResults.possibleSecrets = uniqueSecurityArray(
+  securityResults.possibleSecrets
+);
+
+// --------------------------------------------------
+// MOSTRAR RESULTADOS
+// --------------------------------------------------
+
+console.log("\n--- Ejecución dinámica de código ---");
+
+if (securityResults.evalUsage.length === 0) {
+  console.log("[OK] No se detectó uso de eval().");
+} else {
+  console.log("[AVISO] Se detectó uso de eval():");
+
+  securityResults.evalUsage.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+if (securityResults.functionConstructor.length === 0) {
+  console.log(
+    "[OK] No se detectó uso de new Function()."
+  );
+} else {
+  console.log(
+    "[AVISO] Se detectó uso del constructor Function():"
+  );
+
+  securityResults.functionConstructor.forEach(
+    (file) => {
+      console.log(`- ${file}`);
+    }
+  );
+}
+
+// --------------------------------------------------
+
+console.log("\n--- Posibles vectores de XSS ---");
+
+if (securityResults.innerHTML.length === 0) {
+  console.log(
+    "[OK] No se detectaron asignaciones a innerHTML."
+  );
+} else {
+  console.log(
+    "[REVISION] Se detectaron usos de innerHTML:"
+  );
+
+  securityResults.innerHTML.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+if (securityResults.outerHTML.length === 0) {
+  console.log(
+    "[OK] No se detectaron asignaciones a outerHTML."
+  );
+} else {
+  console.log(
+    "[REVISION] Se detectaron usos de outerHTML:"
+  );
+
+  securityResults.outerHTML.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+if (securityResults.insertAdjacentHTML.length === 0) {
+  console.log(
+    "[OK] No se detectó uso de insertAdjacentHTML()."
+  );
+} else {
+  console.log(
+    "[REVISION] Se detectó uso de insertAdjacentHTML():"
+  );
+
+  securityResults.insertAdjacentHTML.forEach(
+    (file) => {
+      console.log(`- ${file}`);
+    }
+  );
+}
+
+// --------------------------------------------------
+
+console.log("\n--- Secretos potencialmente expuestos ---");
+
+if (securityResults.possibleSecrets.length === 0) {
+  console.log(
+    "[OK] No se detectaron patrones evidentes de claves o tokens."
+  );
+} else {
+  console.log(
+    "[AVISO] Se detectaron patrones que requieren revisión:"
+  );
+
+  securityResults.possibleSecrets.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+// --------------------------------------------------
+
+console.log("\n--- Persistencia local manipulable ---");
+
+if (securityResults.localStorage.length === 0) {
+  console.log("[OK] No se detectó uso de localStorage.");
+} else {
+  console.log(
+    "[INFO] Se detectó uso de localStorage en:"
+  );
+
+  securityResults.localStorage.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+
+  console.log(
+    "Los datos guardados en localStorage pueden modificarse desde el navegador."
+  );
+}
+
+if (securityResults.sessionStorage.length === 0) {
+  console.log(
+    "[OK] No se detectó uso de sessionStorage."
+  );
+} else {
+  console.log(
+    "[INFO] Se detectó uso de sessionStorage en:"
+  );
+
+  securityResults.sessionStorage.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+// --------------------------------------------------
+
+console.log("\n--- Estado expuesto globalmente ---");
+
+if (securityResults.windowExposure.length === 0) {
+  console.log(
+    "[OK] No se detectaron variables críticas expuestas directamente en window."
+  );
+} else {
+  console.log(
+    "[AVISO] Se detectaron posibles variables de juego expuestas en window:"
+  );
+
+  securityResults.windowExposure.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+// --------------------------------------------------
+
+console.log(
+  "\n--- Variables de estado potencialmente globales ---"
+);
+
+if (
+  securityResults.globalStateVariables.length === 0
+) {
+  console.log(
+    "[OK] No se detectaron declaraciones let/var con nombres críticos de estado."
+  );
+} else {
+  console.log(
+    "[REVISION] Se detectaron variables relacionadas con estado:"
+  );
+
+  securityResults.globalStateVariables.forEach(
+    (item) => {
+      console.log(
+        `- ${item.file} -> ${item.variable}`
+      );
+    }
+  );
+
+  console.log(
+    "El resultado requiere revisión manual para determinar si realmente están expuestas globalmente."
+  );
+}
+
+// --------------------------------------------------
+
+console.log(
+  "\n--- Encapsulación mediante campos privados ---"
+);
+
+if (securityResults.privateFields.length === 0) {
+  console.log(
+    "[INFO] No se detectaron campos privados (#campo) en las clases analizadas."
+  );
+} else {
+  const uniquePrivateFields = new Map();
+
+  securityResults.privateFields.forEach((item) => {
+    const key = `${item.file}:${item.field}`;
+
+    if (!uniquePrivateFields.has(key)) {
+      uniquePrivateFields.set(key, item);
+    }
+  });
+
+  console.log(
+    `[OK] Se detectaron ${uniquePrivateFields.size} campos privados.`
+  );
+
+  [...uniquePrivateFields.values()]
+    .slice(0, 30)
+    .forEach((item) => {
+      console.log(
+        `- ${item.file} -> ${item.field}`
+      );
+    });
+
+  if (uniquePrivateFields.size > 30) {
+    console.log(
+      `... y ${
+        uniquePrivateFields.size - 30
+      } campos privados más.`
+    );
+  }
+}
+
+// --------------------------------------------------
+// EVALUACIÓN FINAL
+// --------------------------------------------------
+
+console.log("\n--- Evaluación final ---");
+
+const securityCriticalIssues =
+  securityResults.evalUsage.length +
+  securityResults.functionConstructor.length +
+  securityResults.possibleSecrets.length +
+  securityResults.windowExposure.length;
+
+const securityReviewIssues =
+  securityResults.innerHTML.length +
+  securityResults.outerHTML.length +
+  securityResults.insertAdjacentHTML.length;
+
+if (
+  securityCriticalIssues === 0 &&
+  securityReviewIssues === 0
+) {
+  console.log(
+    "[OK] No se detectaron riesgos críticos evidentes mediante el análisis estático."
+  );
+} else {
+  console.log(
+    "[AVISO] Se detectaron elementos que requieren revisión de seguridad."
+  );
+}
+
+if (
+  securityResults.localStorage.length > 0 ||
+  securityResults.sessionStorage.length > 0
+) {
+  console.log(
+    "[INFO] El juego almacena información en el navegador. Estos datos no deben considerarse protegidos contra modificaciones realizadas por el propio usuario."
+  );
+}
+
+console.log(
+  "[INFO] Los campos privados (#campo) mejoran la encapsulación del código, pero no impiden que un usuario con acceso a los archivos del juego modifique el código distribuido."
+);
+
+console.log(
+  "======================================================================"
+);
