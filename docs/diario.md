@@ -747,3 +747,20 @@ El objetivo de esta prueba es identificar elementos que puedan resultar difícil
 
 Se aclaró que esta prueba automatizada permite detectar posibles riesgos técnicos de legibilidad, pero no puede determinar por sí sola si una persona considera que una tipografía es fácil de leer.
 
+### 2026-09-07 — prueba de auditoría básica de seguridad del cliente:
+
+Se realizó una auditoría estática del código del juego para detectar posibles riesgos relacionados con la seguridad del código ejecutado en el navegador y la manipulación de datos del lado del cliente.
+
+El análisis se realizó sobre **57 archivos**, de los cuales **48 correspondían a JavaScript/TypeScript y 1 a HTML**, comprobando diferentes aspectos de seguridad.
+
+No se detectó uso de `eval()` ni de `new Function()`. Tampoco se encontraron patrones evidentes de claves API, tokens, contraseñas u otros secretos expuestos en el código.
+
+No se detectaron variables críticas del estado del juego expuestas directamente mediante `window`. También se comprobó la encapsulación mediante campos privados de JavaScript/TypeScript, detectándose **15 campos privados**, utilizados principalmente en las clases `DayTimer`, `Game`, `SoundManager` y `VisitorGenerator`.
+
+El análisis detectó usos de `innerHTML` en `main.js`, `records.js`, `main.ts` y `records.ts`. Estos resultados no implican por sí mismos una vulnerabilidad, por lo que requieren una revisión manual para comprobar que no se introduzca contenido no validado.
+
+También se detectó el uso de `localStorage` en `Storage.js` y `Storage.ts`. Debido a que el juego se ejecuta en el lado del cliente, los datos almacenados localmente pueden ser modificados manualmente por el usuario desde las herramientas del navegador.
+
+Durante la prueba también se detectó una variable denominada `streak` que requiere revisión para determinar su ámbito real. El análisis automático no permite determinar por sí solo si dicha variable está expuesta globalmente.
+
+Como conclusión, no se identificaron vulnerabilidades críticas evidentes mediante el análisis estático realizado. La principal limitación de seguridad corresponde a la propia arquitectura cliente del juego, ya que el código y los datos distribuidos al usuario pueden ser inspeccionados o modificados. El uso de campos privados mejora la encapsulación y organización del código, pero no impide completamente la modificación del código distribuido.
