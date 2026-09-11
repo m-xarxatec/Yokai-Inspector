@@ -562,6 +562,12 @@ button:disabled {
   margin-top: 1rem;
 }
 
+#player-name-error {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: #e59b96;
+}
+
 .table-scroll {
   width: 100%;
   overflow: hidden; /* sin scroll horizontal tampoco, en la pantalla de menu */
