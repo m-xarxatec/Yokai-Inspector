@@ -15,8 +15,8 @@ import { CHARACTER_ELEMENT, resetElementOffscreen, setDecisionStampsEnabled, sli
 import { initStampDrag } from "./stampDrag.js";
 
 let game: Game | null = null;
-// arranca en la pantalla-gate (fondo negro + boton Start), que ya esta visible
-// en el HTML sin pasar por changeState() - ver #start-gate-btn mas abajo
+// arranca en la pantalla-gate (fondo semitransparente + logo animado), que ya
+// esta visible en el HTML sin pasar por changeState() - ver #start-gate-btn mas abajo
 let currentState: string = "start-gate";
 const soundManager = new SoundManager();
 const musicManager = new MusicManager();

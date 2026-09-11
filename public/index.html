@@ -8,14 +8,27 @@
 </head>
 <body>
 
-  <!-- pantalla negra con un unico boton antes del menu: el primer click del
-       jugador es un gesto explicito que desbloquea el audio del navegador
-       (reemplaza el viejo parche de reintentar la musica en el primer
-       pointerdown, ver main.ts). "start-gate" nunca es un destino de
-       changeState(): es solo el estado inicial del HTML. -->
+  <!-- pantalla negra SOLIDA con un logo animado antes del menu: el primer
+       click del jugador (en cualquier punto del logo, que sigue siendo un
+       <button> real) es un gesto explicito que desbloquea el audio del
+       navegador (reemplaza el viejo parche de reintentar la musica en el
+       primer pointerdown, ver main.ts). "start-gate" nunca es un destino de
+       changeState(): es solo el estado inicial del HTML. El fondo tiene que
+       ser opaco (no se ve #menu-screen detras): si se llegara a ver el menu
+       sin musica antes del click seria una "trampa" visual, el gesto de click
+       es justo lo que dispara musicManager.playMenu(). Los 3 logos (arte de
+       Mike) se superponen en el mismo lugar y van fundiendose uno en el otro
+       en bucle (ver .start-gate-logo en style.css); el pulso de luz lila de
+       atras y el latido chico del logo son animaciones aparte. -->
   <section id="start-gate-screen">
     <div id="start-gate-inner">
-      <button id="start-gate-btn">Start</button>
+      <button id="start-gate-btn" aria-label="Comenzar">
+        <span id="start-gate-glow"></span>
+        <img class="start-gate-logo" src="img/backgrounds/logo1.png" alt="">
+        <img class="start-gate-logo" src="img/backgrounds/logo2.png" alt="">
+        <img class="start-gate-logo" src="img/backgrounds/logo3.png" alt="">
+      </button>
+      <p id="start-gate-hint">Haz click para empezar</p>
     </div>
   </section>
 
