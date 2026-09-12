@@ -117,16 +117,82 @@ section {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: clamp(0.6rem, 3vh, 1.1rem);
+  padding: 1rem;
 }
 
 #start-gate-btn {
-  width: min(22rem, 40vw);
-  aspect-ratio: 2.4;
-  padding: 0 10%;
-  font-size: clamp(1rem, 5vw, 2.6rem);
-  letter-spacing: 0.08em;
+  position: relative;
+  /* ademas del ancho, se limita a 50vh: en una pantalla baja (celular
+     horizontal) el logo no puede seguir creciendo con el ancho o se comeria
+     el alto que necesita #start-gate-hint debajo */
+  width: min(20rem, 55vw, 50vh);
+  aspect-ratio: 1;
+  padding: 0;
+  margin: 0;
+  background: none;
+  /* el foco automatico al cargar la pagina (ver focusFirstControl() en
+     main.ts) no debe verse como un boton seleccionado con el teclado */
+  outline: none;
+  animation: gate-logo-pulse 4s ease-in-out infinite;
+}
+
+#start-gate-hint {
+  margin: 0;
+  color: #cfc7dd;
+  font-size: clamp(0.8rem, 2.2vw, 1.15rem);
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+/* el pulso de luz lila mate detras del logo, en su propia capa para no
+   interferir con el fundido de las imagenes (que tienen su propio opacity) */
+#start-gate-glow {
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(155, 134, 184, 0.55) 0%, rgba(155, 134, 184, 0) 70%);
+  filter: blur(6px);
+  pointer-events: none;
+  animation: gate-glow-pulse 4s ease-in-out infinite;
+}
+
+/* los 3 logos ocupan el mismo lugar, superpuestos, y se turnan la opacidad
+   (ver @keyframes) - el desfasaje de 8s/16s entre cada uno sobre un ciclo de
+   24s es lo que da el fundido lento de uno al otro, como una transicion de color */
+.start-gate-logo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  animation: gate-logo-crossfade 24s ease-in-out infinite;
+}
+
+.start-gate-logo:nth-of-type(2) { animation-delay: -8s; }
+.start-gate-logo:nth-of-type(3) { animation-delay: -16s; }
+
+@keyframes gate-logo-crossfade {
+  0%, 100% { opacity: 0; }
+  16%      { opacity: 1; }
+  33%      { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* latido chico del logo (no del glow, que respira con su propio ritmo) */
+@keyframes gate-logo-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.025); }
+}
+
+@keyframes gate-glow-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.08); }
 }
 
 /*
@@ -166,6 +232,13 @@ button {
   align-items: center;
   justify-content: center;
   width: var(--btn-w);
+  /* los botones que son flex-item de una columna (.menu-real-btn en
+     #menu-buttons, los de .screen-panel) por defecto no encogen mas alla del
+     tamaño minimo de su contenido (min-height/width:auto de flexbox) - sin
+     este 0 se frenan ahi aunque --btn-w/aspect-ratio pidan algo mas chico, y
+     terminan superponiendose entre si en una ventana muy chica */
+  min-width: 0;
+  min-height: 0;
   aspect-ratio: var(--btn-ar);
   margin: 0.35rem;
   /* mas arriba que abajo = baja la letra para que quede centrada en la placa;
@@ -175,7 +248,11 @@ button {
   border-radius: 0;
   background: transparent var(--btn-morado) center / 100% 100% no-repeat;
   color: #fff;
-  font-size: clamp(0.65rem, 1.5vw, 1.05rem);
+  /* piso en 0 a proposito (antes era 0.5rem fijo): la placa (--btn-w) no
+     tiene piso, se achica sin limite con la ventana - si la letra tuviera un
+     piso fijo, en una ventana muy chica dejaria de encoger antes que la
+     placa y se saldria de ella (letra "gigante" pisando el boton de al lado) */
+  font-size: clamp(0px, 1.5vw, 1.05rem);
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.08em;
@@ -222,19 +299,26 @@ button:disabled {
      --scr-btn-w   ancho de la placa (mas cqi = mas grande)
      --scr-btn-fs  tamaño de la letra (el Xcqi del medio del clamp)
      --bk-btn-w / --bk-btn-fs   idem para su "Volver al menú" (si la pantalla lo tiene)
-   El aspecto/forma y el padding son comunes (reglas de mas abajo).                */
+   El aspecto/forma y el padding son comunes (reglas de mas abajo).
 
-#options-screen     { --scr-btn-w: 62cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.3rem);  --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
-#shop-screen        { --scr-btn-w: 62cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.3rem); }
-#pause-screen       { --scr-btn-w: 60cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.35rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
-#exit-screen        { --scr-btn-w: 64cqi; --scr-btn-fs: clamp(0.6rem, 6cqi, 1.3rem);  --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
-#name-entry-screen  { --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
-#day-summary-screen { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0.55rem, 5cqi, 1.15rem); }
-#credits-screen     { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0.5rem, 4.2cqi, 1.05rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0.5rem, 3.8cqi, 1rem); }
-#story-screen       { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0.6rem, 3.8cqi, 1.3rem); }
-#day-result-screen  { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0.6rem, 3.8cqi, 1.3rem); }
-#day-start-screen   { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0.6rem, 3.8cqi, 1.3rem); }
-#final-screen       { --scr-btn-w: 34cqi; --scr-btn-fs: clamp(0.7rem, 4cqi, 1.5rem); }
+   El piso de cada clamp va en 0 a proposito: la placa (--scr-btn-w/--bk-btn-w)
+   no tiene piso, se achica sin limite con la ventana/panel. Si la letra
+   tuviera un piso fijo en rem, en una ventana muy chica dejaria de encoger
+   antes que la placa y se saldria de ella (superponiendose con el boton de
+   al lado) - el numero del medio de cada clamp sigue siendo el que define el
+   tamaño "normal", el 0px solo evita ese caso limite. */
+
+#options-screen     { --scr-btn-w: 62cqi; --scr-btn-fs: clamp(0px, 6cqi, 1.3rem);  --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0px, 3.8cqi, 1rem); }
+#shop-screen        { --scr-btn-w: 62cqi; --scr-btn-fs: clamp(0px, 6cqi, 1.3rem); }
+#pause-screen       { --scr-btn-w: 60cqi; --scr-btn-fs: clamp(0px, 6cqi, 1.35rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0px, 3.8cqi, 1rem); }
+#exit-screen        { --scr-btn-w: 64cqi; --scr-btn-fs: clamp(0px, 6cqi, 1.3rem);  --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0px, 3.8cqi, 1rem); }
+#name-entry-screen  { --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0px, 3.8cqi, 1rem); }
+#day-summary-screen { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0px, 5cqi, 1.15rem); }
+#credits-screen     { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0px, 4.2cqi, 1.05rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0px, 3.8cqi, 1rem); }
+#story-screen       { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0px, 3.8cqi, 1.3rem); }
+#day-result-screen  { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0px, 3.8cqi, 1.3rem); }
+#day-start-screen   { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0px, 3.8cqi, 1.3rem); }
+#final-screen       { --scr-btn-w: 34cqi; --scr-btn-fs: clamp(0px, 4cqi, 1.5rem); }
 
 /* ---- reglas comunes: NO se tocan para cambiar tamaños (usar las líneas de arriba) ---- */
 
@@ -246,7 +330,7 @@ button:disabled {
   margin: 0 auto;
   /* mas arriba que abajo = baja la letra para centrarla en la placa */
   padding: 0.5rem 4% 0.14rem;
-  font-size: var(--scr-btn-fs, clamp(0.6rem, 6cqi, 1.3rem));
+  font-size: var(--scr-btn-fs, clamp(0px, 6cqi, 1.3rem));
 }
 
 /* los 2 botones de borrado de creditos: uno al lado del otro dentro de
@@ -257,7 +341,7 @@ button:disabled {
   aspect-ratio: 2.6;
   margin: 0;
   padding: 0.45rem 4% 0.12rem;
-  font-size: var(--scr-btn-fs, clamp(0.5rem, 4.2cqi, 1.05rem));
+  font-size: var(--scr-btn-fs, clamp(0px, 4.2cqi, 1.05rem));
 }
 #credits-screen .screen-panel {
   /* separacion VERTICAL: lista de creditos <-> zona de borrado */
@@ -281,7 +365,7 @@ button:disabled {
   aspect-ratio: 2.8;
   margin: 0.5rem auto;
   padding: 0.5rem 5% 0.14rem;
-  font-size: var(--scr-btn-fs, clamp(0.6rem, 4cqi, 1.3rem));
+  font-size: var(--scr-btn-fs, clamp(0px, 4cqi, 1.3rem));
 }
 
 /* ---- "Volver al menú" / "Salir al menú": chico y colgando DEBAJO del panel ----
@@ -300,7 +384,7 @@ button:disabled {
   width: var(--bk-btn-w, 40cqi);
   aspect-ratio: 2.8;
   padding: 0.4rem 6% 0.12rem;
-  font-size: var(--bk-btn-fs, clamp(0.5rem, 3.8cqi, 1rem));
+  font-size: var(--bk-btn-fs, clamp(0px, 3.8cqi, 1rem));
 }
 
 /* en las pantallas de transicion (historia, reglas del dia, resumen y resultado
@@ -416,8 +500,10 @@ button:disabled {
   border: none;
   border-radius: 0;
   color: #ceafd6;
-  /* cqw = % del ancho real de #menu-layout -> caja y letra escalan juntas */
-  font-size: clamp(0.65rem, 2cqw, 1.7rem);
+  /* cqw = % del ancho real de #menu-layout -> caja y letra escalan juntas.
+     Piso en 0 a proposito: la placa (width: 60%) no tiene piso propio, si la
+     letra tuviera un piso fijo se saldria de la placa en una ventana chica */
+  font-size: clamp(0px, 2cqw, 1.7rem);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-align: center;
@@ -451,6 +537,10 @@ button:disabled {
   apoyado abajo a la derecha de la imagen. La altura no se limita con
   max-height + scroll: se limita el CONTENIDO (solo 3 filas, ver
   #history-table tbody tr mas abajo), asi el panel nunca necesita scrollear.
+  Ya NO se oculta en ventanas chicas (antes desaparecia por completo por
+  debajo de 899px): el padding/gap usan el mismo criterio cqi con piso en 0
+  que .menu-real-btn, asi se van achicando junto con #menu-layout en vez de
+  quedar con un tamaño fijo que ya no entra.
 */
 #menu-sidebar {
   position: absolute;
@@ -460,24 +550,20 @@ button:disabled {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: clamp(0px, 0.6cqi, 0.5rem);
   background: rgba(20, 16, 31, 0.45);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 12px;
-  padding: 0.8rem 1.1rem;
+  padding: clamp(0px, 0.94cqi, 0.8rem) clamp(0px, 1.3cqi, 1.1rem);
   z-index: 2;
-}
-
-@media (max-width: 899px) {
-  #menu-sidebar {
-    display: none; /* en tablet/movil no entra sin tapar la imagen */
-  }
 }
 
 #history-panel h2 {
   margin: 0 0 0.4rem;
-  font-size: 1.15rem;
+  /* cqi = % del ancho real de #menu-layout, mismo criterio que .menu-real-btn -
+     piso en 0 para que encoja junto con #menu-sidebar en una ventana chica */
+  font-size: clamp(0px, 2cqi, 2rem);
   font-weight: 400;
   color: #f2ede3;
 }
@@ -509,7 +595,8 @@ button:disabled {
   padding: 0.55rem 5% 0.1rem;
   background: transparent var(--btn-morado) center / 100% 100% no-repeat;
   color: #ceafd6;
-  font-size: clamp(0.65rem, 1.6cqw, 1.3rem);
+  /* piso en 0 a proposito, mismo motivo que .menu-real-btn de arriba */
+  font-size: clamp(0px, 1.6cqw, 1.3rem);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-align: center;
@@ -742,16 +829,22 @@ button:disabled {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
-  font-size: 0.85rem;
+  /* mismo criterio cqi con piso en 0 que el resto de #menu-sidebar. El 1cqi
+     esta calculado para que el tope (0.85rem) se abandone en el mismo ancho
+     de #menu-layout (~1360px) en que .menu-real-btn empieza a encoger - sin
+     este ajuste la tabla se quedaba en su tamaño de tope mas tiempo que los
+     botones, y de tan grande contra la caja recien encogida quedaba fuera
+     de lugar */
+  font-size: clamp(0px, 2cqi, 2rem);
   margin-top: 0;
 }
 
 #history-table th {
   text-align: left;
-  padding: 0.3rem 0.8rem 0.3rem 0.25rem;
+  padding: clamp(0px, 0.35cqi, 0.3rem) clamp(0px, 0.94cqi, 0.8rem) clamp(0px, 0.35cqi, 0.3rem) clamp(0px, 0.3cqi, 0.25rem);
   color: rgba(242, 237, 227, 0.55);
   font-weight: 400;
-  font-size: 0.75rem;
+  font-size: clamp(0px, 1.5cqi, 1rem);
   letter-spacing: 0.07em;
   text-transform: uppercase;
   border-bottom: 1px solid rgba(242, 237, 227, 0.15);
@@ -760,9 +853,9 @@ button:disabled {
 
 #history-table td {
   background: transparent;
-  padding: 0.35rem 0.8rem 0.35rem 0.25rem;
+  padding: clamp(0px, 0.41cqi, 0.35rem) clamp(0px, 0.94cqi, 0.8rem) clamp(0px, 0.41cqi, 0.35rem) clamp(0px, 0.3cqi, 0.25rem);
   text-align: left;
-  font-size: 0.85rem;
+  font-size: clamp(0px, 2cqi, 1.2rem);
   border-bottom: 1px solid rgba(242, 237, 227, 0.08);
   white-space: nowrap;
 }
@@ -1013,7 +1106,7 @@ button:disabled {
   position: relative;
   width: 100%;
   max-width: calc(55vh * 1536 / 1024);
-  aspect-ratio: 1536 / 1024;
+   aspect-ratio: 1536 / 1024;
   margin: 0 auto 1rem;
   border-radius: 10px;
   overflow: hidden;

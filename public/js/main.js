@@ -14,8 +14,8 @@ import { renderCreditsScreen, renderHistoryTable } from "./records.js";
 import { CHARACTER_ELEMENT, resetElementOffscreen, setDecisionStampsEnabled, slideOutSlidingElements } from "./characterSlide.js";
 import { initStampDrag } from "./stampDrag.js";
 let game = null;
-// arranca en la pantalla-gate (fondo negro + boton Start), que ya esta visible
-// en el HTML sin pasar por changeState() - ver #start-gate-btn mas abajo
+// arranca en la pantalla-gate (fondo semitransparente + logo animado), que ya
+// esta visible en el HTML sin pasar por changeState() - ver #start-gate-btn mas abajo
 let currentState = "start-gate";
 const soundManager = new SoundManager();
 const musicManager = new MusicManager();
