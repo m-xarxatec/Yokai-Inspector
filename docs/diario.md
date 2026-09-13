@@ -401,49 +401,267 @@ Verificado con `npm run build`, los 10 tests, y un chequeo cruzado automático d
 
 ---
 
-2026-08-19/21 — sonido en los sellos, primera vez (Iralys, rama `actualIralys`):
+2026-08-22 (Iralys, rama `actualIralys`) — sonido completo del juego, opciones nuevas, y merge grande con `develop`:
 
-Iralys creó `SoundManager`, la primera clase de audio del juego: dos sonidos (`stamp.mp3` para sellar, `wrong.wav` para error), reproducidos clonando el `Audio` en cada `.play()` (`#playClone()`) para que clicks rápidos seguidos no se corten entre sí. Enganchado en 2 puntos de `main.ts`: al soltar un sello sobre el pasaporte (verde=aceptar/rojo=rechazar, mismo sonido para los dos) y al cometer un error.
+Sesión larga centrada en terminarle el sonido al juego (hasta ahora solo tenía el sello de aceptar/rechazar y el error), agregar opciones que Iralys venía pensando, y por último traer todo lo nuevo de `develop` (aliens, sello azul, los 3 finales nuevos) a esta rama sin perder nada de lo hecho acá.
 
+**Sonidos nuevos, todos colgando de `SoundManager`**: `nextButton` (todo botón de navegación/continuar del juego, salvo los sellos de aceptar/rechazar, que ya tenían el suyo propio), `paperFlip` (al abrir el pasaporte), `nextPlease` (llama al primer pasajero de cada partida/día, y se repite después de cada sello correcto — no de uno incorrecto, ahí no tiene sentido "que pase el siguiente"), `victorySound`/`loseSound` (pantalla final), y `write` (mientras la Jefa reacciona a un error). Un ajuste chico sobre la marcha: si el error que se acaba de cometer es el que hace perder la partida, ya no suena el error (`playWrong`) — suena directo el de derrota, para no superponer los dos.
 
----
+**Bug real, no solo de gusto**: varios sonidos (incluidos los que ya existían, aceptar/rechazar/error) reutilizaban un único `Audio` y llamaban `.play()` sin manejar la promesa. Al clickear rápido, una segunda llamada interrumpía a la primera (`AbortError`) y, al no estar capturado el error, el sonido se perdía en silencio — de ahí que "a veces sonara y a veces no". Se corrigió clonando el audio en cada reproducción (`#playClone()`, un único método privado por el que pasan todos los efectos) y capturando el error de `.play()`, así una reproducción interrumpida no le pisa el sonido a otra.
 
-2026-08-22 (parte 1) — música de fondo y el resto de los efectos (Iralys, rama `actualIralys`):
+**La música del menú ahora acompaña toda la introducción**: antes se cortaba (`musicManager.stop()`) apenas se cambiaba de pantalla, incluso cuando la pantalla nueva era otro paso de la misma introducción. Se corrigió `changeState()` para que la música siga sonando sin cortes desde el menú hasta que la Jefa termina de explicar las reglas del día 1 (pasa por nombre del jugador, bienvenida, y los cuadros de la intro), y recién ahí se corta al arrancar el juego de verdad. De paso se encontró y corrigió el motivo real por el que a veces ni sonaba: en dos de los tres lugares que la disparaban, el código llamaba a `changeState()` (que corta música si la pantalla nueva no es de las que la mantienen) DESPUÉS de haber arrancado la música — se invirtió el orden.
 
-Segunda tanda de audio de Iralys: `MusicManager` (música de menú en loop, con reintento en el primer click/tecla porque los navegadores bloquean el autoplay con sonido hasta la primera interacción) y `SoundManager` ampliado con 6 sonidos más — click de botón, abrir el pasaporte, llamar al siguiente pasajero ("siguiente por favor"), victoria, derrota, y un sonido de escritura para el texto de la Jefa (con `stopWrite()` para cortarlo si se cambia de pantalla antes de que termine). Sumó también un botón de silenciar (on/off) y uno de pantalla completa en Opciones, y 2 fixes de CSS (fondo correcto en modo pantalla completa, y que arrastrar el sello ya no dispare selección de texto/cursor parpadeando).
+**Bug grave encontrado en medio de todo esto**: el JavaScript compilado en `public/js/` no se había vuelto a generar desde el 19 de agosto — ninguno de los cambios de sonido de la sesión estaba llegando de verdad al navegador, así que probar el juego solo mostraba código viejo. Se corrigió corriendo `npm run build` y quedó como práctica para el resto de la sesión: recompilar después de cada cambio, antes de dar nada por probado.
 
----
+**Pantalla de Opciones, dos botones nuevos** (mismo estilo que ya tenía `#timer-toggle-btn`, sin clase aparte): "Sonido: ON/OFF" silencia TODA la música y los efectos, incluidos los que se reproduzcan después — usa una variable booleana central en `SoundManager`/`MusicManager` en vez de la propiedad `muted` de cada `Audio`, porque como los efectos se clonan en cada reproducción, ese `muted` no viaja al clon. "Pantalla completa" usa la Fullscreen API nativa sobre `document.body` (no hay un contenedor `#app` aparte). Ajuste chico encontrado al probarlo: el navegador pinta un fondo negro propio (`::backdrop`) detrás del elemento en pantalla completa — se forzó al mismo fondo del `body` para que no cambie de color al activarla.
 
-2026-08-22 (parte 2) — pausa real, volumen, zoom, y duración/días de partida configurables:
+**Otro bug real, con el mismo síntoma en varias pantallas**: al arrastrar un sello, el navegador arrancaba una selección de texto nativa (no había `user-select: none` en `#game-screen`), lo que hacía aparecer un cursor de texto parpadeando de fondo. Se corrigió agregando `user-select: none` a `#game-screen`, que se hereda a todo lo de adentro (escena, pasaporte, sellos).
 
-Mike pidió que el botón ⏸ del HUD dejara de ir directo al menú y pasara a pausar de verdad, con un menú propio. Se reusó `pauseDayTimer()`/`resumeDayTimer()` (ya existían, los usaba la reacción de la Jefa por error) — el botón de pausa pasó a tener su propio `id` y quedó excluido del handler compartido de `.exit-to-menu-btn` (`:not(#pause-btn)`) para no ir directo a menú. Pantalla nueva (`#pause-screen`) con 3 botones: Continuar, Opciones, Salir al menú (el tercero se agregó de más — sin él no había forma de volver a jugar sin salir del todo).
+**Merge grande de `develop` a `actualIralys`**, con conflictos en varios archivos:
+- `docs/diario.md` tenía marcadores de conflicto de un merge viejo commiteados como texto literal (el mismo bug ya documentado en la entrada del 2026-08-17) — se confirmó comparando los 3 lados del merge que el lado de `actualIralys` no aportaba nada real más allá de esa basura, así que se resolvió tomando el contenido de `develop` completo.
+- `SoundManager.ts`/`main.ts` tenían conflictos reales de código: se combinaron a mano, quedándose con lo mejor de cada lado en cada bloque — el `SoundManager` completo de esta rama (ya incluía todo lo que traía `develop`), el `resolveDecision(accept, usedAlienStamp)` de `develop` (necesario para el sello azul del día 6, se habría roto en silencio si se tomaba la versión vieja), y los 6 finales combinados con las llamadas a `playLose()`/`playVictory()` de esta rama en cada rama correspondiente.
+- Verificado con `npm run build`, los 10 tests, y una partida jugada de punta a punta en el navegador (Playwright) sin errores de consola.
 
-**Opciones reusa el mismo botón según de dónde se entra**: se agregó `backLinkTarget`, una variable que el handler compartido de `.back-link` lee en vez de tener `"menu"` fijo — se setea a `"pause"` justo antes de abrir Opciones desde la pausa, y a `"menu"` en los otros 3 puntos de entrada (menú, créditos, salir). Mismo criterio se usó después para ocultar/mostrar el bloque de opciones que solo tienen sentido antes de una partida nueva (ver más abajo): un simple toggle de clase en esos mismos 2 handlers.
-
-**El mute on/off se reemplazó por una barra de volumen**, un solo control para música y efectos juntos. `SoundManager`/`MusicManager` cambiaron de `#muted: boolean` a `#volume: number` — importante: como `#playClone()` clona el `Audio` en cada reproducción, el `.volume` hay que reasignárselo a mano a cada clon (no es un atributo HTML, `cloneNode()` no lo copia). El slider aplica además una curva cuadrática (`raw * raw`) antes de mandarlo, porque el oído percibe el volumen de forma logarítmica y un mapeo lineal seguía sonando fuerte en el extremo bajo. Mike probó y la música de fondo — se le agregó a `MusicManager.setVolume()` un tope fijo del 50% (`volume * 0.5`), solo a la música, los efectos quedaron igual.
-
-**Zoom de la pantalla de juego**: otra barra, esta vez sobre una variable CSS (`--scene-zoom`, multiplicando la fórmula de `width` de `#character-scene`). Como todo lo de adentro (HUD, pasaporte, diálogo, sellos, personaje) ya estaba en `%`/`cqw` gracias al trabajo de `container-type` de una sesión anterior, agrandar esta única caja reescala el resto solo, sin tocar ningún otro selector.
-
-**Duración del día y días de partida, elegibles solo desde el menú principal** (no durante la pausa de una partida en curso, cambiarlos a mitad de partida no tendría sentido): `DAY_DURATION_MS` pasó de `const` a `let` con una barra de 4 posiciones (30/60/90/120s). Para los días de partida (5/6/7), `Game` ya tenía el mecanismo preparado sin saberlo (`Math.min(dayNumber, totalDays)` en `currentDay`, `isWon()` comparando contra `totalDays`) — solo hacía falta poder pasarlo desde afuera: `constructor(playerName, totalDays = 7)`, guardado en la partida en curso y en el historial (con `?? 7` de respaldo para partidas guardadas de antes de este cambio), y los 3 lugares que mostraban "/ 7" fijo pasaron a mostrar el valor real.
+**Umbral del final "Jefa Millonaria"**: `RICH_BOSS_MONEY` pasó del `9999` (placeholder absurdo a propósito, ver entrada del 2026-08-19) a **300** — por encima de lo que deja una partida normal de 7 días (100-200 monedas), pero alcanzable jugando rápido y arriesgado de verdad, sin requerir un ritmo imposible a mano.
 
 ---
 
-2026-08-22 (parte 3) — música solo en el menú, panel de historial más grande, y 2 pantallas nuevas entre días:
+2026-08-23 (Iralys) — documento de especificaciones del sistema económico:
 
-**La música ahora suena únicamente en el menú principal** — antes seguía sonando en nombre/historia/intro del día 1, a pedido de Mike se acotó a un solo estado (`newState === "menu"` en `changeState()`).
+Se usó el agente `.opencode/agents/generar-specs-economia.md` para auditar qué tan armado está el sistema de dinero del juego antes de seguir extendiéndolo, sin escribir código todavía. Resultado guardado en `especificaciones-economia.md` (raíz del repo).
 
-**Resumen narrativo + estadísticas al terminar cada día** (`#day-summary-screen`, se muestra ANTES de que la Jefa explique la regla nueva): un texto distinto por día (7 variantes escritas por Mike, redactadas acá a oración completa manteniendo la idea) más 5 estadísticas — aceptados, rechazados, errores, racha máxima y dinero ganado, todos DEL DÍA, no acumulados. Esto exigió tracking nuevo en `Game.ts`: contadores del día en curso (resetados en `#startDay()`, igual que ya hacía `#visitorsSeenToday`) más una "foto" del último día cerrado (`#lastDayAccepted` y compañía) — necesaria porque `endDay()` ya llama a `#startDay()`, que resetea los contadores, ANTES de que `main.ts` llegue a leerlos. La racha máxima del día se trackea aparte en `main.ts` (`maxStreakToday`), porque `streak` sola no alcanza: si hubo un error a mitad de día, `streak` al final puede ser menor al pico real alcanzado. Al ganar el día 7 también se pasa por este resumen antes de ir a la pantalla final (antes iba directo).
+**Lo que ya existía, sin que estuviera documentado en un solo lugar**: `#money` en `Game.ts` arranca en 10, suma 2 por decisión correcta y resta 5 por decisión incorrecta (`decide()`), se persiste en la partida guardada y en el historial, y se acumula entre partidas como ranking (`addCredits()`, pantalla de Créditos). El único uso real del dinero hoy, aparte de mostrarlo en el HUD, es disparar el final "Jefa Millonaria" al llegar a `RICH_BOSS_MONEY` (300). No hay cobro diario (renta) ni penalización de dinero por errores de procedimiento (dejar pasar a alguien peligroso sin que viole una regla activa todavía) — ninguno de los dos existe en el código.
 
-**Pantalla de reglas activas + "Empezar día"** (`#day-start-screen`, se muestra DESPUÉS de la explicación de la Jefa, tanto en el día 1 como en cualquier día siguiente): lista las reglas activas del día con `Rule.getDescription()` — el comentario de la regla `selloAlien` en `Rule.ts` hasta menciona que esa descripción ya estaba pensada "para que salga en la lista de reglas activas del día", así que este getter estaba preparado para esto desde antes sin usarse todavía.
+**Propuestas nuevas que quedaron documentadas** (no implementadas): cobro diario fijo a partir del día 2, escalado con la cantidad de reglas activas del día (`2 + reglasActivas.length`); penalización chica por error de procedimiento sin sumar a `#errors`; y tres usos nuevos para gastar el dinero durante la partida (pista sobre la regla del día, tiempo extra en el reloj de arena, "seguro" contra el próximo error).
 
-Las dos pantallas nuevas reusan el patrón `.screen-panel` (mismo que Opciones/Créditos) y la lista `.styled-list` (renombrada de `#credits-list`, que la usaba sola, para poder compartirla entre las 3).
+**Decisiones ya tomadas para cuando se implemente**: el cobro diario puede dejar `#money` en negativo sin que eso sea una derrota nueva — la única condición de derrota sigue siendo `#errors >= #maxErrors`; las compras nuevas (pista/tiempo/seguro) irían en un botón nuevo del HUD junto al de pausa, no en Opciones; `RICH_BOSS_MONEY` se mantiene en 300 por ahora, a confirmar con playtesting una vez que el cobro diario esté implementado de verdad; y la pantalla de resumen de día (`#day-summary-screen`) mostraría el cobro diario como línea aparte del dinero ganado por decisiones.
 
-**Se sacó el sonido "siguiente por favor"** de todos los puntos donde sonaba (al sellar, al arrancar partida, al arrancar día) — Mike lo pidió primero solo para el de sellar, después confirmó que también de los otros 2. Como quedó sin ningún uso, se borró el método de `SoundManager`, el campo, y el archivo `nextPlease.mp3`.
+---
 
-**Panel de "últimas partidas" más grande**: `#menu-sidebar` más ancho (`min(58%, 680px)`, antes `min(50%, 560px)`) y un escalón más de tamaño de letra en título/encabezados/filas de la tabla.
+2026-08-23 (parte 2) — se implementa el cobro diario:
 
+Primera pieza del documento de especificaciones que pasa de propuesta a código: el cobro diario (gastos fijos de vivir el día).
 
-Verificado con `npm run build` + los 28 tests de `docs/test-temporal.mjs` después de cada tanda de cambios — todo en verde. No se probó en el navegador en ninguna de las 3 partes de esta sesión (Mike lo prueba siempre él).
+**Dónde vive**: método privado nuevo `Game.#chargeDailyCost()`, con dos campos nuevos, `#dayCharge` (cobro del día en curso) y `#lastDayCharge` (foto congelada del día que se acaba de cerrar, mismo patrón que ya existía con `#dayMoney`/`#lastDayMoney`). Se decidió llamarlo únicamente desde `endDay()` (después de sumar 1 a `#dayNumber` y de confirmar que no se ganó la partida, antes de `#startDay()`) y NO desde `#startDay()` directamente — `#startDay()` también lo llama `loadProgress()` cada vez que se recarga la página a mitad de partida, y cobrar ahí habría cobrado de nuevo el mismo día cada vez que el jugador refrescara el navegador. Como consecuencia natural de este diseño, el día 1 nunca cobra (arranca por `startNewGame()`, que nunca pasa por `endDay()`).
+
+**El monto escala con la dificultad real del día**, no con el número que aparenta tener en `dias.json`: `costoDiario = 2 + Day.getActiveRules().length`. Al implementarlo se encontró que ese conteo real es más alto de lo que se había estimado a mano en el documento de especificaciones — `especieProhibida` expande a 4 reglas separadas desde el día 4 (kitsune/oni/kappa/poseído), así que la cantidad de reglas activas salta de 3 a 7 ese día, no de 3 a 4 como parecía leyendo solo el array `reglasActivas` de `dias.json`. Números reales por día (1 a 7): 1, 2, 3, 7, 8, 9, 10 reglas → cobro de 4, 5, 9, 10, 11 y 12 en los días 2 a 7 (51 en total en una partida completa, no ~39 como se había estimado). Se corrigió el documento de especificaciones con los números reales.
+
+**Se muestra en la pantalla de resumen de día** (`#day-summary-screen`, `main.ts`): línea nueva "Cobro diario: -N", oculta si `game.lastDayCharge` es 0 (día 1).
+
+**Test 11 nuevo** en `docs/test-temporal.mjs`: confirma que el día 1 no cobra, que el monto coincide con `2 + reglas activas` del día 2, y que forzar el dinero a negativo (con solo 3 errores, sin llegar a los 4 que pierden la partida) más el cobro diario deja el dinero todavía más negativo sin que `isLost()` se active — la decisión de que quedar en negativo no es motivo de derrota, tal como se había definido en la sesión anterior.
+
+Verificado con `npm run build` + los 31 tests de `docs/test-temporal.mjs` (26 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.
+
+---
+
+2026-08-23 (parte 3) — se implementa la penalización por decidir sin revisar el pasaporte:
+
+Segunda pieza del documento de especificaciones. Antes de escribir nada se revisaron las dos ideas originales de "error de procedimiento" (dejar pasar un visitante peligroso sin regla activa, o exceder el tiempo sin decidir) y las dos se descartaron por no aplicar al código real: la primera no puede pasar nunca (`#generateVisitor()` solo pone cuernos/ojos amarillos cuando la regla ya está activa, así que siempre cae en el -5 normal de `decide()`), y la segunda penalizaría a todo el mundo al final de cada día por igual, porque siempre queda un visitante nuevo sin decidir cuando suena el timer (se genera uno apenas se decide el anterior) — no depende de ninguna acción evitable del jugador.
+
+**Idea nueva, decidida con Iralys**: penalizar decidir demasiado rápido como para haber revisado el pasaporte de verdad, sin importar si la decisión en sí fue correcta.
+
+**Dónde se mide el tiempo**: no en el momento en que se llama a `Game.decide()` dentro de `resolveDecision()` (main.ts) — esa llamada está atrás de ~2 segundos de animación del sello y el pasaporte, no refleja cuánto tardó el jugador de verdad. Se mide en cambio desde `setDecisionStampsEnabled(true)` (el click de `#passport-object`, cuando se habilita decidir) hasta el instante en que se invoca `resolveDecision()` (cuando el jugador suelta el sello) — variable nueva `passportOpenedAt` en `main.ts`, umbral `RUSH_THRESHOLD_MS = 700`.
+
+**Dónde vive en `Game.ts`**: `decide()` suma un tercer parámetro opcional, `wasRushed` (default `false`, para no romper las llamadas de 2 argumentos que ya existían en tests y en el resto del código). Resta `RUSH_PENALTY = 1` de `#money` de forma independiente al acierto/error de la decisión — nunca suma a `#errors`, es un descuido de procedimiento, no un error de reglas. Mismo patrón día/lastDay que `#dayMoney`/`#dayCharge`: campos nuevos `#dayRushPenalty`/`#lastDayRushPenalty`, con línea nueva ("Descuido (decidiste sin revisar): -N") en `#day-summary-screen`, oculta si no hubo ninguna decisión apurada ese día.
+
+**Test 12 nuevo** en `docs/test-temporal.mjs`: un acierto apurado resta el `+2` normal más el `RUSH_PENALTY` sin tocar `#errors`; una decisión sin apurar (llamando a `decide()` con dos argumentos, como el resto del código viejo) no resta nada de más.
+
+Verificado con `npm run build` + los 35 tests de `docs/test-temporal.mjs` (31 anteriores + 4 nuevos) — todo en verde. No se probó en el navegador todavía (falta confirmar que el umbral de 700ms se siente bien jugando de verdad, no solo en los tests).
+
+---
+
+2026-08-23 (parte 4) — arranca la tienda: botón nuevo en el HUD y la primera compra (pista):
+
+Tercera pieza del documento de especificaciones. Antes de escribir código se definieron los 3 precios con Iralys: pista 3 (revisar pasaporte), tiempo extra 5 (+15s), indulto 8 (el más caro, puede salvar la partida). Esta sesión implementa la infraestructura de la tienda entera más la primera compra; tiempo extra e indulto quedan para las próximas dos.
+
+**HUD**: botón nuevo `#shop-btn` ("$"), a la izquierda del de pausa (`right: 6.5%` en `style.css`, mismo estilo que `.exit-to-menu-btn`). Reutiliza esa clase para el aspecto visual pero **no** el comportamiento — se agregó a la exclusión del handler compartido (`.exit-to-menu-btn:not(#pause-btn):not(#shop-btn)`) para que no mande al menú como el resto de esos botones. Abrir la tienda pausa el día entero (mismas `pauseDayTimer()`/`resumeDayTimer()` que ya usaba la pausa), igual criterio que Opciones.
+
+**Pantalla nueva `#shop-screen`**: mismo patrón `.screen-panel` que Pausa/Opciones/Créditos, con el dinero disponible arriba y un botón por compra (se van a ir agregando).
+
+**Pista (`Game.ts#buyHint()`)**: devuelve la propiedad de la regla que el visitante actual está violando (`Rule.getProperty()`, vía `currentDay.evaluateCharacter()`), o `null` si está limpio — en ese caso no hay nada que revelar, pero el costo se cobra igual, es el riesgo de comprarla "a ciegas". También devuelve `null` sin cobrar si no alcanza el dinero (la UI ya deshabilita el botón en ese caso; esto es solo una segunda barrera del lado de `Game`).
+
+**De la propiedad al resaltado visual**: función nueva `hintTargetSelector()` en `main.ts` traduce la propiedad devuelta al elemento a resaltar — los rasgos físicos (`tieneCuernos`/`ojosAmarillos`) se ven en el personaje (`.part-horns`/`.part-eyes`), el resto (`region`/`especieProhibida`/`sello`) en el campo correspondiente del pasaporte. Clase CSS nueva `.hint-highlight` (glow dorado, `@keyframes hint-glow`, se saca sola a los 2.5s). Se limpia cualquier resaltado que hubiera quedado colgado al renderizar el visitante siguiente (`renderVisitor()`), por si el jugador decide antes de que termine de apagarse.
+
+**Test 13 nuevo** en `docs/test-temporal.mjs`: confirma que la pista devuelve la propiedad correcta sobre un visitante sucio, que cobra igual sobre uno limpio sin devolver nada, y que no cobra nada si no alcanza el dinero. Encontró y corrigió un problema del propio test (no del código): `partidaEnDia(4)` decide sobre un solo visitante por día para llegar rápido al día 4, así que el cobro diario acumulado (4+5+9=18) puede dejar el dinero en negativo antes de probar la pista — se agregaron decisiones de más antes de buscar al visitante de prueba, para no confundir "no alcanza el dinero" con un fallo real de `buyHint()`.
+
+Verificado con `npm run build` + los 40 tests de `docs/test-temporal.mjs` (35 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.
+
+---
+
+2026-08-23 (parte 5) — segunda compra de la tienda: tiempo extra:
+
+**`Game.ts#buyExtraTime()`**: cobra `EXTRA_TIME_COST = 5` y devuelve `true`/`false` según si se pudo comprar - `false` tanto si no alcanza el dinero como si ya se usó el tiempo extra ese día (`#usedExtraTimeToday`, se resetea en `#startDay()`, igual que los demás contadores del día en curso). Los segundos que suma quedan del lado de `main.ts` (`EXTRA_TIME_MS = 15000`) — `Game.ts` no sabe nada de timers, solo controla el dinero y el límite.
+
+**Cómo se suman los 15 segundos sin tocar el timer directamente**: la tienda ya se abre con el día pausado (`pauseDayTimer()`, igual que Opciones). Mientras está pausado, `dayElapsedMs` guarda cuánto tiempo real ya pasó — restarle `EXTRA_TIME_MS` a esa variable equivale a sumarle tiempo al reloj, sin necesidad de tocar `dayTimeoutId` a mano: `resumeDayTimer()` (al cerrar la tienda) ya recalcula el tiempo restante a partir de `dayElapsedMs` y reprograma el cierre del día con el valor correcto.
+
+**Test 14 nuevo** en `docs/test-temporal.mjs`: la primera compra del día cobra y funciona, la segunda se niega sin cobrar de más, el límite se resetea al día siguiente, y sin dinero suficiente tampoco cobra. Mismo cuidado que el test 13: hubo que agregar decisiones de más antes de probar la compra en el día siguiente, porque el cobro diario ya había dejado el dinero por debajo del costo.
+
+Verificado con `npm run build` + los 45 tests de `docs/test-temporal.mjs` (40 anteriores + 5 nuevos) — todo en verde. No se probó en el navegador todavía.
+
+---
+
+2026-08-23 (parte 6) — tercera y última compra de la tienda: el indulto, y la tienda queda completa:
+
+**`Game.ts#buyInsurance()`**: cobra `INSURANCE_COST = 8` (la más cara de las 3) y activa `#hasInsurance`. No se puede comprar un segundo indulto mientras el primero sigue activo — `buyInsurance()` devuelve `false` sin cobrar en ese caso. Se resetea a `false` en `#startDay()`: si no se usó en el día, no pasa al siguiente.
+
+**Cómo se consume en `decide()`**: en la rama de decisión incorrecta, si `#hasInsurance` está activo se lo apaga (`this.#hasInsurance = false`) en vez de sumar a `#errors`/`#dayErrors` — pero el `-5` de dinero de esa decisión se sigue restando igual. No es "gratis equivocarse", es "no te cuesta la partida". Con esto, la sección "compras nuevas" del documento de especificaciones queda completa: pista, tiempo extra e indulto, las 3 implementadas.
+
+**Test 15 nuevo** en `docs/test-temporal.mjs`: compra el indulto y confirma el costo, fuerza un error y confirma que no suma a `#errors` pero sí resta el dinero normal, confirma que se consume (el siguiente error sin indulto sí cuenta), que no se puede comprar un segundo mientras uno sigue activo, y que uno sin usar no sobrevive a `endDay()`.
+
+**Bug de test encontrado y corregido (no del código)**: al escribir el test 15 se repitió, sin darse cuenta, el mismo error de los tests 13/14 pero al revés — `gameT.decide(violationT === null)` en vez de `!== null` termina siendo la decisión CORRECTA, no la forzada a incorrecta, así que el primer intento del test no estaba probando nada del indulto (el dinero subía en vez de bajar). Se corrigió invirtiendo la condición, igual que ya se había hecho en los tests anteriores.
+
+**Segundo bug de test, este sí intermitente**: el mismo problema del cobro diario dejando sin fondos que ya se había corregido para el visitante "sucio" del test 13 (ver sesión de la parte 4) se había quedado sin corregir para el caso del visitante "limpio" en el mismo test — como `buscarVisitante()` decide bien una cantidad variable de veces hasta encontrar el visitante que busca, a veces alcanzaba el dinero para la pista y a veces no, dependiendo del sorteo. Detectado corriendo la suite completa varias veces seguidas (falló 1 de 5 corridas) y confirmado estable después de agregar el mismo colchón de decisiones extra que ya tenía el caso "sucio".
+
+Verificado con `npm run build` + los 52 tests de `docs/test-temporal.mjs` (45 anteriores + 7 nuevos), corridos 8 veces seguidas sin fallos para descartar la intermitencia. No se probó en el navegador todavía — queda pendiente confirmar que la tienda completa (pista + tiempo extra + indulto) se siente bien jugando de verdad, no solo en los tests automáticos.
+
+---
+
+2026-08-23 (parte 7) — el botón `$` de la tienda pisaba al de pausa; se reemplaza por un ícono de flor debajo del reloj de arena:
+
+Iralys probó la tienda y el botón `$` (agregado en la parte 4, `right: 6.5%` en el HUD) quedaba pisado con el de pausa. Pidió moverlo al espacio libre debajo del reloj de arena, en la misma columna vertical que ya usan la moneda y el reloj (`left: 10.9%`), y usar como imagen la misma flor rosa que ya aparece pintada junto a DÍA/ERRORES/RACHA en `fondoPantallaJuegoT.png`.
+
+**La flor no existe como archivo aparte** — está dibujada directamente dentro del fondo del HUD, junto a esas tres etiquetas. Se extrajo con Python/PIL (ya usado antes en este proyecto para medir arte a pixel, ver sesión del 2026-08-12): se ubicó el recuadro exacto por detección de color (píxeles rosa/magenta o el centro amarillo, sobre fondo oscuro) y se recortó a `(874, 97)-(945, 166)` de la imagen original (3670×2446), con un margen de unos pixeles. Se le sacó el fondo oscuro a transparente (umbral de brillo, con un borde suavizado en vez de un corte duro) para que se vea limpia sobre cualquier fondo. Queda guardada en `public/img/ui/florHud.png` (carpeta nueva, primer ícono de UI suelto del proyecto — hasta ahora todo vivía pintado en los fondos o en `animaciones/`).
+
+**El botón se movió de lugar en el HTML, no solo en CSS**: pasó de estar adentro de `#hud` (que tiene `pointer-events: none`, por eso necesitaba `pointer-events: auto` antes) a ser hermano directo de `#coin-widget`/`#day-clock` dentro de `#character-scene` (que no bloquea clicks) — mismo criterio que esos dos, ya no hace falta la excepción de pointer-events. También perdió la clase `.exit-to-menu-btn` (ya no comparte su estilo, es un ícono solo, sin fondo/padding/borde) y por lo tanto la exclusión que se le había agregado al handler compartido de esa clase en `main.ts` (`:not(#shop-btn)`) se pudo sacar de nuevo, ya no hacía falta.
+
+**Verificado jugando de verdad**, no solo con los tests: se levantó `public/` con `python -m http.server` y se automatizó una partida completa con Playwright (instalado en el scratchpad de la sesión, no como dependencia del repo, mismo criterio que la prueba de audio del 2026-08-19) hasta la pantalla de juego — capturas confirmando que la flor quedó bien ubicada sin pisar nada, que abrir la tienda y comprar las 3 opciones descuenta el dinero real del HUD y deshabilita los botones que ya no alcanzan, y que "Volver al juego" respeta el visitante que estaba en pantalla.
+
+No se tocó nada de `Game.ts` en esta sesión, solo `index.html`/`style.css`/`main.ts` (posición y comportamiento del botón) — la lógica de las 3 compras ya estaba completa desde la parte 6.
+
+---
+
+2026-08-23 (parte 8) — ícono real de la tienda, movido a `public/img/tienda/`:
+
+Iralys reemplazó el recorte provisorio de la flor (extraído a mano de `fondoPantallaJuegoT.png`, ver parte 7) por arte real: una ilustración completa de tienda (templete, carrito de compras, cofre con lupa y carta de interrogación, gato de la suerte, monedas), 1254×1254, guardada como `public/img/tienda/florHud.png` — carpeta nueva, reemplaza a `public/img/ui/` (que queda vacía y sin uso). Se corrigió la ruta en `style.css` (`background-image` de `#shop-btn`) y los dos comentarios que todavía mencionaban `img/ui/` (`index.html` y `style.css`). Como la imagen nueva también es cuadrada, no hizo falta tocar el `aspect-ratio: 1` del botón.
+
+Verificado con Playwright otra vez (mismo criterio que la parte 7): el ícono nuevo carga y se ve bien en el lugar de siempre, debajo del reloj de arena.
+
+---
+
+2026-08-23 (parte 9) — bug real encontrado: la pantalla de Opciones había quedado con la versión vieja tras el merge grande:
+
+Iralys notó que Opciones se ve distinto en `develop` que en su rama y pidió dejarlo como en `develop`. Investigando (`git diff origin/develop HEAD -- public/index.html`) apareció un bug real de la sesión del merge grande (parte 3, 2026-08-22/23): `index.html` había quedado con la versión VIEJA de Opciones (botón `#mute-toggle-btn`, "Sonido: ON/OFF") en vez de la de `develop` (sliders de volumen, tamaño de pantalla, duración del día y días de partida).
+
+**Por qué pasó**: en aquel merge, `git` marcó `index.html` como conflicto real, pero al revisarlo no aparecían marcadores `<<<<<<<`/`=======`/`>>>>>>>` en ningún lado — se asumió (mal) que ya estaba resuelto y solo faltaba `git add`. En realidad `git` había resuelto la sección de Opciones automáticamente quedándose con el lado de `actualIralys` (la versión vieja, de antes de que existiera el rework de volumen), sin dejar marcadores porque no hubo superposición línea por línea exacta - un merge "limpio" pero semánticamente incorrecto. La lógica de `main.ts` para los 4 sliders (`#volume-slider`, `#zoom-slider`, `#day-duration-slider`, `#total-days-slider`) sí se había traído bien desde `develop` en ese mismo merge (esos conflictos sí tenían marcadores y se resolvieron a mano) - por eso el código funcionaba pero los controles no existían en el HTML, y `#mute-toggle-btn` quedó como botón fantasma sin ningún listener en `main.ts`.
+
+**Corrección**: se reemplazó la sección `#options-screen` de `index.html` por la de `origin/develop` tal cual (los 4 `slider-row` + `#new-game-options`), se sacó `#mute-toggle-btn`. El CSS (`.slider-row`, `#new-game-options`) ya estaba bien desde el merge, no hizo falta tocarlo.
+
+**Lección para mergear**: que un archivo no tenga marcadores de conflicto no prueba que el auto-merge haya elegido el lado correcto en cada sección — hay que comparar contra ambos lados semánticamente, no solo buscar `<<<<<<<`.
+
+Verificado con Playwright: los 4 sliders aparecen y se ven bien en Opciones, `#mute-toggle-btn` ya no existe en ningún lado del código. Se corrió también toda la suite de `docs/test-temporal.mjs` (52 tests, sin relación directa pero por las dudas) — sigue en verde.
+
+**Pendiente, no relacionado con Opciones pero encontrado de paso**: `index.html` todavía trae el `<link>` viejo a Google Fonts (Jost/Marcellus) en el `<head>`, que `develop` ya no tiene (se sacó cuando se decidió alojar las tipografías localmente, ver sesión del 2026-08-15). Es el mismo leftover que ya se había detectado y dejado afuera A PROPÓSITO en un merge anterior hacia `objetosMike` (ver entrada del 2026-08-17), pero nunca se limpió en `actualIralys` misma. No se tocó en esta sesión porque no fue lo que Iralys pidió arreglar.
+
+---
+
+2026-08-23 (parte 10) — auditoría completa contra `develop`: 3 bugs reales más, encontrados y corregidos:
+
+Iralys pidió específicamente: "todo lo que encuentres en develop que no esté en mi rama, incorporalo" — no solo Opciones. Se comparó archivo por archivo (`git diff -w origin/develop HEAD`, y `comm` sobre versiones ordenadas para los archivos de texto largos) para separar 3 categorías: (a) cosas que sí faltan de verdad, (b) diferencias que son solo evolución propia de esta rama que `develop` todavía no tiene (no hay que "corregir" eso, sería un retroceso), y (c) archivos que existen solo en esta rama sin que sea un problema (assets viejos, propuestas, etc.).
+
+**Encontrados y corregidos (categoría a)**:
+1. El `<link>` a Google Fonts (Jost/Marcellus) en el `<head>` de `index.html` — el mismo leftover que ya se había anotado como pendiente en la parte 9, ahora sí se sacó.
+2. El selector `*` en `style.css` todavía tenía `font-family: 'Jost', sans-serif` a mano, en vez de `var(--font-body)` (que ya apunta a Jersey 10 con sus fallbacks locales) — mismo problema que el punto 1, en otro lugar del archivo.
+3. **Bloque `@font-face` de "Jersey 10" duplicado dos veces seguidas** en `style.css`, cada uno con su propio comentario (uno de cuando la fuente era solo para el mensaje de la Jefa, otro de cuando pasó a ser la fuente única) - puro leftover del merge grande, sin ningún efecto funcional (el navegador ignora el duplicado) pero confuso de leer. Se dejó uno solo.
+
+**Revisado y dejado como está a propósito (categoría b, no tocar)**: `body` en `develop` todavía tiene `margin:0; padding:1.5rem;` y `#menu-bg-img` usa `object-fit: cover` con `#menu-stage` en `border-radius:10px` — en esta rama esos tres ya están cambiados (sin margin/padding, `object-fit: contain`, `border-radius:0` + color de fondo de relleno) como parte de un rediseño ya hecho acá para que el fondo del menú se vea completo sin recortarse en cualquier proporción de pantalla. Copiar la versión de `develop` ahí habría sido un retroceso, no una corrección - se dejó como está.
+
+**Revisado y no es un problema (categoría c)**: `especificaciones-economia.md`, `public/img/tienda/florHud.png`, `.opencode/agents/YOKAI_INSPECTOR_REPOSITORY_REVIEW_AGENT.md`, `public/img/backgrounds/Fondopersonaje.png` y `public/sounds/nextPlease.mp3` existen solo en esta rama y no en `develop` — los primeros dos son trabajo propio todavía no fusionado a `develop`; los últimos tres son archivos viejos de sesiones anteriores de Iralys (`Fondopersonaje.png` ya se había decidido dejar afuera de otro merge, ver entrada del 2026-08-15; `nextPlease.mp3` quedó sin borrar de esta rama aunque el código que lo usaba ya se sacó en la parte 3). Ninguno rompe nada estando presente, así que no se tocaron - no era lo que se pidió arreglar hoy.
+
+También se confirmó explícitamente (con `comm` sobre las versiones ordenadas línea por línea) que `docs/diario.md` y `docs/test-temporal.mjs` ya contienen el 100% del contenido de sus versiones en `develop` - nada faltante ahí. Mismo chequeo con `git diff -w` para `Game.ts`/`main.ts`: las únicas líneas que parecían faltar resultaron ser evolución propia de esta rama (el `wasRushed` nuevo en `decide()`, `RICH_BOSS_MONEY` ya en 300) que el diff mostraba raro por el reordenamiento de líneas cercanas, no omisiones reales.
+
+Verificado con `npm run build` + los 52 tests de `docs/test-temporal.mjs` (sin relación directa, cambios de CSS/HTML, pero por las dudas) y con Playwright (captura del menú, confirmando `getComputedStyle(body).fontFamily` ya no depende de Google Fonts) — todo en verde.
+
+---
+
+2026-08-23 (parte 11) — documento de documentación técnica del proyecto entero:
+
+Se usó el agente `.opencode/agents/generar-documentacion-html.md` para generar `documentacion-proyecto.html` (raíz del repo): un mapa completo del código pensado para alguien que no lo escribió — un profesor evaluando, un compañero nuevo, o el propio equipo repasando más adelante. Se hizo sobre esta rama (`actualIralys`) en vez de clonar `develop` aparte, porque a esta altura `actualIralys` ya contiene el 100% de `develop` (confirmado en la parte 10) más el sistema económico/tienda que todavía no llegó a `develop` — documentar desde acá da un mapa más completo y más real.
+
+**Cómo se armó**: se releyó a fondo cada clase (`Passport`, `Character`, `Human`, `Yokai`, `Rule`, `Day`, `Storage`, `Game`, `SoundManager`, `MusicManager`), `main.ts` completo (función por función, vía un listado de todas las declaraciones de nivel superior), `index.html`, varios archivos de `public/data/`, y `docs/convenciones.md`/`GDD.md`/`diario.md` como contexto de decisiones ya tomadas — sin copiar nada tal cual, redactado con palabras propias y verificado contra el código real.
+
+**Hallazgo de paso, no un bug**: `reglas.json` usa el campo `"dia"` como un ID de regla, no como el día calendario en que se activa — es `dias.json` (campo `reglasActivas`) el que remapea esos ids a un día real. Por eso la regla de "sello plateado" tiene `"dia": 6` en `reglas.json` pero en el juego se activa recién el día 7, y la del sello azul de los alien (`"dia": 7` en el archivo) se activa el día 6. Quedó explicado en el documento (sección de persistencia y datos) porque es fácil de leer al revés si alguien mira `reglas.json` suelto sin cruzarlo con `dias.json`.
+
+**4 diagramas Mermaid** (clases, flujo de una partida, secuencia de una decisión, flujo de trabajo del equipo), con código de color para Grupo A/Grupo B, verificados en el navegador con Playwright: los 4 renderizan como SVG sin errores de consola. El de flujo de trabajo del equipo usa un `flowchart` en vez de un `gitGraph` literal — el historial real tiene demasiados merges/ramas como para que un `gitGraph` fiel se leyera bien, así que se resume el patrón (cada quien en su rama, integrando contra `develop`) más 3 bugs de integración reales documentados en el diario, incluido el de la pantalla de Opciones de esta misma sesión (parte 9).
+
+No se modificó ningún archivo de código del proyecto — el agente es de solo lectura, como indica su propia definición.
+
+---
+
+2026-08-23 (parte 12) — documento de preparación para la defensa oral de Iralys:
+
+Se generó `especificaciones-defensa-iralys.md` a partir de un agente nuevo (distinto al de documentación técnica de la parte 11) que Iralys pasó por texto, sin guardarlo como archivo aparte en `.opencode/agents/` — solo se pidió generar el documento, no dejar el agente reutilizable. A diferencia del documento técnico genérico de la parte 11, este es personal y con un alcance mucho más acotado: solo el código de Iralys (`Rule.ts`, `Day.ts`, `Storage.ts`, `Game.ts`, su parte de `main.ts`, `SoundManager.ts`/`MusicManager.ts`), explicado línea por línea, con argumentos de defensa y preguntas de examen ya respondidas en primera persona.
+
+**Se releyeron `Game.ts`, `SoundManager.ts` y `MusicManager.ts` completos de nuevo** (cambiaron mucho en esta sesión con el sistema económico) para citar código exacto, no de memoria. Se marcaron explícitamente dos funciones de `main.ts` como "atribución dudosa" en vez de asignarlas a ciegas: `preloadCharacterImages()`/`preloadImages()` y `startCoinSpin()` — ninguna de las dos es claramente "ciclo de juego" ni claramente "arte/drag&drop", y el diario no deja constancia de quién las escribió.
+
+**Un hallazgo se convirtió en pregunta de examen con respuesta honesta**: la confusión de `reglas.json` usando `"dia"` como ID de regla en vez de día calendario (ya documentada en la parte 11) se redactó como pregunta 7 de la sección final, con una respuesta que reconoce que el nombre del campo podría haber sido mejor (`ruleId`) — a pedido implícito del propio agente, que insiste en preparar respuestas defendibles, no en ocultar decisiones discutibles.
+
+No se modificó ningún archivo de código — mismo criterio de solo lectura que la parte 11.
+
+---
+
+2026-08-23 (parte 13) — la defensa oral pasa a HTML con colores, tablas y diagramas:
+
+Iralys pidió deshacer el commit del `.md` de la parte 12 (nunca se había pusheado, así que se deshizo sin riesgo con `git reset --mixed HEAD~1`, dejando el archivo en el disco) y usarlo como fuente para armar `especificaciones-defensa-iralys.html` — una versión visual del mismo contenido, no un resumen: mismo código citado, mismas explicaciones línea por línea, mismos argumentos de defensa y las 10 preguntas de examen, pero con el sistema de diseño oscuro ya usado en `documentacion-proyecto.html` (parte 11) más elementos nuevos pensados para este documento en particular:
+
+- Un diagrama de flujo mostrando visualmente la trampa de examen de `reglas.json`/`dias.json` (qué ID de regla se activa en qué día calendario real).
+- Un gráfico de barras comparando los 7 montos del sistema económico (aciertos, errores, cobro diario, las 3 compras de la tienda) a simple vista.
+- Un árbol de decisión completo de `Game.decide()` (correcto/incorrecto, indulto, apuro, derrota) en un solo diagrama.
+- Un diagrama de estados para el temporizador (Corriendo/Pausado/EsperandoSuelte/Vencido) y uno de secuencia para el bug real de `SoundManager` (el `AbortError` sin clonar el audio).
+- Tablas para las claves de `localStorage`, el patrón `#dayX`/`#lastDayX` de `Game.ts`, y la comparación `SoundManager` vs `MusicManager`.
+
+**Dos diagramas necesitaron un ajuste después de verificarlos con Playwright**: la última nota del diagrama de secuencia de audio quedaba cortada visualmente (texto de dos líneas mal calculado por Mermaid, se acortó a una sola línea con `Note over SM,A2` en vez de `Note over A2` solo), y las etiquetas de `pauseDayTimer()`/`resumeDayTimer()` en el diagrama de estados se superponían por quedar muy pegadas — se acortaron las etiquetas del diagrama y la explicación completa se movió a un párrafo aparte debajo. También se redujo el diagrama de `reglas.json`/`dias.json` de 7 cajas a 3 (agrupando los días 1 a 5, que no tienen truco, y dejando solo los días 6-7 que sí lo tienen) porque con las 7 el texto quedaba demasiado chico para leerse.
+
+El `.md` de la parte 12 queda en el disco, sin trackear en git — solo se commitea el `.html`, que es la versión que Iralys pidió como resultado final.
+
+Verificado con Playwright: los 5 diagramas renderizan como SVG sin errores de consola, confirmado dos veces (antes y después de los ajustes de superposición).
+
+---
+
+2026-08-27 — merge de `develop` a `actualiralys`, con el refactor grande de Mike (Economy/VisitorGenerator/DayTimer/shop/stampDrag) ya integrado:
+
+Conflictos en `docs/test-temporal.mjs`, `src/ts/classes/Game.ts` y `src/ts/main.ts` (18 bloques en total). La causa fue siempre la misma: `develop` había extraído a módulos y clases nuevas (`Economy.ts`, `VisitorGenerator.ts`, `DayTimer.ts`, `shop.ts`, `stampDrag.ts`) exactamente la misma lógica que esta rama todavía tenía escrita inline en `Game.ts`/`main.ts` (economía de la tienda, generación de visitantes, reloj de arena del día, drag and drop de los sellos) — mismo código, solo reorganizado por Mike. Se confirmó comparando cada bloque en conflicto contra el archivo nuevo correspondiente antes de resolver nada; el lado de esta rama ni siquiera compilaba (`Game.ts` usaba campos privados como `#parts`/`#names` que ya no estaban declarados), así que se tomó el lado de `develop` en los 18 bloques.
+
+Los `.js`/`.js.map` compilados en conflicto (`Game.js`, `main.js`) no se resolvieron a mano: se resolvieron primero los `.ts`, y la salida compilada se regeneró con `npm run build`, más confiable que fusionar JS generado a mano.
+
+Verificado con `npm run build` limpio y los 52 tests de `docs/test-temporal.mjs`, todos en verde. No se pusheó — el merge quedó commiteado localmente en `actualiralys`, adelantada respecto a `origin/actualiralys`.
+
+---
+
+2026-08-27 (parte 2) — limpieza de comentarios en las clases propias (Grupo B):
+
+A pedido de Iralys, se sacaron los comentarios explicativos de las clases que le corresponden según `especificaciones-economia.md` (Grupo B): `Rule.ts`, `Day.ts`, `Storage.ts`, `Game.ts`, `SoundManager.ts`, `MusicManager.ts`. No se tocó `main.ts` (autoría mezclada, no es una clase) ni `Economy.ts`/`VisitorGenerator.ts`/`DayTimer.ts` (confirmado por `git log` que son de Mike, aunque salieron de dividir `Game.ts`).
+
+De paso, `Game.ts` perdió un import sin usar (`getHistory`, de `Storage.ts`) y se emparejó la indentación de `decide()`, `endDay()`, `isLost()`/`isWon()`, el getter `currentVisitor` y `loadProgress()`, que tenían menos sangría que el resto de la clase desde antes.
+
+**Un intento fallido**: simplificar el tipo de retorno de `getAllCredits()` en `Storage.ts`, de `Record<string, number>` a `any`, rompió la compilación de `records.ts` (TypeScript perdía el tipo en `Object.entries(credits)`) — se revirtió. Ese `Record` no era capricho de más experiencia de la cuenta, hacía falta ahí para que el resto del código siguiera tipando bien.
+
+---
+
+2026-08-30 — investigación (falsa alarma) del control de tamaño de pantalla en Opciones:
+
+Iralys reportó que el slider "Tamaño de la pantalla de juego" (`#zoom-slider`, controla `--scene-zoom` sobre `#character-scene`, ver `style.css:1033-1048` y `main.ts:197-202`) andaba bien al agrandar pero desconfiguraba el layout al volver a un tamaño más chico. Diagnóstico inicial por lectura de código (`docs/diagnostico-tamano-pantalla.md`) no encontró ninguna causa de lógica (no hay acumulación de valores, ni `px` fijos, ni caché de tamaños viejos en JS — todo el HUD/pasaporte/sellos usa `%`/`cqw` relativos a `#character-scene`), así que quedó como hipótesis abierta un posible caso límite del motor de layout con `container-type: inline-size` + `aspect-ratio` + `calc(var())` en el mismo elemento.
+
+Se armó una prueba automatizada con Playwright (Chromium headless) contra el `public/` servido localmente: subir el slider a 140, bajarlo a 120 y volver a 100, midiendo `getBoundingClientRect()` de `#character-scene` y varios elementos hijos en cada paso, más capturas de pantalla. Primero sobre el escritorio vacío, después con una escena completa simulada (personaje con cara/ojos/boca/pelo/cuernos, pasaporte abierto con texto, los 3 sellos habilitados). En los dos casos el tamaño/posición volvió exactamente igual al bajar de nuevo a 100 (la única diferencia detectada, un `y` distinto en `#character-portrait`, resultó ser la animación `idle-bob` normal, no el zoom) y las capturas de los 3 pasos se veían proporcionadas, sin superposiciones.
+
+**Conclusión de Iralys, confirmada al probarlo de nuevo**: fue un error de su pantalla/navegador en el momento, no un bug real del juego. No se tocó código. Se deja documentado por si el diagnóstico (`docs/diagnostico-tamano-pantalla.md`) hace falta de referencia más adelante, pero no representa un bug pendiente.
+
+---
+
+2026-08-30 (parte 2) — tanda de 3 bugs + 1 reportado sobre la marcha, todos en zona de Iralys:
+
+Se ejecutó un prompt de corrección de bugs (con las restricciones del curso: nada de `interface`/genéricos/uniones/`try-catch`/`async-await`/`Map`/`Set`, comentarios en español, solo clases básicas) paso a paso, con revisión y commit de Iralys después de cada uno.
+
+**Bug 1 — botón para cerrar la ventana en la pantalla de salir**: agregado `#close-window-btn` en `#exit-screen` ([public/index.html](../public/index.html)) con su listener en `main.ts`, que llama `window.close()`. Documentada la limitación real: los navegadores solo dejan cerrar así una pestaña que el propio script abrió, en el resto lo ignoran en silencio (sin excepción, no hace falta `try/catch`).
+
+**Bug 2 — el día podía cortar una decisión a la mitad**: el reporte original ("al cambiar de día no se puede decidir sobre el primer pasajero") no se pudo reproducir tal cual estaba escrito — probado con Playwright (temporizador del día acelerado), el primer visitante de cada día siempre se pudo decidir con normalidad. El bug real, que Iralys precisó después de ver el resultado de esa primera prueba, era otro: si el temporizador del día vencía **mientras un visitante seguía sin decidir** (pasaporte sin abrir, o abierto pero sin soltar el sello), `game.endDay()` se disparaba igual y se lo saltaba de golpe — reproducido en el día 4 jugando de verdad. Corregido moviendo `dayTimer.markResolving()` (existía, pero recién se activaba al soltar el sello) al principio de `renderVisitor()`, así el día queda protegido desde que el visitante aparece en pantalla hasta que termina de decidirse, sin importar cuánto tarde el jugador. Verificado con Playwright en los dos escenarios (pasaporte nunca abierto, y abierto sin decidir) más el caso normal, sin regresiones.
+
+**Bug 3 — "NUEVA REGLA"/"¡ERROR!" chico e inconsistente**: confirmado que `#notice-kicker` estaba en 0.65rem (casi la mitad del 1.15rem de `#next-day-message`, el texto de abajo) con una fuente de fallback distinta. Parejado a `--font-jefa` y subido a 1rem.
+
+**Cursor parpadeando en la pantalla de derrota/victoria (reportado por Iralys sobre la marcha, no estaba en el prompt original)**: investigado a fondo sin lograr reproducirlo — 6 pruebas con Playwright distintas (derrota por teclado, derrota arrastrando el sello con mouse real, victoria vía `Game.isWon()` parcheado, tocar `#player-name-input` sin enviar el formulario y perder después, y presionar Tab ya parado en la pantalla final) siempre dieron `document.activeElement === document.body`, sin ningún input con foco. No hay un solo `.focus()` en todo el código: el único input real (`#player-name-input`) se remueve el foco explícitamente al enviar el formulario, y `changeState()` remueve el foco de cualquier elemento activo en cada cambio de pantalla, sin excepciones. Iralys dio por cerrado el tema sin evidencia adicional — no se tocó código para esto.
+
+Los 3 bugs corregidos quedan en 3 commits separados en `actualiralys` (uno por bug), cada uno revisado por Iralys antes de commitear.
+
+Verificado con `npm run build` limpio y los 52 tests de `docs/test-temporal.mjs`, todos en verde — ningún cambio de comportamiento, solo comentarios, un import muerto y formato.
 
 ---
 
@@ -484,3 +702,69 @@ Se implementaron 7 de las 15 ideas de `docs/lista_ideas.md` (las 1, 3, 5, 10, 11
 **El botón del último día ya no dice "Siguiente día".** En el resumen de fin de día del último día de la semana (`game.isWon()`), el botón `#day-summary-continue-btn` pasa a decir **"Finalizar semana"** en vez de "Siguiente día" — lleva a la pantalla final, no a otro día. `renderDaySummaryScreen()` lo reescribe en cada render (`game.isWon() ? "Finalizar semana" : "Siguiente día"`), así funciona igual para partidas de 5, 6 o 7 días sin comparar contra ningún número fijo.
 
 **Tests**: se borraron los TEST 12 (penalización por apurarse) y TEST 13 (pista de la tienda) de `docs/test-temporal.mjs`, que probaban justo lo que se sacó; los que eran TEST 14/15 (tiempo extra e indulto) se renumeraron a 12/13. Quedan 13 bloques, 43 marcadores `[OK]`, cero `[FALLO]`. `tsc` compila limpio y el smoke test de la parte 1 (modo difícil, semilla, persistencia) sigue en verde. Se actualizó la mención a `buyHint()` en `docs/convenciones.md` (se cambió por `buyExtraTime()`, que sí sigue existiendo).
+
+---
+
+2026-09-04 — merge de `develop` en `actualiralys`, y validación del nombre del jugador (solo letras):
+
+Se cerró el merge de `develop` (con la tanda de ideas de Mike ya integrada — modo difícil, desafío diario, teclado, tarjeta compartible, gate de audio, borrado de partidas/créditos) sobre `actualiralys`. Los conflictos reales estaban en `Game.ts`/`main.ts`: esta rama todavía tenía la pista de la tienda (`buyHint()`) y la penalización por decidir rápido (`wasRushed`), que el diario del lado de `develop` (ver entrada anterior, "ajustes pedidos por Mike") ya documentaba como sacadas a pedido de Mike — se tomó ese lado para esos dos archivos. `Storage.ts` se resolvió a mano para no perder el helper `loadJson()` propio de esta rama, sumando `clearCredits()` que traía el otro lado. Los `.js`/`.js.map` compilados no se tocaron a mano: se resolvieron los `.ts` y se regeneró todo con `npm run build`, mismo criterio que ya se usó en el merge grande del 2026-08-27.
+
+**Validación del nombre del jugador**: `#name-entry-screen` dejaba pasar cualquier cosa, incluido vacío (usaba `"Un1c0rN10"` como nombre por defecto en ese caso). A pedido de Iralys, ahora **solo se aceptan letras** (con tildes/ñ, más espacios para nombres de dos palabras) y **no se permite dejarlo en blanco** — ninguno de los dos casos cae más en un valor por defecto silencioso, el formulario no avanza y muestra un mensaje de error (`#player-name-error`, oculto por defecto vía la clase `.hidden` que ya usa el resto del proyecto). La validación es un `RegExp` simple (`ONLY_LETTERS_REGEX`) probado en el `submit` de `#player-name-form`, antes de guardar el nombre o arrancar la partida. `changeState()` oculta el error cada vez que se vuelve a entrar a esta pantalla, para que no quede visible de un intento anterior. Se sacó el placeholder `"Un1c0rN10"` (ya no tiene sentido con la nueva regla, tiene números) y se reemplazó por un ejemplo de nombre real.
+
+Verificado con `npm run build` + los 43 tests de `docs/test-temporal.mjs` — todo en verde (la validación nueva no toca `Game.ts`, así que no había test que pudiera romperse). No se probó en el navegador todavía.
+
+---
+
+2026-09-04 (parte 2) — la pantalla-gate ("Comenzar") pasa a verse apilada sobre el menú, en vez de un cuadro negro suelto:
+
+Dos pedidos de Iralys en la misma sesión sobre `#start-gate-screen` (la pantalla negra con el botón antes del menú, ver idea 1 en la tanda de backlog de Mike): primero, que el botón dijera **"Comenzar"** en vez de "Start" y el fondo tuviera 80% de opacidad; después, que se notara más el menú detrás, "como una pantalla delante de otra".
+
+**Primer intento (80%) no alcanzaba** porque `#menu-screen` arranca con `class="hidden"` (`display: none`) hasta que se hace click en el botón — bajarle la opacidad al negro de encima no servía de nada si no había nada real renderizado debajo, solo el fondo liso de `body`. Se sacó el `hidden` inicial de `#menu-screen` en `index.html`: ahora el menú se dibuja desde el arranque (título, botones, tabla de "últimas partidas", todo), y como `updateContinueButton()`/`updateHardModeButton()`/`renderHistoryTable()` ya se llaman una vez sueltas al cargar el script (no dependían de pasar por `changeState("menu")`), se ve con el estado correcto de entrada, no en blanco.
+
+**Bajó la opacidad del velo** de `#start-gate-screen` a 0.45 (era 0.8) para que el menú se note claramente detrás, no solo se intuya. Como `#start-gate-screen` y `#menu-screen` son las dos `position: fixed` con `z-index` automático, el orden de pintado dependía de cuál apareciera después en el HTML (`#menu-screen` iba después → tapaba el botón) — se agregó `z-index: 10` a `#start-gate-screen` para fijar que el velo siempre quede arriba, sin depender del orden del markup.
+
+**El gate sigue bloqueando clicks igual que antes**: al ser `position: fixed; inset: 0`, cubre toda la pantalla y absorbe los clicks aunque se vea el menú de fondo, así que no se puede arrancar partida "por accidente" antes de tocar "Comenzar". El audio tampoco se desbloquea antes de tiempo: `musicManager.playMenu()` sigue atado al click de `#start-gate-btn`, no a que el menú sea visible.
+
+Verificado con Playwright (Chromium ya cacheado en el equipo de una sesión anterior, sin reinstalar nada) contra `public/` servido con `python -m http.server`: captura confirmando que el menú completo se ve de fondo, atenuado, con el botón "Comenzar" flotando encima. Los 43 tests de `docs/test-temporal.mjs` siguen en verde (cambio de solo HTML/CSS, no toca `Game.ts` ni ningún `.ts`).
+
+2026-09-07 — prueba de rendimiento de recursos gráficos y peso de las imágenes por Iralys:
+
+Se realizó un test sobre los recursos gráficos del juego para comprobar su peso y detectar posibles problemas relacionados con el rendimiento y el tiempo de carga inicial.
+
+El análisis se realizó sobre **185 imágenes**, obteniendo un peso total de **389,37 MB**. El tiempo empleado por el test para analizar los recursos fue de **18,42 ms**.
+
+Entre los recursos más pesados se identificaron `finalConvertidoYokai.png` (9,71 MB), `fondoPantallaJuegoT.png` (9,47 MB), `general_background.png` (7,20 MB) y `pantallaIntermedia6.png` (7,01 MB).
+
+El resultado mostró que el peso total de los recursos gráficos es elevado y puede afectar al tiempo de carga inicial del juego. Este resultado se utilizará como referencia para comparar posteriormente el rendimiento después de optimizar y comprimir las imágenes.
+
+2026-09-07 — prueba de legibilidad tipográfica:
+
+Se realizó un test sobre los estilos CSS del juego para detectar posibles problemas relacionados con la legibilidad de los textos, especialmente tamaños de fuente demasiado pequeños, pesos de fuente elevados y valores de `line-height` reducidos.
+
+El análisis se realizó sobre el archivo `public/styles/style.css`, comprobando las reglas que utilizan `font-size`, `font-weight`, `line-height` y `letter-spacing`.
+
+El objetivo de esta prueba es identificar elementos que puedan resultar difíciles de leer para el usuario y disponer de una referencia técnica antes de realizar posibles ajustes de tipografía. Los resultados del test se utilizarán para determinar qué elementos requieren una revisión visual en escritorio y dispositivos móviles.
+
+Se aclaró que esta prueba automatizada permite detectar posibles riesgos técnicos de legibilidad, pero no puede determinar por sí sola si una persona considera que una tipografía es fácil de leer.
+
+### 2026-09-07 — prueba de auditoría básica de seguridad del cliente:
+
+Se realizó una auditoría estática del código del juego para detectar posibles riesgos relacionados con la seguridad del código ejecutado en el navegador y la manipulación de datos del lado del cliente.
+
+El análisis se realizó sobre **57 archivos**, de los cuales **48 correspondían a JavaScript/TypeScript y 1 a HTML**, comprobando diferentes aspectos de seguridad.
+
+No se detectó uso de `eval()` ni de `new Function()`. Tampoco se encontraron patrones evidentes de claves API, tokens, contraseñas u otros secretos expuestos en el código.
+
+No se detectaron variables críticas del estado del juego expuestas directamente mediante `window`. También se comprobó la encapsulación mediante campos privados de JavaScript/TypeScript, detectándose **15 campos privados**, utilizados principalmente en las clases `DayTimer`, `Game`, `SoundManager` y `VisitorGenerator`.
+
+El análisis detectó usos de `innerHTML` en `main.js`, `records.js`, `main.ts` y `records.ts`. Estos resultados no implican por sí mismos una vulnerabilidad, por lo que requieren una revisión manual para comprobar que no se introduzca contenido no validado.
+
+También se detectó el uso de `localStorage` en `Storage.js` y `Storage.ts`. Debido a que el juego se ejecuta en el lado del cliente, los datos almacenados localmente pueden ser modificados manualmente por el usuario desde las herramientas del navegador.
+
+Durante la prueba también se detectó una variable denominada `streak` que requiere revisión para determinar su ámbito real. El análisis automático no permite determinar por sí solo si dicha variable está expuesta globalmente.
+
+Como conclusión, no se identificaron vulnerabilidades críticas evidentes mediante el análisis estático realizado. La principal limitación de seguridad corresponde a la propia arquitectura cliente del juego, ya que el código y los datos distribuidos al usuario pueden ser inspeccionados o modificados. El uso de campos privados mejora la encapsulación y organización del código, pero no impide completamente la modificación del código distribuido.
+
+## 2026-09-12
+
+Se ajustaron los estilos de los títulos (h2): estaban muy gruesos porque Jersey 10 solo tiene un peso real (400), así que pedir otro font-weight no tenía efecto. Cambió la font-family de los h2 a Pixelify Sans, que sí es variable, logrando un trazo más liviano sin perder la estética pixel-art del juego.
