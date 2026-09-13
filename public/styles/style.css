@@ -2,10 +2,10 @@
    propio repo (public/fonts/), no via Google Fonts - el juego no depende de
    internet para verse bien. Pixelify Sans es variable (un solo archivo cubre
    400-700); Press Start 2P solo existe en un peso. */
-@font-face {
+/*@font-face {
   font-family: "Pixelify Sans";
   src: url("../fonts/pixelify-sans-latin.woff2") format("woff2");
-  font-weight: 400 700;
+  font-weight: 400 400;
   font-style: normal;
   font-display: swap;
 }
@@ -13,10 +13,10 @@
 @font-face {
   font-family: "Press Start 2P";
   src: url("../fonts/press-start-2p-latin.woff2") format("woff2");
-  font-weight: 400;
+  font-weight: 300;
   font-style: normal;
   font-display: swap;
-}
+}*/
 
 /* pixel-art redondeada, mas moderna y legible que Press Start 2P/Pixelify
    Sans - adoptada como fuente unica del juego (titulos y texto funcional
@@ -62,11 +62,16 @@
   font-family: var(--font-body);
 }
 
-h1, h2, #menu-buttons h1, .screen-panel h2 {
+/*h1, h2, #menu-buttons h1, .screen-panel h2 {
   font-family: var(--font-display);
   letter-spacing: 0.04em;
 }
-
+*/
+h1, h2, #menu-buttons h1, .screen-panel h2 {
+  font-family: "Pixelify Sans", var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
 body {
   background: #1e1b2e;
   color: #f2ede3;
@@ -253,8 +258,8 @@ button {
      piso fijo, en una ventana muy chica dejaria de encoger antes que la
      placa y se saldria de ella (letra "gigante" pisando el boton de al lado) */
   font-size: clamp(0px, 1.5vw, 1.05rem);
-  font-weight: 600;
-  line-height: 1;
+  font-weight: 500;
+  line-height: 1.2;
   letter-spacing: 0.08em;
   text-align: center;
   /* SIEMPRE una sola linea: no salta, no envuelve; si el texto es largo hay que
@@ -504,7 +509,7 @@ button:disabled {
      Piso en 0 a proposito: la placa (width: 60%) no tiene piso propio, si la
      letra tuviera un piso fijo se saldria de la placa en una ventana chica */
   font-size: clamp(0px, 2cqw, 1.7rem);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-align: center;
   text-shadow: 0 2px 5px rgba(53, 28, 47, 0.85);
@@ -564,7 +569,7 @@ button:disabled {
   /* cqi = % del ancho real de #menu-layout, mismo criterio que .menu-real-btn -
      piso en 0 para que encoja junto con #menu-sidebar en una ventana chica */
   font-size: clamp(0px, 2cqi, 2rem);
-  font-weight: 400;
+  font-weight: 100;
   color: #f2ede3;
 }
 
@@ -597,7 +602,7 @@ button:disabled {
   color: #ceafd6;
   /* piso en 0 a proposito, mismo motivo que .menu-real-btn de arriba */
   font-size: clamp(0px, 1.6cqw, 1.3rem);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-align: center;
   text-shadow: 0 2px 5px rgba(53, 28, 47, 0.85);
@@ -690,10 +695,13 @@ button:disabled {
   /* los botones de adentro escalan (placa Y letra) con el ancho del panel,
      igual que .menu-real-btn con el menu -> el texto LLENA el boton */
   container-type: inline-size;
+  font-weight: 300;
 }
 
-.screen-panel h2 {
+#name-entry-screen .screen-panel h2 {
   margin: 0;
+  font-size: clamp(1.1rem, 5vw, 1.6rem);
+  font-weight: 200;
 }
 
 .screen-subtitle {
@@ -817,7 +825,7 @@ button:disabled {
   border-radius: 6px;
   padding: 0.5rem 0.8rem;
   margin: 0.4rem 0 0.8rem;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 /*
@@ -1260,26 +1268,39 @@ button:disabled {
    ajustadas una vez ya jugado: DIA quedo bien en horizontal, solo hacia
    falta bajarlo; ERRORES y RACHA (RACHA mas todavia) se corrieron a la
    derecha para caer despues de la palabra ya dibujada en el arte */
-#day-counter,
-#error-counter,
+#day-counter {
+  position: absolute;
+  top: 59%;
+  transform: translateY(-50%);
+  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
+  color: #f2ede3;
+  font-weight: 300;
+  left: 32%;
+}
+
+#error-counter {
+  position: absolute;
+  top: 59%;
+  transform: translateY(-50%);
+  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
+  color: #f2ede3;
+  font-weight: 400;
+  left: 56%;
+}
+
+#error-counter.danger {
+  color: #ff6f91;
+  font-weight: 600;
+}
+
 #streak-counter {
   position: absolute;
   top: 59%;
   transform: translateY(-50%);
-  /* cqw = % del ancho real de #character-scene (ver container-type ahi) -
-     no vw, que no sigue el tamaño real de la caja en toda proporcion de
-     pantalla (ver diario.md) */
-  font-size: clamp(0.6rem, 1.7cqw, 1.1rem);
+  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
   color: #f2ede3;
-}
-
-#day-counter { left: 32%; }
-#error-counter { left: 56%; }
-#streak-counter { left: 77%; }
-
-#error-counter.danger {
-  color: #ff6f91;
-  font-weight: bold;
+  font-weight: 400;
+  left: 77%;
 }
 
 /* el boton de pausa del HUD (#pause-btn, lleva .exit-to-menu-btn pero PAUSA,
@@ -1375,9 +1396,10 @@ button:disabled {
 #money-counter {
   /* mismo criterio cqw que el HUD/dialogo/pasaporte de arriba (ver
      container-type en #character-scene) */
-  font-size: clamp(0.5rem, 1.35cqw, 0.8rem);
+  font-size: clamp(0.7rem, 1.8cqw, 1.2rem);
   color: #f2ede3;
   text-align: center;
+  font-weight: 500;
 }
 
 /* debajo del reloj de arena, misma columna que #coin-widget/#day-clock
