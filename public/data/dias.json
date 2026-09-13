@@ -21,7 +21,7 @@
     "dia": 4,
     "objetivoVisitantes": 6,
     "reglasActivas": [1, 2, 3, 4],
-    "mensajeIntro": "A partir de ahora todos los visitantes deben declarar su especie en el pasaporte. Pero cuidado: ningún Yokai va a reconocer lo que es — puede declarar ser humano, otra especie, o cualquier cosa. Lo único que no cambia es lo que ves: cuernos, ojos amarillos, o venir del río. Si lo que declara no coincide con lo que observás, está mintiendo. (Las reglas anteriores se mantienen.)"
+    "mensajeIntro": "Ya te habrás dado cuenta de que el pasaporte trae, desde tu primer día, un dato que hasta ahora era solo decorativo: la especie declarada. Desde hoy empieza a importar: la agencia prohibió 4 palabras en ese campo, sea verdad o mentira — 'kitsune', 'oni', 'kappa' y 'poseído'. Si el pasaporte trae cualquiera de esas 4, se rechaza sin pensarlo, mires o no mires el resto. Ojo: esto no tiene nada que ver con cuernos, ojos amarillos o venir del río — un visitante sin ninguno de esos rasgos puede perfectamente traer una de estas 4 palabras igual, así que revisá el campo de especie aunque el resto del pasaporte parezca impecable. (Las reglas anteriores se mantienen, como siempre.)"
   },
   {
     "dia": 5,
@@ -32,13 +32,13 @@
   {
     "dia": 6,
     "objetivoVisitantes": 8,
-    "reglasActivas": [2, 3, 4, 5],
-    "mensajeIntro": "La agencia revisó sus propios archivos y encontró algo incómodo: los cuernos se pueden disimular con cascos rituales. A partir de hoy ya no son prueba por sí solos — pero la declaración de especie sigue sin fallar, así que ojo con eso. Hoy además llegan más visitantes."
+    "reglasActivas": [1, 2, 3, 4, 5, 7],
+    "mensajeIntro": "Tratado interestelar firmado anoche: desde hoy los visitantes de la vía láctea (los alien) necesitan su propio sello. Si un alien está en regla y lo vas a dejar pasar, NO uses el sello verde de siempre — usá el SELLO AZUL que te dejaron en el escritorio. El azul es solo para ellos: usarlo con cualquier otro visitante también cuenta como error. Ojo, esto no reemplaza nada: si el alien rompe alguna de las cinco reglas anteriores, se rechaza igual que todos."
   },
   {
     "dia": 7,
     "objetivoVisitantes": 8,
-    "reglasActivas": [2, 3, 4, 5, 6],
-    "mensajeIntro": "Nuevo memo de la agencia: apareció un sello plateado, falsificación de una aduana rival. Se suma a la lista de sellos prohibidos. El resto de las reglas se mantiene igual."
+    "reglasActivas": [1, 2, 3, 4, 5, 6, 7],
+    "mensajeIntro": "Nuevo memo de la agencia: apareció un sello plateado, falsificación de una aduana rival. Se suma a la lista de sellos prohibidos. El resto de las reglas se mantiene igual, incluido el sello azul de los alien."
   }
 ]

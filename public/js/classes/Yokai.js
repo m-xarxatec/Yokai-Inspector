@@ -4,6 +4,11 @@ var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
     return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
 };
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
 var _Yokai_yokaiType;
 import { Character } from "./Character.js";
 export class Yokai extends Character {
@@ -18,19 +23,10 @@ export class Yokai extends Character {
         _Yokai_yokaiType.set(this, void 0);
         __classPrivateFieldSet(this, _Yokai_yokaiType, yokaiType, "f");
     }
-    specieLiar() {
-        // la especie "aparente" es la que se deduce mirando al personaje, no lo que dice el pasaporte.
-        // orden importa: un Yokai puede tener region "rio" ademas de su rasgo principal (ver
-        // Game#generateVisitor, rasgos combinados) - por eso la region se chequea primero y el
-        // rasgo que define su tipo real (cuernos/ojos amarillos) se chequea al final, para que gane.
-        let especieAparente = "humano";
-        if (this.obtainPassport.obtainRegion === "rio")
-            especieAparente = "kappa";
-        if (this.obtainHaveHorns)
-            especieAparente = "oni";
-        if (this.obtainYellowEyes)
-            especieAparente = "kitsune";
-        return this.obtainPassport.obtainDeclaredSpecie !== especieAparente;
+    // tipo REAL del Yokai ("oni"/"kitsune"/"kappa"), no el que declara el pasaporte -
+    // lo usa Game para los premios de fin de partida ("no se te paso ni un solo kappa")
+    get obtainYokaiType() {
+        return __classPrivateFieldGet(this, _Yokai_yokaiType, "f");
     }
 }
 _Yokai_yokaiType = new WeakMap();

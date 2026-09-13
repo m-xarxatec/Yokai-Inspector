@@ -1,11 +1,10 @@
-import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, getHistory, addCredits } from "../Storage.js";
-import { Passport } from "./Passport.js";
+import { saveCurrentGame, loadCurrentGame, deleteCurrentGame, saveToHistory, getHistory, addCredits, addResultToStreak } from "../Storage.js";
 import { Character } from "./Character.js";
-import { Human } from "./Human.js";
 import { Yokai } from "./Yokai.js";
 import { Rule } from "./Rule.js";
 import { Day } from "./Day.js";
-
+import { VisitorGenerator } from "./VisitorGenerator.js";
+import { Economy } from "./Economy.js";
 
 export class Game{
 
@@ -14,34 +13,66 @@ export class Game{
     #money: number;
     #maxErrors: number;
     #totalDays: number;
+    // modo dificil: menos margen de error (#maxErrors 3 en vez de 4) y mas
+    // proporcion de visitantes problematicos (ver VisitorGenerator.generate()).
+    // Solo se elige antes de arrancar una partida nueva, nunca a mitad de una.
+    #hardMode: boolean;
     #days: Day[];
     #currentVisitor: Character | null;
     #visitorsSeenToday: number;
-    #todayProblematicSlots: boolean [];
-    #parts: any;
-    #names: string[];
-    #phrases: string[]
-    #stamps: any[];
-    #species: string[];
-    #suspiciousPhrases: string[];
     #playerName: string;
+    #visitorGenerator: VisitorGenerator;
+    #economy: Economy;
+    // datos que solo se usan para los premios de fin de partida (ver main.ts,
+    // AWARD_BEATS): que tipo de visitante dejo pasar el jugador alguna vez, y cual
+    // fue su dia con mas visitantes atendidos
+    #letThroughOni: boolean;
+    #letThroughKitsune: boolean;
+    #letThroughKappa: boolean;
+    #bestDayVisitors: number;
+    #bestDayNumber: number;
+    // contadores del dia EN CURSO (se resetean en #startDay(), igual que
+    // #visitorsSeenToday) y una "foto" del ultimo dia ya cerrado (necesaria
+    // porque endDay() ya llama a #startDay() -que resetea los contadores del
+    // dia- antes de que main.ts llegue a leerlos, ver pantalla de resumen)
+    #dayAccepted: number;
+    #dayRejected: number;
+    #dayErrors: number;
+    #dayMoney: number;
+    #lastDayAccepted: number;
+    #lastDayRejected: number;
+    #lastDayErrors: number;
+    #lastDayMoney: number;
 
-    constructor(playerName: string = "Jugador"){
+    // hardMode y randomFn son opcionales y con default "sin efecto" (modo normal
+    // y Math.random) a proposito: todo el codigo que ya llamaba new Game(nombre)
+    // o new Game(nombre, dias) -incluidos los tests- sigue comportandose igual.
+    constructor(playerName: string = "Jugador", totalDays: number = 7, hardMode: boolean = false, randomFn: () => number = Math.random){
         this.#playerName = playerName.trim() !== "" ? playerName : "Jugador";
         this.#dayNumber = 1;
         this.#errors = 0;
         this.#money = 10;
-        this.#maxErrors = 4;
-        this.#totalDays = 7;
+        this.#hardMode = hardMode;
+        this.#maxErrors = hardMode ? 3 : 4;
+        this.#totalDays = totalDays;
         this.#days = [];
         this.#currentVisitor = null;
         this.#visitorsSeenToday = 0;
-        this.#todayProblematicSlots = [];
-        this.#names = [];
-        this.#phrases = [];
-        this.#stamps = [];
-        this.#species = [];
-        this.#suspiciousPhrases = [];
+        this.#visitorGenerator = new VisitorGenerator(randomFn);
+        this.#economy = new Economy();
+        this.#letThroughOni = false;
+        this.#letThroughKitsune = false;
+        this.#letThroughKappa = false;
+        this.#bestDayVisitors = 0;
+        this.#bestDayNumber = 0;
+        this.#dayAccepted = 0;
+        this.#dayRejected = 0;
+        this.#dayErrors = 0;
+        this.#dayMoney = 0;
+        this.#lastDayAccepted = 0;
+        this.#lastDayRejected = 0;
+        this.#lastDayErrors = 0;
+        this.#lastDayMoney = 0;
     }
 
     loadData(onComplete: () => void): void {
@@ -53,14 +84,8 @@ export class Game{
             fetch("data/reglas.json").then(r => r.json()),
             fetch("data/dias.json").then(r => r.json()),
             fetch("data/sellos.json").then(r => r.json()),
-            fetch("data/species.json").then(r => r.json()),
-            fetch("data/frases_sospechosas.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species, suspiciousPhrases]) =>{
-                this.#parts = parts;
-                this.#names = names;
-                this.#phrases = phrases;
-                this.#stamps = stamps;
-                this.#species = species;
-                this.#suspiciousPhrases = suspiciousPhrases;
+            fetch("data/species.json").then(r => r.json())]).then(([parts, yokais, names, phrases, rawRules, rawDays, stamps, species]) =>{
+                this.#visitorGenerator.setData(parts, names, phrases, stamps, species);
 
                 const rules = rawRules.map((r: any) => new Rule(r.dia, r.propiedad, r.valorProhibido, r.descripcion));
                 this.#days = rawDays.map((d: any) => {
@@ -77,167 +102,159 @@ export class Game{
 
     #startDay(): void {
         this.#visitorsSeenToday = 0;
-
-        const goal = this.#days[this.#dayNumber -1].getVisitorGoal();
-        const problematicCount = Math.min(this.#dayNumber +1, goal - 1)
-
-        const slots: boolean[] = [];
-        for (let i = 0; i< goal; i++){
-            slots.push(i < problematicCount)
-        }
-
-        this.#todayProblematicSlots = slots.sort(() => Math.random() - 0.5);
-
-        this.#currentVisitor = this.#generateVisitor();
-        saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money})
-    }
-    #generateVisitor(): Character {
-        
-        const isProblematic = this.#todayProblematicSlots[this.#visitorsSeenToday];
-        const name = this.#names[Math.floor(Math.random() * this.#names.length)];
-        const phrase = this.#pickPhrase(isProblematic);
-        const face = this.#parts.rostro[Math.floor(Math.random() * this.#parts.rostro.length)];
-        const eyesShape = this.#parts.ojos[Math.floor(Math.random() * this.#parts.ojos.length)];
-        const mouth = this.#parts.boca[Math.floor(Math.random() * this.#parts.boca.length)];
-        const horns = this.#parts.cuernos[Math.floor(Math.random() * this.#parts.cuernos.length)];
-        const hair = this.#parts.sombrero[Math.floor(Math.random() * this.#parts.sombrero.length)];
-
-        if (!isProblematic) {
-            const safeRegions = ["campo", "montaña", "ciudad", "playa"];
-            const region = safeRegions[Math.floor(Math.random() * safeRegions.length)];
-            const safeStamps = ["dorado", "rojo"];
-            const stamp = safeStamps[Math.floor(Math.random() * safeStamps.length)]
-            const declaredSpecie = this.#species[Math.floor(Math.random() * this.#species.length)];
-            const passport = new Passport(name, region, declaredSpecie, stamp);
-            return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
-
-        }
-
-        const activeRules = this.#days[this.#dayNumber - 1].getActiveRules();
-        const targetRule = activeRules[Math.floor(Math.random() * activeRules.length)];
-
-        let yokaiType = "oni";
-        let declaredSpecie = "";
-        let region = "campo";
-        let stamp = "dorado";
-
-        const property = targetRule.getProperty();
-
-        if (property === "tieneCuernos") {
-        yokaiType = "oni";
-        declaredSpecie = "oni";};
-
-        if (property === "ojosAmarillos") {
-        yokaiType = "kitsune";
-        declaredSpecie = "kitsune";};
-
-        if (property === "region") {
-        yokaiType = "kappa";
-        declaredSpecie = "kappa";
-        region = "rio";};
-        
-        if (property === "mintioSobreEspecie") {
-        yokaiType = ["oni", "kitsune", "kappa"][Math.floor(Math.random() * 3)];
-        declaredSpecie = "humano"; // la mentira
-        if (yokaiType === "kappa") {
-            region = "rio";
-        }
-        }
-
-        if (property === "sello") {
-        declaredSpecie = "humano";
-        stamp = targetRule.getForbiddenValue();
-        }
-
-        // rasgos combinados: ademas del rasgo principal de arriba (el de targetRule), un visitante
-        // problematico puede tener, con una probabilidad extra, UN segundo rasgo sospechoso (nunca
-        // dos a la vez, para no dejar 3 señales juntas y sacar toda la duda) de otra regla que YA
-        // este activa hoy - obliga a revisar todo el pasaporte, no solo "el rasgo del dia".
-        const EXTRA_TRAIT_CHANCE = 0.35;
-
-        const stampRules = activeRules.filter((rule: Rule) => rule.getProperty() === "sello");
-
-        const extraTraitOptions: string[] = [];
-        const regionRuleActive = activeRules.some((rule: Rule) => rule.getProperty() === "region");
-        if (property !== "region" && regionRuleActive) {
-        extraTraitOptions.push("region");
-        }
-        if (property !== "sello" && stampRules.length > 0) {
-        extraTraitOptions.push("sello");
-        }
-
-        if (extraTraitOptions.length > 0 && Math.random() < EXTRA_TRAIT_CHANCE) {
-        const extraTrait = extraTraitOptions[Math.floor(Math.random() * extraTraitOptions.length)];
-        if (extraTrait === "region") {
-        region = "rio";
-        }
-        if (extraTrait === "sello") {
-        const extraStampRule = stampRules[Math.floor(Math.random() * stampRules.length)];
-        stamp = extraStampRule.getForbiddenValue();
-        }
-        }
-
-        // desde el dia 4, ningun Yokai reconoce su especie real - declara cualquier otra cosa del
-        // array (puede ser "humano", otra especie de Yokai, o directamente una tonteria), sin
-        // importar que regla lo genero. La unica forma de descubrirlo es mirar sus rasgos reales.
-        if (this.#dayNumber >= 4 && property !== "sello") {
-        const opcionesDeMentira = this.#species.filter((especie: string) => especie !== yokaiType);
-        declaredSpecie = opcionesDeMentira[Math.floor(Math.random() * opcionesDeMentira.length)];
-        }
-
-        const passport = new Passport(name, region, declaredSpecie, stamp);
-
-        if (targetRule.getProperty() === "sello" ) {
-        return new Human(name, passport, face, eyesShape, false, mouth, horns, false, hair, phrase);
-        }
-        return new Yokai(name, passport, face, eyesShape, mouth, horns, hair, phrase, yokaiType);
+        this.#dayAccepted = 0;
+        this.#dayRejected = 0;
+        this.#dayErrors = 0;
+        this.#dayMoney = 0;
+        this.#economy.resetForNewDay();
+        this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1], this.#hardMode);
+        saveCurrentGame({ dayNumber: this.#dayNumber, errors: this.#errors, money: this.#money, totalDays: this.#totalDays, hardMode: this.#hardMode})
     }
 
-    // los visitantes problematicos tienen mas chance de decir una frase con pista (no siempre);
-    // los honestos tienen una chance chica de decir una tambien, para que la pista no sea 100% confiable.
-    #pickPhrase(isProblematic: boolean): string {
-        const suspiciousChance = isProblematic ? 0.5 : 0.12;
-        if (Math.random() < suspiciousChance) {
-            return this.#suspiciousPhrases[Math.floor(Math.random() * this.#suspiciousPhrases.length)];
+    // guarda el dia con mas visitantes atendidos (premio de velocidad). Se llama
+    // justo antes de que el contador del dia se reinicie o de que la partida termine,
+    // nunca despues de tocar #dayNumber.
+    #recordDayVisitors(): void {
+        if (this.#visitorsSeenToday > this.#bestDayVisitors) {
+            this.#bestDayVisitors = this.#visitorsSeenToday;
+            this.#bestDayNumber = this.#dayNumber;
         }
-        return this.#phrases[Math.floor(Math.random() * this.#phrases.length)];
     }
 
-    decide(accept: boolean): void {
+    // anota que tipo de visitante dejo pasar el jugador (premios de "no se te paso
+    // ninguno"). Solo cuenta al aceptar: rechazarlo es justamente no dejarlo pasar.
+    #recordLetThrough(visitor: Character): void {
+        if (visitor.obtainHaveHorns) {
+            this.#letThroughOni = true;
+        }
+        if (visitor instanceof Yokai && visitor.obtainYokaiType === "kitsune") {
+            this.#letThroughKitsune = true;
+        }
+        if (visitor instanceof Yokai && visitor.obtainYokaiType === "kappa") {
+            this.#letThroughKappa = true;
+        }
+    }
+
+    // true si hoy rige la regla del sello azul (reglas.json, propiedad "selloAlien").
+    // La usa decide() y tambien main.ts, para mostrar el sello azul en el escritorio
+    // recien el dia en que empieza a hacer falta.
+    alienStampRuleActive(): boolean {
+        return this.currentDay.getActiveRules().some((rule: Rule) => rule.getProperty() === "selloAlien");
+    }
+
+    get extraTimeCost(): number {
+        return this.#economy.extraTimeCost;
+    }
+    get usedExtraTimeToday(): boolean {
+        return this.#economy.usedExtraTimeToday;
+    }
+
+    // tienda: cuantos segundos sumar al reloj del dia los pone main.ts
+    // (EXTRA_TIME_MS) - aca solo se controla el dinero y el limite de una vez
+    // por dia (si no, el reloj de arena, que es la presion central del juego,
+    // dejaria de importar)
+    buyExtraTime(): boolean {
+        const cost = this.#economy.tryBuyExtraTime(this.#money);
+        if (cost === 0) {
+            return false;
+        }
+        this.#money -= cost;
+        return true;
+    }
+
+    get insuranceCost(): number {
+        return this.#economy.insuranceCost;
+    }
+    get hasInsurance(): boolean {
+        return this.#economy.hasInsurance;
+    }
+
+    // tienda: activa el indulto (ver decide()) - un solo indulto activo a la
+    // vez, no se puede comprar otro encima del que ya esta activo
+    buyInsurance(): boolean {
+        const cost = this.#economy.tryBuyInsurance(this.#money);
+        if (cost === 0) {
+            return false;
+        }
+        this.#money -= cost;
+        return true;
+    }
+
+    // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
+    // opcional para no romper a quien llame decide(accept) a secas (los tests, y
+    // todo el codigo anterior al dia 6).
+    decide(accept: boolean, usedAlienStamp: boolean = false): void {
     const currentDay = this.#days[this.#dayNumber - 1];
-    const violatedRule = currentDay.evaluateCharacter(this.#currentVisitor as Character);
+    const visitor = this.#currentVisitor as Character;
+    const violatedRule = currentDay.evaluateCharacter(visitor);
     const shouldReject = violatedRule !== null; //si se esta violando una regla, el personaje actual debe ser rechazado
-    const wasCorrect = (accept && !shouldReject) || (!accept && shouldReject);
+
+    // desde el dia en que rige la regla del sello azul, dejar pasar a un alien exige
+    // sellarlo con el AZUL, y el azul no vale para nadie mas. Ojo: esto solo cambia
+    // COMO se aprueba - a quien hay que rechazar no cambia en absoluto, un alien que
+    // viola cualquiera de las otras reglas se rechaza igual que el resto.
+    const needsAlienStamp = this.alienStampRuleActive() && visitor.isAlien();
+    const rightStamp = usedAlienStamp === needsAlienStamp;
+
+    const wasCorrect = (accept && !shouldReject && rightStamp) || (!accept && shouldReject);
 
     if (wasCorrect) {
-        this.#money += 10;
+        this.#money += 2; // antes 10 - se achico porque ahora, con dia por tiempo, se pueden ver muchos mas visitantes que antes
+        this.#dayMoney += 2;
     } else {
         this.#money -= 5;
-        this.#errors += 1;
+        this.#dayMoney -= 5;
+        // el indulto absorbe este error (no cuenta para los 4 que pierden la
+        // partida) pero no devuelve el dinero - no es gratis equivocarse, es
+        // que no te cuesta la partida. Se consume, no queda para el proximo error.
+        if (!this.#economy.consumeInsuranceIfActive()) {
+            this.#errors += 1;
+            this.#dayErrors += 1;
+        }
     }
 
     this.#visitorsSeenToday += 1;
+    if (accept) {
+        this.#dayAccepted += 1;
+        this.#recordLetThrough(visitor);
+    } else {
+        this.#dayRejected += 1;
+    }
 
     if (this.isLost()) {
-        saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota", name: this.#playerName });
+        this.#recordDayVisitors();
+        saveToHistory({ day: this.#dayNumber, errors: this.#errors, money: this.#money, result: "derrota", name: this.#playerName, totalDays: this.#totalDays, hardMode: this.#hardMode });
         addCredits(this.#playerName, this.#money);
+        addResultToStreak("derrota");
         deleteCurrentGame();
         return;
     }
 
-    if (this.#visitorsSeenToday >= currentDay.getVisitorGoal()) {
-        this.#dayNumber += 1;
-        if (this.isWon()) {
-        saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName });
-        addCredits(this.#playerName, this.#money);
-        deleteCurrentGame();
-        return;
-        }
-        this.#startDay();
-        return;
+    this.#currentVisitor = this.#visitorGenerator.generate(this.#dayNumber, this.#days[this.#dayNumber - 1], this.#hardMode);
     }
 
-    this.#currentVisitor = this.#generateVisitor();
+    // el dia ya no termina por cantidad de visitantes: lo llama main.ts cuando se
+    // acaba el temporizador del dia. Antes vivia adentro de decide(), atado a
+    // visitorsSeenToday >= currentDay.getVisitorGoal().
+    endDay(): void {
+    this.#recordDayVisitors(); // antes de tocar #dayNumber: el conteo es del dia que se cierra
+    // foto del dia que se cierra, ANTES de que #startDay() (mas abajo) resetee
+    // los contadores del dia - ver pantalla de resumen en main.ts
+    this.#lastDayAccepted = this.#dayAccepted;
+    this.#lastDayRejected = this.#dayRejected;
+    this.#lastDayErrors = this.#dayErrors;
+    this.#lastDayMoney = this.#dayMoney;
+    this.#economy.snapshotDayEnd();
+    this.#dayNumber += 1;
+    if (this.isWon()) {
+        saveToHistory({ day: this.#totalDays, errors: this.#errors, money: this.#money, result: "victoria", name: this.#playerName, totalDays: this.#totalDays, hardMode: this.#hardMode });
+        addCredits(this.#playerName, this.#money);
+        addResultToStreak("victoria");
+        deleteCurrentGame();
+        return;
+    }
+    this.#money -= this.#economy.chargeDailyCost(this.currentDay.getActiveRules().length);
+    this.#startDay();
     }
 
     isLost(): boolean {
@@ -248,23 +265,71 @@ export class Game{
     return this.#dayNumber > this.#totalDays;
     }
 
-    get dayNumber(): number { 
-        return this.#dayNumber; 
+    get dayNumber(): number {
+        return this.#dayNumber;
     }
-    get errors(): number { 
-        return this.#errors; 
+    get totalDays(): number {
+        return this.#totalDays;
     }
-    get money(): number { 
-        return this.#money; 
+    get errors(): number {
+        return this.#errors;
+    }
+    // cuantos errores terminan la partida (4 normal, 3 en modo dificil) - lo lee
+    // main.ts para el "X / N" del HUD y el umbral de alerta
+    get maxErrors(): number {
+        return this.#maxErrors;
+    }
+    get hardMode(): boolean {
+        return this.#hardMode;
+    }
+    get money(): number {
+        return this.#money;
     }
     get currentVisitor(): Character | null {
-         return this.#currentVisitor; 
+         return this.#currentVisitor;
         }
     get currentDay(): Day {
         return this.#days[Math.min(this.#dayNumber, this.#totalDays) - 1];
     }
     get playerName(): string {
         return this.#playerName;
+    }
+    // --- datos para los premios de fin de partida (ver AWARD_BEATS en main.ts) ---
+    get letThroughOni(): boolean {
+        return this.#letThroughOni;
+    }
+    get letThroughKitsune(): boolean {
+        return this.#letThroughKitsune;
+    }
+    get letThroughKappa(): boolean {
+        return this.#letThroughKappa;
+    }
+    get bestDayVisitors(): number {
+        return this.#bestDayVisitors;
+    }
+    get bestDayNumber(): number {
+        return this.#bestDayNumber;
+    }
+    // --- datos del ultimo dia cerrado (ver pantalla de resumen en main.ts) ---
+    get lastDayAccepted(): number {
+        return this.#lastDayAccepted;
+    }
+    get lastDayRejected(): number {
+        return this.#lastDayRejected;
+    }
+    get lastDayErrors(): number {
+        return this.#lastDayErrors;
+    }
+    get lastDayMoney(): number {
+        return this.#lastDayMoney;
+    }
+    get lastDayCharge(): number {
+        return this.#economy.lastDayCharge;
+    }
+    // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
+    // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
+    get daysCompleted(): number {
+        return this.#dayNumber - 1;
     }
 
     loadProgress(): boolean {
@@ -275,8 +340,10 @@ export class Game{
     this.#dayNumber = saved.dayNumber;
     this.#errors = saved.errors;
     this.#money = saved.money;
+    this.#totalDays = saved.totalDays ?? 7; // partidas guardadas de antes de este dato: 7 por defecto
+    this.#hardMode = saved.hardMode ?? false; // idem: las partidas viejas eran siempre modo normal
+    this.#maxErrors = this.#hardMode ? 3 : 4;
     this.#startDay();
     return true;
     }
 }
-

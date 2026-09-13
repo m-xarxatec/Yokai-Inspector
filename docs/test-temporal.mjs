@@ -2,6 +2,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from "fs";
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
@@ -26,8 +28,19 @@ global.fetch = async (url) => {
 resetMocks();
 
 const { Game } = await import("../public/js/classes/Game.js");
-const { Yokai } = await import("../public/js/classes/Yokai.js");
 const { getHistory } = await import("../public/js/Storage.js");
+
+// jugar perfecto ya no es solo aceptar/rechazar bien: desde el dia en que rige la
+// regla del sello azul (ver reglas.json, "selloAlien"), a un alien limpio hay que
+// aprobarlo con el AZUL. Esto devuelve la decision correcta completa.
+function decidirBien(game) {
+  const visitor = game.currentVisitor;
+  const violation = game.currentDay.evaluateCharacter(visitor);
+  const shouldAccept = violation === null;
+  const usedAlienStamp = shouldAccept && game.alienStampRuleActive() && visitor.isAlien();
+  game.decide(shouldAccept, usedAlienStamp);
+  return shouldAccept;
+}
 
 function loadDataAsync(game) {
   return new Promise((resolve) => game.loadData(resolve));
@@ -41,13 +54,27 @@ function describeVisitor(character) {
     yellowEyes: character.obtainYellowEyes,
     region: p.obtainRegion,
     declared: p.obtainDeclaredSpecie,
-    stamp: p.obtainStamp,
-    liar: character.specieLiar()
+    stamp: p.obtainStamp
   };
 }
 
-const expectedRuleCounts = [1, 2, 3, 4, 5, 4, 5];
-const expectedProblematicCounts = [2, 3, 4, 5, 5, 7, 7];
+// el dia ya no tiene una cantidad fija de visitantes (dura por tiempo, no por
+// conteo - ver Game#endDay()), asi que estos tests simulan "un dia" decidiendo
+// una cantidad grande de visitantes y llamando endDay() a mano, igual que
+// hace main.ts cuando se acaba el temporizador del dia.
+const VISITORS_PER_SIMULATED_DAY = 150;
+
+// dia 4 en adelante suma 4 reglas de una vez (especieProhibida: kitsune/oni/kappa/
+// poseido, ver reglas.json) en vez de 1 sola, por eso el salto de 3 a 7.
+// Ninguna regla se apaga nunca (ver dias.json) - dia 6 no suma ninguna nueva (se
+// queda en 8, igual que el 5) y el dia 7 suma la del sello plateado (9).
+const expectedRuleCounts = [1, 2, 3, 7, 8, 9, 10]; // dias 6 y 7 suman la regla del sello azul de los alien
+// antes eran cantidades exactas (el sorteo pre-armaba un array de tamaño fijo);
+// ahora cada visitante se sortea con esta probabilidad de forma independiente
+// (ver Game#generateVisitor()), asi que solo se puede pedir que la PROPORCION
+// observada, sobre una muestra grande, ande cerca del valor esperado.
+const expectedProblematicRatios = [2 / 6, 3 / 6, 4 / 6, 5 / 6, 5 / 6, 7 / 8, 7 / 8];
+const RATIO_TOLERANCE = 0.12;
 
 // ================= TEST 1: partida "perfecta" (siempre acierta) =================
 console.log("\n========== TEST 1: partida perfecta, hasta victoria ==========");
@@ -62,44 +89,38 @@ console.log("visitante generado al cargar:", gameA.currentVisitor ? "SI" : "FALL
 
 const visitorLog = [];
 const dayAudit = [];
-let currentDayTracked = 1;
-let currentDayRuleCount = gameA.currentDay.getActiveRules().length;
-let problematicSeenThisDay = 0;
-let visitorsThisDay = 0;
 
-while (!gameA.isWon() && !gameA.isLost()) {
+for (let dia = 1; dia <= 7 && !gameA.isLost(); dia++) {
   const day = gameA.currentDay;
-  if (day.getNumber() !== currentDayTracked) {
-    dayAudit.push({ day: currentDayTracked, rules: currentDayRuleCount, problematic: problematicSeenThisDay, visitors: visitorsThisDay });
-    currentDayTracked = day.getNumber();
-    currentDayRuleCount = day.getActiveRules().length;
-    problematicSeenThisDay = 0;
-    visitorsThisDay = 0;
+  let problematicosHoy = 0;
+  for (let i = 0; i < VISITORS_PER_SIMULATED_DAY && !gameA.isLost(); i++) {
+    const visitor = gameA.currentVisitor;
+    const violation = day.evaluateCharacter(visitor);
+    const shouldAccept = violation === null;
+    visitorLog.push({ day: dia, ...describeVisitor(visitor), rejected: !shouldAccept });
+    if (!shouldAccept) problematicosHoy++;
+    const usedAlienStamp = shouldAccept && gameA.alienStampRuleActive() && visitor.isAlien();
+    gameA.decide(shouldAccept, usedAlienStamp);
   }
-  const visitor = gameA.currentVisitor;
-  const violation = day.evaluateCharacter(visitor);
-  const shouldAccept = violation === null;
-
-  visitorLog.push({ day: day.getNumber(), ...describeVisitor(visitor), rejected: !shouldAccept });
-  if (!shouldAccept) problematicSeenThisDay++;
-  visitorsThisDay++;
-
-  gameA.decide(shouldAccept);
+  dayAudit.push({ day: dia, rules: day.getActiveRules().length, problematic: problematicosHoy, visitors: VISITORS_PER_SIMULATED_DAY });
+  if (!gameA.isLost()) {
+    gameA.endDay();
+  }
 }
-dayAudit.push({ day: currentDayTracked, rules: currentDayRuleCount, problematic: problematicSeenThisDay, visitors: visitorsThisDay });
 
 console.log("\nResultado final:", gameA.isWon() ? "VICTORIA" : "DERROTA", "| dinero:", gameA.money, "| errores:", gameA.errors);
 
 console.log("\n--- Muestra de 10 visitantes generados ---");
 visitorLog.slice(0, 10).forEach(v => console.log(JSON.stringify(v)));
 
-console.log("\n--- Auditoria de reglas activas y problematicos por dia ---");
+console.log("\n--- Auditoria de reglas activas y proporcion de problematicos por dia (sobre", VISITORS_PER_SIMULATED_DAY, "visitantes simulados) ---");
 dayAudit.forEach((d, i) => {
   const rulesExpected = expectedRuleCounts[i];
-  const probExpected = expectedProblematicCounts[i];
+  const ratioExpected = expectedProblematicRatios[i];
+  const ratioObservada = d.problematic / d.visitors;
   const rulesOk = d.rules === rulesExpected ? "OK" : `FALLO (esperado ${rulesExpected})`;
-  const probOk = d.problematic === probExpected ? "OK" : `FALLO (esperado ${probExpected})`;
-  console.log(`Dia ${d.day}: reglas activas=${d.rules} [${rulesOk}] | problematicos=${d.problematic}/${d.visitors} [${probOk}]`);
+  const ratioOk = Math.abs(ratioObservada - ratioExpected) <= RATIO_TOLERANCE ? "OK" : `FALLO (esperado ~${ratioExpected.toFixed(2)})`;
+  console.log(`Dia ${d.day}: reglas activas=${d.rules} [${rulesOk}] | problematicos=${d.problematic}/${d.visitors} (${ratioObservada.toFixed(2)}) [${ratioOk}]`);
 });
 
 // nota: desde que existen "rasgos combinados" (Game#generateVisitor), un visitante puede
@@ -125,15 +146,15 @@ while (!gameB.isWon() && !gameB.isLost()) {
 console.log("Resultado final:", gameB.isWon() ? "VICTORIA (inesperado)" : "DERROTA", "| errores:", gameB.errors, "(esperado 4)", "| decisiones tomadas:", decisionesB, "(esperado 4)");
 
 // ================= TEST 3: guardar y cargar progreso a mitad de partida =================
-console.log("\n========== TEST 3: guardar progreso al terminar el dia 1, y cargarlo en una partida nueva ==========");
+console.log("\n========== TEST 3: guardar progreso al terminar el dia 1 (via endDay()), y cargarlo en una partida nueva ==========");
 resetMocks();
 const gameC = new Game();
 await loadDataAsync(gameC);
 gameC.startNewGame();
-for (let i = 0; i < 6; i++) {
-  const violation = gameC.currentDay.evaluateCharacter(gameC.currentVisitor);
-  gameC.decide(violation === null);
+for (let i = 0; i < 5; i++) {
+  decidirBien(gameC);
 }
+gameC.endDay(); // simula que se acabo el temporizador del dia 1
 console.log("gameC despues de terminar el dia 1 -> dia:", gameC.dayNumber, "| dinero:", gameC.money, "| errores:", gameC.errors);
 
 const gameD = new Game();
@@ -160,8 +181,8 @@ const historial = getHistory();
 console.log("cantidad de partidas jugadas: 4 | entradas en historial:", historial.length, "(esperado 3)");
 console.log(JSON.stringify(historial, null, 2));
 
-// ================= TEST 5: mezcla de aciertos y errores dentro de un mismo dia =================
-console.log("\n========== TEST 5: mezcla de aciertos y errores, verificar dinero/errores/avance de dia ==========");
+// ================= TEST 5: mezcla de aciertos y errores (dinero/errores), y que endDay() sea lo unico que avanza el dia =================
+console.log("\n========== TEST 5: mezcla de aciertos y errores (dinero/errores), y que endDay() sea lo unico que avanza el dia ==========");
 resetMocks();
 const gameE = new Game();
 await loadDataAsync(gameE);
@@ -169,23 +190,25 @@ gameE.startNewGame();
 const patronE = [true, false, true, true, false, true]; // true = responder correcto, false = responder incorrecto
 let dineroEsperadoE = 10;
 let erroresEsperadosE = 0;
-patronE.forEach((responderCorrecto, i) => {
+patronE.forEach((responderCorrecto) => {
   const violation = gameE.currentDay.evaluateCharacter(gameE.currentVisitor);
   const shouldAccept = violation === null;
   gameE.decide(responderCorrecto ? shouldAccept : !shouldAccept);
-  if (responderCorrecto) { dineroEsperadoE += 10; } else { dineroEsperadoE -= 5; erroresEsperadosE += 1; }
+  if (responderCorrecto) { dineroEsperadoE += 2; } else { dineroEsperadoE -= 5; erroresEsperadosE += 1; }
 });
 console.log("dinero real:", gameE.money, "| dinero esperado:", dineroEsperadoE, gameE.money === dineroEsperadoE ? "[OK]" : "[FALLO]");
 console.log("errores reales:", gameE.errors, "| errores esperados:", erroresEsperadosE, gameE.errors === erroresEsperadosE ? "[OK]" : "[FALLO]");
-console.log("dia tras 6 visitantes (con mezcla de aciertos/errores):", gameE.dayNumber, gameE.dayNumber === 2 ? "[OK]" : "[FALLO]");
+console.log("dia tras 6 visitantes, ANTES de endDay():", gameE.dayNumber, gameE.dayNumber === 1 ? "[OK: decide() ya no avanza de dia por si solo]" : "[FALLO]");
+gameE.endDay();
+console.log("dia DESPUES de endDay():", gameE.dayNumber, gameE.dayNumber === 2 ? "[OK]" : "[FALLO]");
 
-// ================= TEST 6: derrota justo en el ultimo visitante del dia (caso limite) =================
-console.log("\n========== TEST 6: el 4to error coincide con el 6to visitante del dia ==========");
+// ================= TEST 6: el 4to error corta la partida al toque =================
+console.log("\n========== TEST 6: el 4to error corta la partida al toque, sin esperar a que termine el dia ==========");
 resetMocks();
 const gameF = new Game();
 await loadDataAsync(gameF);
 gameF.startNewGame();
-// visitantes 1-3 del dia 1: responder mal (3 errores). visitantes 4 y 5: responder bien. visitante 6: responder mal (4to error, y ultimo del dia)
+// visitantes 1-3: responder mal (3 errores). visitantes 4 y 5: responder bien. visitante 6: responder mal (4to error)
 const patronF = [false, false, false, true, true, false];
 patronF.forEach((responderCorrecto) => {
   if (gameF.isLost() || gameF.isWon()) return;
@@ -194,44 +217,44 @@ patronF.forEach((responderCorrecto) => {
   gameF.decide(responderCorrecto ? shouldAccept : !shouldAccept);
 });
 console.log("errores:", gameF.errors, "(esperado 4)", "| isLost():", gameF.isLost(), "(esperado true)");
-console.log("dia quedo en:", gameF.dayNumber, "(esperado 1, NO deberia haber avanzado a dia 2)");
+console.log("dia quedo en:", gameF.dayNumber, "(esperado 1 - decide() ya no toca dayNumber en absoluto)");
 const historialF = getHistory();
 console.log("entrada guardada en historial:", JSON.stringify(historialF[0]));
 console.log("resultado 'derrota' con day:1:", (historialF[0].result === "derrota" && historialF[0].day === 1) ? "[OK]" : "[FALLO]");
 
-// ================= TEST 7: specieLiar() coincide con el calculo manual, en volumen =================
-console.log("\n========== TEST 7: specieLiar() consistente en volumen (partida completa) ==========");
+// ================= TEST 7: lista negra de especies (especieProhibida) consistente en volumen =================
+// reemplaza al viejo test de specieLiar() (esa regla/metodo se elimino - quedaba
+// redundante con la lista negra desde que ninguna regla se apaga nunca, ver diario).
+console.log("\n========== TEST 7: especieProhibida consistente en volumen (partida completa) ==========");
 resetMocks();
 const gameG = new Game();
 await loadDataAsync(gameG);
 gameG.startNewGame();
-let inconsistenciasLiar = 0;
+const bannedSpecies = ["kitsune", "oni", "kappa", "poseido"];
+let inconsistenciasLista = 0;
 let totalRevisados = 0;
-while (!gameG.isWon() && !gameG.isLost()) {
-  const visitor = gameG.currentVisitor;
-  const p = visitor.obtainPassport;
-  // un Human siempre da false sin importar lo que declare (specieLiar() esta hardcodeado ahi);
-  // solo para un Yokai tiene sentido comparar especie declarada vs especie aparente.
-  let esperado = false;
-  if (visitor instanceof Yokai) {
-    // mismo orden que Yokai.specieLiar(): region primero, cuernos/ojos amarillos al final
-    // (para que el rasgo que define el tipo real gane si hay rasgos combinados).
-    let especieAparente = "humano";
-    if (p.obtainRegion === "rio") especieAparente = "kappa";
-    if (visitor.obtainHaveHorns) especieAparente = "oni";
-    if (visitor.obtainYellowEyes) especieAparente = "kitsune";
-    esperado = p.obtainDeclaredSpecie !== especieAparente;
+for (let dia = 1; dia <= 7 && !gameG.isLost(); dia++) {
+  const reglaActiva = gameG.currentDay.getActiveRules().some(r => r.getProperty() === "especieProhibida");
+  for (let i = 0; i < VISITORS_PER_SIMULATED_DAY && !gameG.isLost(); i++) {
+    const visitor = gameG.currentVisitor;
+    const p = visitor.obtainPassport;
+    const violation = gameG.currentDay.evaluateCharacter(visitor);
+    const declaroProhibida = bannedSpecies.includes(p.obtainDeclaredSpecie);
+    // si declaro una especie de la lista negra Y la regla ya esta activa hoy, tiene
+    // que estar rechazado (por esta regla u otra) - nunca puede pasar "de colado".
+    totalRevisados++;
+    if (declaroProhibida && reglaActiva && violation === null) {
+      inconsistenciasLista++;
+      console.log("INCONSISTENCIA:", JSON.stringify(describeVisitor(visitor)));
+    }
+    const usedAlienStampG = violation === null && gameG.alienStampRuleActive() && visitor.isAlien();
+    gameG.decide(violation === null, usedAlienStampG);
   }
-  const real = visitor.specieLiar();
-  totalRevisados++;
-  if (esperado !== real) {
-    inconsistenciasLiar++;
-    console.log("INCONSISTENCIA:", JSON.stringify(describeVisitor(visitor)), "esperado:", esperado, "real:", real);
+  if (!gameG.isLost()) {
+    gameG.endDay();
   }
-  const violation = gameG.currentDay.evaluateCharacter(visitor);
-  gameG.decide(violation === null);
 }
-console.log("visitantes revisados:", totalRevisados, "| inconsistencias:", inconsistenciasLiar, inconsistenciasLiar === 0 ? "[OK]" : "[FALLO]");
+console.log("visitantes revisados:", totalRevisados, "| inconsistencias:", inconsistenciasLista, inconsistenciasLista === 0 ? "[OK]" : "[FALLO]");
 
 // ================= TEST 8: integridad de historial y partida actual tras terminar el juego =================
 console.log("\n========== TEST 8: historial refleja el resultado real, y no queda partida 'en curso' tras terminar ==========");
@@ -251,3 +274,1210 @@ const coincideValores = ultima.errors === gameH.errors && ultima.money === gameH
 console.log("valores del historial coinciden con el estado final del juego:", coincideValores ? "[OK]" : "[FALLO]");
 const partidaActualTrasTerminar = loadCurrentGame();
 console.log("loadCurrentGame() despues de terminar:", partidaActualTrasTerminar, partidaActualTrasTerminar === null ? "[OK: no se puede continuar una partida terminada]" : "[FALLO: quedo una partida guardada]");
+
+// ================= TEST 9: regla del sello azul de los alien (dia 6) =================
+console.log("\n========== TEST 9: sello azul de los alien - solo desde el dia 6, y solo para ellos ==========");
+resetMocks();
+
+// avanza una partida hasta el dia pedido sin cometer errores
+async function partidaEnDia(dia) {
+  const g = new Game();
+  await loadDataAsync(g);
+  g.startNewGame();
+  while (g.dayNumber < dia) {
+    decidirBien(g);
+    g.endDay();
+  }
+  return g;
+}
+
+// busca un visitante que cumpla la condicion pedida, decidiendo bien mientras tanto
+function buscarVisitante(game, condicion) {
+  for (let i = 0; i < 400; i++) {
+    const visitor = game.currentVisitor;
+    const violation = game.currentDay.evaluateCharacter(visitor);
+    if (condicion(visitor, violation)) {
+      return visitor;
+    }
+    decidirBien(game);
+  }
+  return null;
+}
+
+const esAlienLimpio = (visitor, violation) => visitor.isAlien() && violation === null;
+const noAlienLimpio = (visitor, violation) => !visitor.isAlien() && violation === null;
+
+const gameDia5 = await partidaEnDia(5);
+console.log("dia 5 -> alienStampRuleActive():", gameDia5.alienStampRuleActive(), gameDia5.alienStampRuleActive() === false ? "[OK: todavia no rige]" : "[FALLO]");
+const alienDia5 = buscarVisitante(gameDia5, esAlienLimpio);
+if (alienDia5 === null) {
+  console.log("[AVISO] no salio ningun alien limpio en el dia 5, se saltea este chequeo");
+} else {
+  const erroresAntes = gameDia5.errors;
+  gameDia5.decide(true); // verde, sin sello azul
+  console.log("dia 5, alien limpio aprobado con VERDE -> errores +", gameDia5.errors - erroresAntes, gameDia5.errors === erroresAntes ? "[OK: antes del dia 6 el verde es lo correcto]" : "[FALLO]");
+}
+
+const gameDia6 = await partidaEnDia(6);
+console.log("dia 6 -> alienStampRuleActive():", gameDia6.alienStampRuleActive(), gameDia6.alienStampRuleActive() === true ? "[OK: ya rige]" : "[FALLO]");
+
+const alienVerde = buscarVisitante(gameDia6, esAlienLimpio);
+if (alienVerde === null) {
+  console.log("[AVISO] no salio ningun alien limpio, se saltea el chequeo del verde");
+} else {
+  const antes = gameDia6.errors;
+  gameDia6.decide(true, false); // verde sobre un alien: mal
+  console.log("dia 6, alien limpio aprobado con VERDE -> errores +", gameDia6.errors - antes, gameDia6.errors === antes + 1 ? "[OK: cuenta como error]" : "[FALLO]");
+}
+
+const gameDia6b = await partidaEnDia(6);
+const alienAzul = buscarVisitante(gameDia6b, esAlienLimpio);
+if (alienAzul === null) {
+  console.log("[AVISO] no salio ningun alien limpio, se saltea el chequeo del azul");
+} else {
+  const antes = gameDia6b.errors;
+  gameDia6b.decide(true, true); // azul sobre un alien: bien
+  console.log("dia 6, alien limpio aprobado con AZUL -> errores +", gameDia6b.errors - antes, gameDia6b.errors === antes ? "[OK: es la decision correcta]" : "[FALLO]");
+}
+
+const gameDia6c = await partidaEnDia(6);
+const humanoAzul = buscarVisitante(gameDia6c, noAlienLimpio);
+if (humanoAzul === null) {
+  console.log("[AVISO] no salio ningun visitante limpio no-alien, se saltea el chequeo");
+} else {
+  const antes = gameDia6c.errors;
+  gameDia6c.decide(true, true); // azul sobre alguien que no es alien: mal
+  console.log("dia 6, visitante limpio NO alien aprobado con AZUL -> errores +", gameDia6c.errors - antes, gameDia6c.errors === antes + 1 ? "[OK: el azul es solo para alien]" : "[FALLO]");
+}
+
+// el pasaporte de un alien siempre declara lo mismo, sin importar el dia
+const gameAlienPasaporte = await partidaEnDia(6);
+let alienesRevisados = 0;
+let pasaportesRaros = 0;
+for (let i = 0; i < 300; i++) {
+  const visitor = gameAlienPasaporte.currentVisitor;
+  if (visitor.isAlien()) {
+    alienesRevisados++;
+    const p = visitor.obtainPassport;
+    if (p.obtainRegion !== "via lactea" || p.obtainDeclaredSpecie !== "alien") {
+      pasaportesRaros++;
+      console.log("PASAPORTE DE ALIEN INCONSISTENTE:", JSON.stringify(describeVisitor(visitor)));
+    }
+  }
+  decidirBien(gameAlienPasaporte);
+}
+console.log("aliens revisados:", alienesRevisados, "| pasaportes fuera de regla:", pasaportesRaros, pasaportesRaros === 0 && alienesRevisados > 0 ? "[OK: siempre 'via lactea' + 'alien']" : "[FALLO]");
+
+// ================= TEST 10: datos de los premios de fin de partida =================
+console.log("\n========== TEST 10: datos de los premios (dias completados, mejor dia, quien se te paso) ==========");
+resetMocks();
+const gameI = new Game();
+await loadDataAsync(gameI);
+gameI.startNewGame();
+
+const VISITANTES_DIA_1 = 20;
+for (let i = 0; i < VISITANTES_DIA_1; i++) {
+  decidirBien(gameI);
+}
+gameI.endDay(); // cierra el dia 1
+for (let i = 0; i < 5; i++) {
+  decidirBien(gameI);
+}
+gameI.endDay(); // cierra el dia 2
+
+console.log("dias completados:", gameI.daysCompleted, gameI.daysCompleted === 2 ? "[OK]" : "[FALLO: esperado 2]");
+console.log("mejor dia:", gameI.bestDayNumber, "con", gameI.bestDayVisitors, "visitantes",
+  gameI.bestDayNumber === 1 && gameI.bestDayVisitors === VISITANTES_DIA_1 ? "[OK]" : `[FALLO: esperado dia 1 con ${VISITANTES_DIA_1}]`);
+console.log("jugando perfecto no se le paso ningun Oni/Kitsune/Kappa:",
+  !gameI.letThroughOni && !gameI.letThroughKitsune && !gameI.letThroughKappa ? "[OK]" : "[FALLO]");
+
+// dejar pasar a un cuernudo a proposito tiene que quedar registrado
+const gameJ = new Game();
+await loadDataAsync(gameJ);
+gameJ.startNewGame();
+const cuernudo = buscarVisitante(gameJ, (visitor) => visitor.obtainHaveHorns);
+if (cuernudo === null) {
+  console.log("[AVISO] no salio ningun visitante con cuernos, se saltea el chequeo");
+} else {
+  gameJ.decide(true); // lo deja pasar
+  console.log("tras aceptar un cuernudo -> letThroughOni:", gameJ.letThroughOni, gameJ.letThroughOni === true ? "[OK]" : "[FALLO]");
+}
+
+// ================= TEST 11: cobro diario =================
+console.log("\n========== TEST 11: cobro diario escala con la cantidad de reglas activas, y el dia 1 no cobra ==========");
+resetMocks();
+const gameK = new Game();
+await loadDataAsync(gameK);
+gameK.startNewGame();
+console.log("dia 1, antes de jugar nada -> dinero:", gameK.money, gameK.money === 10 ? "[OK: sin cobro todavia]" : "[FALLO]");
+gameK.endDay(); // cierra el dia 1 (nunca cobra) y ya cobro el dia 2 adentro de endDay()
+const reglasDia2 = gameK.currentDay.getActiveRules().length;
+const cobroEsperadoDia2 = 2 + reglasDia2;
+console.log("dia 1 -> resumen del dia que cerro, cobro diario:", gameK.lastDayCharge, gameK.lastDayCharge === 0 ? "[OK: el dia 1 no cobra]" : "[FALLO]");
+console.log("dia 2, reglas activas:", reglasDia2, "| dinero real:", gameK.money, "| dinero esperado (10 - cobro):", 10 - cobroEsperadoDia2,
+  gameK.money === 10 - cobroEsperadoDia2 ? "[OK]" : "[FALLO]");
+
+const gameL = new Game();
+await loadDataAsync(gameL);
+gameL.startNewGame();
+// fuerza el dinero bien negativo antes de que termine el dia 1, sin llegar a los 4
+// errores (isLost() corta la partida antes de eso)
+const patronL = [false, false, false];
+patronL.forEach((responderCorrecto) => {
+  const violation = gameL.currentDay.evaluateCharacter(gameL.currentVisitor);
+  const shouldAccept = violation === null;
+  gameL.decide(responderCorrecto ? shouldAccept : !shouldAccept);
+});
+gameL.endDay(); // el cobro diario se suma encima del dinero ya negativo
+console.log("dinero negativo antes del cobro:", 10 - 15, "| dinero real tras cobrar el dia 2:", gameL.money,
+  gameL.money < 0 ? "[OK: el cobro diario puede dejar el dinero mas negativo todavia]" : "[FALLO]");
+console.log("isLost() con 3 errores y dinero negativo:", gameL.isLost(), gameL.isLost() === false ? "[OK: quedar en negativo no es motivo de derrota]" : "[FALLO]");
+
+// ================= TEST 12: tienda - tiempo extra (buyExtraTime) =================
+console.log("\n========== TEST 12: tiempo extra cobra una vez por dia, se niega la segunda vez y sin fondos ==========");
+const gameR = new Game();
+await loadDataAsync(gameR);
+gameR.startNewGame();
+const dineroAntesR = gameR.money;
+const primeraCompra = gameR.buyExtraTime();
+console.log("primera compra:", primeraCompra, "| dinero descontado:", dineroAntesR - gameR.money, "(esperado " + gameR.extraTimeCost + ")",
+  primeraCompra === true && dineroAntesR - gameR.money === gameR.extraTimeCost ? "[OK]" : "[FALLO]");
+const dineroTrasPrimera = gameR.money;
+const segundaCompra = gameR.buyExtraTime();
+console.log("segunda compra el mismo dia:", segundaCompra, "| dinero sin cambios:", gameR.money === dineroTrasPrimera,
+  segundaCompra === false && gameR.money === dineroTrasPrimera ? "[OK: solo se puede comprar una vez por dia]" : "[FALLO]");
+gameR.endDay(); // el cobro diario del dia 2 se suma encima de lo que quedaba tras comprar tiempo extra
+console.log("limite reseteado al dia siguiente:", gameR.usedExtraTimeToday, gameR.usedExtraTimeToday === false ? "[OK]" : "[FALLO]");
+for (let i = 0; i < 5; i++) {
+  decidirBien(gameR); // asegura dinero suficiente antes de probar la compra de nuevo
+}
+const terceraCompra = gameR.buyExtraTime();
+console.log("compra al dia siguiente (con dinero):", terceraCompra, terceraCompra === true ? "[OK: el limite se resetea cada dia]" : "[FALLO]");
+
+const gameS = new Game();
+await loadDataAsync(gameS);
+gameS.startNewGame();
+for (let i = 0; i < 3; i++) {
+  const violation = gameS.currentDay.evaluateCharacter(gameS.currentVisitor);
+  gameS.decide(violation !== null); // fuerza la respuesta incorrecta, para vaciar el dinero
+}
+const dineroAntesS = gameS.money;
+const compraSinFondos = gameS.buyExtraTime();
+console.log("tiempo extra sin fondos:", compraSinFondos, "| dinero sin cambios:", gameS.money === dineroAntesS,
+  compraSinFondos === false && gameS.money === dineroAntesS ? "[OK: no cobra si no alcanza]" : "[FALLO]");
+
+// ================= TEST 13: tienda - indulto (buyInsurance) =================
+console.log("\n========== TEST 13: el indulto absorbe el proximo error sin sumar a #errors, resta dinero igual, y se consume ==========");
+const gameT = new Game();
+await loadDataAsync(gameT);
+gameT.startNewGame();
+const dineroAntesT = gameT.money;
+const compraIndulto = gameT.buyInsurance();
+console.log("compra el indulto:", compraIndulto, "| dinero descontado:", dineroAntesT - gameT.money, "(esperado " + gameT.insuranceCost + ")",
+  compraIndulto === true && dineroAntesT - gameT.money === gameT.insuranceCost ? "[OK]" : "[FALLO]");
+
+const dineroAntesIndultoUsado = gameT.money;
+const violationT = gameT.currentDay.evaluateCharacter(gameT.currentVisitor);
+gameT.decide(violationT !== null); // fuerza la respuesta incorrecta
+console.log("errores tras el error absorbido:", gameT.errors, gameT.errors === 0 ? "[OK: el indulto lo absorbe]" : "[FALLO]");
+console.log("dinero tras el error absorbido:", gameT.money, "| esperado (-5 igual, el indulto no devuelve dinero):", dineroAntesIndultoUsado - 5,
+  gameT.money === dineroAntesIndultoUsado - 5 ? "[OK]" : "[FALLO]");
+console.log("el indulto se consumio:", gameT.hasInsurance, gameT.hasInsurance === false ? "[OK]" : "[FALLO]");
+
+// sin indulto, el siguiente error si cuenta normal
+const violationT2 = gameT.currentDay.evaluateCharacter(gameT.currentVisitor);
+gameT.decide(violationT2 !== null); // fuerza la respuesta incorrecta de nuevo
+console.log("siguiente error, sin indulto activo:", gameT.errors, gameT.errors === 1 ? "[OK: vuelve a contar normal]" : "[FALLO]");
+
+// no se puede comprar un segundo indulto mientras el primero sigue activo
+const gameU = new Game();
+await loadDataAsync(gameU);
+gameU.startNewGame();
+gameU.buyInsurance();
+const dineroConIndultoActivo = gameU.money;
+const segundoIndulto = gameU.buyInsurance();
+console.log("segundo indulto con uno ya activo:", segundoIndulto, "| dinero sin cambios:", gameU.money === dineroConIndultoActivo,
+  segundoIndulto === false && gameU.money === dineroConIndultoActivo ? "[OK: un indulto activo a la vez]" : "[FALLO]");
+
+// el indulto no sobrevive al dia siguiente si no se llega a usar
+const gameV = new Game();
+await loadDataAsync(gameV);
+gameV.startNewGame();
+gameV.buyInsurance();
+for (let i = 0; i < 15; i++) {
+  decidirBien(gameV); // se decide bien todo el dia, el indulto queda sin usar
+}
+gameV.endDay();
+console.log("indulto sin usar, tras terminar el dia:", gameV.hasInsurance, gameV.hasInsurance === false ? "[OK: no se acumula para el dia siguiente]" : "[FALLO]");
+
+
+// ================= TEST 14: rendimiento de carga de recursos gráficos =================
+// mide el peso total de las imagenes y simula/analiza el impacto que pueden tener
+// sobre la carga inicial del juego. El objetivo es establecer una referencia antes
+// de aplicar compresion y poder comparar posteriormente los resultados.
+
+console.log("\n========== TEST 14: rendimiento de carga y peso de recursos gráficos ==========");
+
+import { readdirSync, statSync } from "node:fs";
+
+const imagesDir = path.join(publicDir, "img");
+
+function getFilesRecursively(dir) {
+  let results = [];
+
+  if (!statSync(dir).isDirectory()) {
+    return results;
+  }
+
+  const files = readdirSync(dir);
+
+  files.forEach((file) => {
+    const filePath = path.join(dir, file);
+    const stat = statSync(filePath);
+
+    if (stat.isDirectory()) {
+      results = results.concat(getFilesRecursively(filePath));
+    } else {
+      results.push(filePath);
+    }
+  });
+
+  return results;
+}
+
+const imageExtensions = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
+
+try {
+  const startPerformanceTest = performance.now();
+
+  const allFiles = getFilesRecursively(imagesDir);
+
+  const imageFiles = allFiles.filter((file) => {
+    const extension = path.extname(file).toLowerCase();
+    return imageExtensions.includes(extension);
+  });
+
+  let totalImageSize = 0;
+
+  const imageDetails = imageFiles.map((file) => {
+    const size = statSync(file).size;
+    totalImageSize += size;
+
+    return {
+      file: path.basename(file),
+      size,
+      sizeKB: (size / 1024).toFixed(2)
+    };
+  });
+
+  const endPerformanceTest = performance.now();
+  const analysisTime = endPerformanceTest - startPerformanceTest;
+
+  console.log("\n--- Resultado del análisis de assets gráficos ---");
+
+  console.log("Cantidad total de imágenes:", imageFiles.length);
+
+  console.log(
+    "Peso total de imágenes:",
+    (totalImageSize / 1024 / 1024).toFixed(2),
+    "MB"
+  );
+
+  console.log(
+    "Tiempo empleado en analizar los recursos:",
+    analysisTime.toFixed(2),
+    "ms"
+  );
+
+  console.log("\n--- Las 10 imágenes más pesadas ---");
+
+  imageDetails
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 10)
+    .forEach((image, index) => {
+      console.log(
+        `${index + 1}. ${image.file} -> ${image.sizeKB} KB`
+      );
+    });
+
+  console.log("\n--- Evaluación ---");
+
+  if (totalImageSize > 10 * 1024 * 1024) {
+    console.log(
+      "[AVISO] El peso total de los recursos gráficos es elevado y puede afectar " +
+      "el tiempo de carga inicial del juego."
+    );
+  } else {
+    console.log(
+      "[OK] El peso total de los recursos gráficos se encuentra dentro de un rango moderado."
+    );
+  }
+
+  console.log(
+    "\nEste resultado servirá como referencia para comparar una futura versión " +
+    "con las imágenes comprimidas."
+  );
+
+} catch (error) {
+  console.log(
+    "[AVISO] No se pudo ejecutar el análisis de imágenes:",
+    error.message
+  );
+}
+
+
+const cssPath = path.join(publicDir, "styles", "style.css");
+
+if (!fs.existsSync(cssPath)) {
+  console.log("[ERROR] No se encontró el archivo CSS:", cssPath);
+} else {
+  const css = fs.readFileSync(cssPath, "utf8");
+
+  const fontWeightHigh = [];
+  const fontSizeSmall = [];
+  const lineHeightSmall = [];
+  const letterSpacingHigh = [];
+
+  let totalFontSizes = 0;
+  let totalFontWeights = 0;
+  let totalLineHeights = 0;
+
+  // Analizar bloques CSS
+  const rules = css.match(/[^{}]+\{[^{}]*\}/g) || [];
+
+  for (const rule of rules) {
+    const parts = rule.split("{");
+    const selector = parts[0].trim();
+    const body = parts[1] || "";
+
+    // =========================
+    // FONT-WEIGHT
+    // =========================
+    const weightMatch = body.match(/font-weight\s*:\s*([^;]+)/i);
+
+    if (weightMatch) {
+      const weightValue = weightMatch[1].trim();
+      const numericWeight = parseInt(weightValue, 10);
+
+      if (!Number.isNaN(numericWeight)) {
+        totalFontWeights++;
+
+        if (numericWeight >= 700) {
+          fontWeightHigh.push({
+            selector,
+            value: weightValue
+          });
+        }
+      }
+    }
+
+    // =========================
+    // FONT-SIZE
+    // =========================
+    const sizeMatches = body.matchAll(/font-size\s*:\s*([^;]+)/gi);
+
+    for (const match of sizeMatches) {
+      const value = match[1].trim();
+      totalFontSizes++;
+
+      let suspicious = false;
+
+      // px
+      const pxMatches = value.matchAll(/([\d.]+)px/gi);
+
+      for (const pxMatch of pxMatches) {
+        const px = parseFloat(pxMatch[1]);
+
+        if (px < 12) {
+          suspicious = true;
+        }
+      }
+
+      // rem
+      const remMatches = value.matchAll(/([\d.]+)rem/gi);
+
+      for (const remMatch of remMatches) {
+        const rem = parseFloat(remMatch[1]);
+
+        // 1rem ≈ 16px
+        if (rem * 16 < 12) {
+          suspicious = true;
+        }
+      }
+
+      // clamp()
+      const clampMatch = value.match(
+        /clamp\(\s*([\d.]+)(rem|px)\s*,/i
+      );
+
+      if (clampMatch) {
+        const number = parseFloat(clampMatch[1]);
+        const unit = clampMatch[2].toLowerCase();
+
+        const minimumPx =
+          unit === "rem" ? number * 16 : number;
+
+        if (minimumPx < 12) {
+          suspicious = true;
+        }
+      }
+
+      if (suspicious) {
+        fontSizeSmall.push({
+          selector,
+          value
+        });
+      }
+    }
+
+    // =========================
+    // LINE-HEIGHT
+    // =========================
+    const lineHeightMatch = body.match(
+      /line-height\s*:\s*([^;]+)/i
+    );
+
+    if (lineHeightMatch) {
+      const value = lineHeightMatch[1].trim();
+      totalLineHeights++;
+
+      const numericLineHeight = parseFloat(value);
+
+      if (
+        !Number.isNaN(numericLineHeight) &&
+        numericLineHeight < 1.2
+      ) {
+        lineHeightSmall.push({
+          selector,
+          value
+        });
+      }
+    }
+
+    // =========================
+    // LETTER-SPACING
+    // =========================
+    const letterSpacingMatch = body.match(
+      /letter-spacing\s*:\s*([^;]+)/i
+    );
+
+    if (letterSpacingMatch) {
+      const value = letterSpacingMatch[1].trim();
+
+      const emMatch = value.match(/([\d.]+)em/i);
+
+      if (emMatch) {
+        const em = parseFloat(emMatch[1]);
+
+        if (em >= 0.1) {
+          letterSpacingHigh.push({
+            selector,
+            value
+          });
+        }
+      }
+    }
+  }
+
+  // =========================
+  // RESULTADOS
+  // =========================
+
+  console.log(
+    "--- TEST 15: análisis de legibilidad tipográfica ---\n"
+  );
+
+  console.log(
+    `Archivo analizado: ${cssPath}`
+  );
+
+  console.log(
+    `Reglas con font-size analizadas: ${totalFontSizes}`
+  );
+
+  console.log(
+    `Reglas con font-weight analizadas: ${totalFontWeights}`
+  );
+
+  console.log(
+    `Reglas con line-height analizadas: ${totalLineHeights}`
+  );
+
+  // =========================
+  // FONT-WEIGHT
+  // =========================
+
+  console.log("\n--- Pesos de fuente elevados ---");
+
+  if (fontWeightHigh.length === 0) {
+    console.log(
+      "[OK] No se encontraron pesos de fuente >= 700."
+    );
+  } else {
+    for (const item of fontWeightHigh) {
+      console.log(
+        `[AVISO] ${item.selector} -> font-weight: ${item.value}`
+      );
+    }
+  }
+
+  // =========================
+  // FONT-SIZE
+  // =========================
+
+  console.log("\n--- Tamaños de fuente pequeños ---");
+
+  if (fontSizeSmall.length === 0) {
+    console.log(
+      "[OK] No se encontraron tamaños de fuente potencialmente pequeños."
+    );
+  } else {
+    for (const item of fontSizeSmall) {
+      console.log(
+        `[AVISO] ${item.selector} -> font-size: ${item.value}`
+      );
+    }
+  }
+
+  // =========================
+  // LINE-HEIGHT
+  // =========================
+
+  console.log("\n--- Line-height reducido ---");
+
+  if (lineHeightSmall.length === 0) {
+    console.log(
+      "[OK] No se encontraron line-height inferiores a 1.2."
+    );
+  } else {
+    for (const item of lineHeightSmall) {
+      console.log(
+        `[AVISO] ${item.selector} -> line-height: ${item.value}`
+      );
+    }
+  }
+
+  // =========================
+  // LETTER-SPACING
+  // =========================
+
+  console.log("\n--- Letter-spacing elevado ---");
+
+  if (letterSpacingHigh.length === 0) {
+    console.log(
+      "[OK] No se encontraron valores de letter-spacing >= 0.1em."
+    );
+  } else {
+    for (const item of letterSpacingHigh) {
+      console.log(
+        `[REVISION] ${item.selector} -> letter-spacing: ${item.value}`
+      );
+    }
+  }
+
+  // =========================
+  // EVALUACIÓN FINAL
+  // =========================
+
+  console.log("\n--- Evaluación ---");
+
+  if (
+    fontWeightHigh.length === 0 &&
+    fontSizeSmall.length === 0 &&
+    lineHeightSmall.length === 0
+  ) {
+    console.log(
+      "[OK] No se detectaron problemas técnicos evidentes de legibilidad."
+    );
+  } else {
+    console.log(
+      "[AVISO] Se han detectado reglas CSS que podrían afectar a la legibilidad."
+    );
+
+    console.log(
+      "Se recomienda revisar visualmente los elementos señalados en escritorio y dispositivos móviles."
+    );
+  }
+
+  console.log(
+    "\nNOTA: Este test detecta posibles riesgos técnicos, pero no puede determinar por sí solo si una persona considera la tipografía fácil de leer."
+  );
+}
+
+
+
+// ================= TEST 16: AUDITORÍA BÁSICA DE SEGURIDAD DEL CLIENTE =================
+
+console.log(
+  "\n========== TEST 16: AUDITORÍA BÁSICA DE SEGURIDAD DEL CLIENTE =========="
+);
+
+// Directorio raíz del proyecto
+const securityProjectRoot = path.join(__dirname, "..");
+
+// Directorios que se analizarán
+const securityDirectoriesToScan = [
+  path.join(securityProjectRoot, "public"),
+  path.join(securityProjectRoot, "src")
+];
+
+// Extensiones relevantes
+const securityAllowedExtensions = new Set([
+  ".js",
+  ".mjs",
+  ".ts",
+  ".html",
+  ".json"
+]);
+
+// --------------------------------------------------
+// FUNCIÓN: buscar archivos recursivamente
+// Nombre único para evitar conflictos con otros tests
+// --------------------------------------------------
+
+function getSecurityFilesRecursively(directory) {
+  const files = [];
+
+  if (!fs.existsSync(directory)) {
+    return files;
+  }
+
+  const entries = fs.readdirSync(directory, {
+    withFileTypes: true
+  });
+
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      // Ignorar carpetas que no deben analizarse
+      if (
+        entry.name !== "node_modules" &&
+        entry.name !== ".git"
+      ) {
+        files.push(
+          ...getSecurityFilesRecursively(fullPath)
+        );
+      }
+    } else if (
+      entry.isFile() &&
+      securityAllowedExtensions.has(
+        path.extname(entry.name).toLowerCase()
+      )
+    ) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+// --------------------------------------------------
+// OBTENER ARCHIVOS
+// --------------------------------------------------
+
+const securityFiles = [];
+
+for (const directory of securityDirectoriesToScan) {
+  securityFiles.push(
+    ...getSecurityFilesRecursively(directory)
+  );
+}
+
+console.log("\n--- Archivos analizados ---");
+console.log(`Cantidad total: ${securityFiles.length}`);
+
+const securityJsFiles = securityFiles.filter((file) => {
+  const extension = path.extname(file).toLowerCase();
+
+  return (
+    extension === ".js" ||
+    extension === ".mjs" ||
+    extension === ".ts"
+  );
+});
+
+const securityHtmlFiles = securityFiles.filter((file) => {
+  return path.extname(file).toLowerCase() === ".html";
+});
+
+console.log(
+  `JavaScript / TypeScript: ${securityJsFiles.length}`
+);
+
+console.log(`HTML: ${securityHtmlFiles.length}`);
+
+// --------------------------------------------------
+// RESULTADOS
+// --------------------------------------------------
+
+const securityResults = {
+  evalUsage: [],
+  functionConstructor: [],
+  innerHTML: [],
+  outerHTML: [],
+  insertAdjacentHTML: [],
+  localStorage: [],
+  sessionStorage: [],
+  windowExposure: [],
+  privateFields: [],
+  possibleSecrets: [],
+  globalStateVariables: []
+};
+
+// Variables relacionadas con el estado del juego
+const securityStateVariableNames = [
+  "money",
+  "score",
+  "points",
+  "lives",
+  "life",
+  "errors",
+  "progress",
+  "level",
+  "streak",
+  "day",
+  "dayNumber",
+  "gameState"
+];
+
+// Patrones de posibles secretos
+const securitySecretPatterns = [
+  /api[_-]?key\s*[:=]/i,
+  /secret\s*[:=]/i,
+  /password\s*[:=]/i,
+  /access[_-]?token\s*[:=]/i,
+  /auth[_-]?token\s*[:=]/i,
+  /bearer\s+[a-z0-9._-]{10,}/i
+];
+
+// --------------------------------------------------
+// ANALIZAR ARCHIVOS
+// --------------------------------------------------
+
+for (const filePath of securityFiles) {
+  let content = "";
+
+  try {
+    content = fs.readFileSync(filePath, "utf8");
+  } catch (error) {
+    console.log(
+      `[AVISO] No se pudo leer: ${filePath}`
+    );
+    continue;
+  }
+
+  const relativePath = path.relative(
+    securityProjectRoot,
+    filePath
+  );
+
+  // eval()
+  if (/\beval\s*\(/.test(content)) {
+    securityResults.evalUsage.push(relativePath);
+  }
+
+  // new Function()
+  if (/\bnew\s+Function\s*\(/.test(content)) {
+    securityResults.functionConstructor.push(
+      relativePath
+    );
+  }
+
+  // innerHTML
+  if (/\.innerHTML\s*=/.test(content)) {
+    securityResults.innerHTML.push(relativePath);
+  }
+
+  // outerHTML
+  if (/\.outerHTML\s*=/.test(content)) {
+    securityResults.outerHTML.push(relativePath);
+  }
+
+  // insertAdjacentHTML
+  if (/\.insertAdjacentHTML\s*\(/.test(content)) {
+    securityResults.insertAdjacentHTML.push(
+      relativePath
+    );
+  }
+
+  // localStorage
+  if (/\blocalStorage\./.test(content)) {
+    securityResults.localStorage.push(relativePath);
+  }
+
+  // sessionStorage
+  if (/\bsessionStorage\./.test(content)) {
+    securityResults.sessionStorage.push(relativePath);
+  }
+
+  // Estado crítico expuesto directamente en window
+  if (
+    /\bwindow\.(money|score|points|lives|errors|progress|gameState)\b/i.test(
+      content
+    )
+  ) {
+    securityResults.windowExposure.push(relativePath);
+  }
+
+  // Campos privados de clases
+const fileExtension = path.extname(filePath).toLowerCase();
+
+const isJavaScriptFile =
+  fileExtension === ".js" ||
+  fileExtension === ".mjs" ||
+  fileExtension === ".ts";
+
+if (isJavaScriptFile) {
+  const privateFieldMatches = [
+    ...content.matchAll(
+      /(?:^|[;\n\r{}])\s*#([a-zA-Z_$][\w$]*)\s*(?:=|;|\()/gm
+    )
+  ];
+
+  for (const match of privateFieldMatches) {
+    securityResults.privateFields.push({
+      file: relativePath,
+      field: `#${match[1]}`
+    });
+  }
+}
+
+  // Posibles secretos
+  for (const pattern of securitySecretPatterns) {
+    if (pattern.test(content)) {
+      securityResults.possibleSecrets.push(
+        relativePath
+      );
+      break;
+    }
+  }
+
+  // Variables de estado potencialmente expuestas
+  for (const variableName of securityStateVariableNames) {
+    const variablePattern = new RegExp(
+      `\\b(?:let|var)\\s+${variableName}\\b`,
+      "i"
+    );
+
+    if (variablePattern.test(content)) {
+      securityResults.globalStateVariables.push({
+        file: relativePath,
+        variable: variableName
+      });
+    }
+  }
+}
+
+// --------------------------------------------------
+// ELIMINAR DUPLICADOS
+// --------------------------------------------------
+
+function uniqueSecurityArray(array) {
+  return [...new Set(array)];
+}
+
+securityResults.evalUsage = uniqueSecurityArray(
+  securityResults.evalUsage
+);
+
+securityResults.functionConstructor = uniqueSecurityArray(
+  securityResults.functionConstructor
+);
+
+securityResults.innerHTML = uniqueSecurityArray(
+  securityResults.innerHTML
+);
+
+securityResults.outerHTML = uniqueSecurityArray(
+  securityResults.outerHTML
+);
+
+securityResults.insertAdjacentHTML = uniqueSecurityArray(
+  securityResults.insertAdjacentHTML
+);
+
+securityResults.localStorage = uniqueSecurityArray(
+  securityResults.localStorage
+);
+
+securityResults.sessionStorage = uniqueSecurityArray(
+  securityResults.sessionStorage
+);
+
+securityResults.windowExposure = uniqueSecurityArray(
+  securityResults.windowExposure
+);
+
+securityResults.possibleSecrets = uniqueSecurityArray(
+  securityResults.possibleSecrets
+);
+
+// --------------------------------------------------
+// MOSTRAR RESULTADOS
+// --------------------------------------------------
+
+console.log("\n--- Ejecución dinámica de código ---");
+
+if (securityResults.evalUsage.length === 0) {
+  console.log("[OK] No se detectó uso de eval().");
+} else {
+  console.log("[AVISO] Se detectó uso de eval():");
+
+  securityResults.evalUsage.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+if (securityResults.functionConstructor.length === 0) {
+  console.log(
+    "[OK] No se detectó uso de new Function()."
+  );
+} else {
+  console.log(
+    "[AVISO] Se detectó uso del constructor Function():"
+  );
+
+  securityResults.functionConstructor.forEach(
+    (file) => {
+      console.log(`- ${file}`);
+    }
+  );
+}
+
+// --------------------------------------------------
+
+console.log("\n--- Posibles vectores de XSS ---");
+
+if (securityResults.innerHTML.length === 0) {
+  console.log(
+    "[OK] No se detectaron asignaciones a innerHTML."
+  );
+} else {
+  console.log(
+    "[REVISION] Se detectaron usos de innerHTML:"
+  );
+
+  securityResults.innerHTML.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+if (securityResults.outerHTML.length === 0) {
+  console.log(
+    "[OK] No se detectaron asignaciones a outerHTML."
+  );
+} else {
+  console.log(
+    "[REVISION] Se detectaron usos de outerHTML:"
+  );
+
+  securityResults.outerHTML.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+if (securityResults.insertAdjacentHTML.length === 0) {
+  console.log(
+    "[OK] No se detectó uso de insertAdjacentHTML()."
+  );
+} else {
+  console.log(
+    "[REVISION] Se detectó uso de insertAdjacentHTML():"
+  );
+
+  securityResults.insertAdjacentHTML.forEach(
+    (file) => {
+      console.log(`- ${file}`);
+    }
+  );
+}
+
+// --------------------------------------------------
+
+console.log("\n--- Secretos potencialmente expuestos ---");
+
+if (securityResults.possibleSecrets.length === 0) {
+  console.log(
+    "[OK] No se detectaron patrones evidentes de claves o tokens."
+  );
+} else {
+  console.log(
+    "[AVISO] Se detectaron patrones que requieren revisión:"
+  );
+
+  securityResults.possibleSecrets.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+// --------------------------------------------------
+
+console.log("\n--- Persistencia local manipulable ---");
+
+if (securityResults.localStorage.length === 0) {
+  console.log("[OK] No se detectó uso de localStorage.");
+} else {
+  console.log(
+    "[INFO] Se detectó uso de localStorage en:"
+  );
+
+  securityResults.localStorage.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+
+  console.log(
+    "Los datos guardados en localStorage pueden modificarse desde el navegador."
+  );
+}
+
+if (securityResults.sessionStorage.length === 0) {
+  console.log(
+    "[OK] No se detectó uso de sessionStorage."
+  );
+} else {
+  console.log(
+    "[INFO] Se detectó uso de sessionStorage en:"
+  );
+
+  securityResults.sessionStorage.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+// --------------------------------------------------
+
+console.log("\n--- Estado expuesto globalmente ---");
+
+if (securityResults.windowExposure.length === 0) {
+  console.log(
+    "[OK] No se detectaron variables críticas expuestas directamente en window."
+  );
+} else {
+  console.log(
+    "[AVISO] Se detectaron posibles variables de juego expuestas en window:"
+  );
+
+  securityResults.windowExposure.forEach((file) => {
+    console.log(`- ${file}`);
+  });
+}
+
+// --------------------------------------------------
+
+console.log(
+  "\n--- Variables de estado potencialmente globales ---"
+);
+
+if (
+  securityResults.globalStateVariables.length === 0
+) {
+  console.log(
+    "[OK] No se detectaron declaraciones let/var con nombres críticos de estado."
+  );
+} else {
+  console.log(
+    "[REVISION] Se detectaron variables relacionadas con estado:"
+  );
+
+  securityResults.globalStateVariables.forEach(
+    (item) => {
+      console.log(
+        `- ${item.file} -> ${item.variable}`
+      );
+    }
+  );
+
+  console.log(
+    "El resultado requiere revisión manual para determinar si realmente están expuestas globalmente."
+  );
+}
+
+// --------------------------------------------------
+
+console.log(
+  "\n--- Encapsulación mediante campos privados ---"
+);
+
+if (securityResults.privateFields.length === 0) {
+  console.log(
+    "[INFO] No se detectaron campos privados (#campo) en las clases analizadas."
+  );
+} else {
+  const uniquePrivateFields = new Map();
+
+  securityResults.privateFields.forEach((item) => {
+    const key = `${item.file}:${item.field}`;
+
+    if (!uniquePrivateFields.has(key)) {
+      uniquePrivateFields.set(key, item);
+    }
+  });
+
+  console.log(
+    `[OK] Se detectaron ${uniquePrivateFields.size} campos privados.`
+  );
+
+  [...uniquePrivateFields.values()]
+    .slice(0, 30)
+    .forEach((item) => {
+      console.log(
+        `- ${item.file} -> ${item.field}`
+      );
+    });
+
+  if (uniquePrivateFields.size > 30) {
+    console.log(
+      `... y ${
+        uniquePrivateFields.size - 30
+      } campos privados más.`
+    );
+  }
+}
+
+// --------------------------------------------------
+// EVALUACIÓN FINAL
+// --------------------------------------------------
+
+console.log("\n--- Evaluación final ---");
+
+const securityCriticalIssues =
+  securityResults.evalUsage.length +
+  securityResults.functionConstructor.length +
+  securityResults.possibleSecrets.length +
+  securityResults.windowExposure.length;
+
+const securityReviewIssues =
+  securityResults.innerHTML.length +
+  securityResults.outerHTML.length +
+  securityResults.insertAdjacentHTML.length;
+
+if (
+  securityCriticalIssues === 0 &&
+  securityReviewIssues === 0
+) {
+  console.log(
+    "[OK] No se detectaron riesgos críticos evidentes mediante el análisis estático."
+  );
+} else {
+  console.log(
+    "[AVISO] Se detectaron elementos que requieren revisión de seguridad."
+  );
+}
+
+if (
+  securityResults.localStorage.length > 0 ||
+  securityResults.sessionStorage.length > 0
+) {
+  console.log(
+    "[INFO] El juego almacena información en el navegador. Estos datos no deben considerarse protegidos contra modificaciones realizadas por el propio usuario."
+  );
+}
+
+console.log(
+  "[INFO] Los campos privados (#campo) mejoran la encapsulación del código, pero no impiden que un usuario con acceso a los archivos del juego modifique el código distribuido."
+);
+
+console.log(
+  "======================================================================"
+);
