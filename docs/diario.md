@@ -764,3 +764,7 @@ También se detectó el uso de `localStorage` en `Storage.js` y `Storage.ts`. De
 Durante la prueba también se detectó una variable denominada `streak` que requiere revisión para determinar su ámbito real. El análisis automático no permite determinar por sí solo si dicha variable está expuesta globalmente.
 
 Como conclusión, no se identificaron vulnerabilidades críticas evidentes mediante el análisis estático realizado. La principal limitación de seguridad corresponde a la propia arquitectura cliente del juego, ya que el código y los datos distribuidos al usuario pueden ser inspeccionados o modificados. El uso de campos privados mejora la encapsulación y organización del código, pero no impide completamente la modificación del código distribuido.
+
+## 2026-09-12
+
+Se ajustaron los estilos de los títulos (h2): estaban muy gruesos porque Jersey 10 solo tiene un peso real (400), así que pedir otro font-weight no tenía efecto. Cambió la font-family de los h2 a Pixelify Sans, que sí es variable, logrando un trazo más liviano sin perder la estética pixel-art del juego.
