@@ -2,10 +2,10 @@
    propio repo (public/fonts/), no via Google Fonts - el juego no depende de
    internet para verse bien. Pixelify Sans es variable (un solo archivo cubre
    400-700); Press Start 2P solo existe en un peso. */
-@font-face {
+/*@font-face {
   font-family: "Pixelify Sans";
   src: url("../fonts/pixelify-sans-latin.woff2") format("woff2");
-  font-weight: 400 700;
+  font-weight: 400 400;
   font-style: normal;
   font-display: swap;
 }
@@ -13,10 +13,10 @@
 @font-face {
   font-family: "Press Start 2P";
   src: url("../fonts/press-start-2p-latin.woff2") format("woff2");
-  font-weight: 400;
+  font-weight: 300;
   font-style: normal;
   font-display: swap;
-}
+}*/
 
 /* pixel-art redondeada, mas moderna y legible que Press Start 2P/Pixelify
    Sans - adoptada como fuente unica del juego (titulos y texto funcional
@@ -32,8 +32,13 @@
 }
 
 :root {
+  /* Jersey 10 es la fuente unica del juego (ver comentario en @font-face
+     arriba); Press Start 2P/Pixelify Sans quedan como fallback si no carga */
   --font-display: "Jersey 10", "Press Start 2P", "Pixelify Sans", system-ui, sans-serif;
   --font-body: "Jersey 10", "Pixelify Sans", system-ui, sans-serif;
+  /* fuente propia de los mensajes de la Jefa en #next-day-message (regla y
+     error por igual) - cae a --font-body si Jersey 10 no carga */
+  --font-jefa: "Jersey 10", var(--font-body);
   /* zoom de #character-scene (barra en #options-screen) - 1 = tamaño normal */
   --scene-zoom: 1;
   /* skins de boton (placas recortadas a su bbox, ver public/img/backgrounds/):
@@ -57,14 +62,17 @@
   font-family: var(--font-body);
 }
 
-h1, h2, #menu-buttons h1, .screen-panel h2 {
+/*h1, h2, #menu-buttons h1, .screen-panel h2 {
   font-family: var(--font-display);
   letter-spacing: 0.04em;
 }
-
+*/
+h1, h2, #menu-buttons h1, .screen-panel h2 {
+  font-family: "Pixelify Sans", var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
 body {
-  margin: 0;
-  padding: 1.5rem;
   background: #1e1b2e;
   color: #f2ede3;
 }
@@ -104,7 +112,10 @@ section {
   max-width: none;
   margin: 0;
   padding: 0;
-  background: #000;
+  background: rgba(0, 0, 0, 0.45);
+  /* el menu ya esta visible detras (ver index.html) - sin esto quedaria tapado,
+     #menu-screen tambien es "position: fixed" y va despues en el HTML */
+  z-index: 10;
 }
 
 #start-gate-inner {
@@ -247,8 +258,8 @@ button {
      piso fijo, en una ventana muy chica dejaria de encoger antes que la
      placa y se saldria de ella (letra "gigante" pisando el boton de al lado) */
   font-size: clamp(0px, 1.5vw, 1.05rem);
-  font-weight: 600;
-  line-height: 1;
+  font-weight: 500;
+  line-height: 1.2;
   letter-spacing: 0.08em;
   text-align: center;
   /* SIEMPRE una sola linea: no salta, no envuelve; si el texto es largo hay que
@@ -437,13 +448,20 @@ button:disabled {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 0;
+  background: #1e1b2e; /* se ve en las franjas que deja la imagen sin recortar */
 }
 
+/*
+  "contain" (no "cover"): muestra la imagen COMPLETA sin recortar ningun borde,
+  ajustandola dentro de la pantalla - si la proporcion de la ventana no coincide
+  exacto con la de la imagen, aparecen franjas del color de fondo arriba/abajo
+  o a los costados, pero nunca se pierde parte del arte (titulo, escritorio, etc).
+*/
 #menu-bg-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   display: block;
   user-select: none;
@@ -491,7 +509,7 @@ button:disabled {
      Piso en 0 a proposito: la placa (width: 60%) no tiene piso propio, si la
      letra tuviera un piso fijo se saldria de la placa en una ventana chica */
   font-size: clamp(0px, 2cqw, 1.7rem);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-align: center;
   text-shadow: 0 2px 5px rgba(53, 28, 47, 0.85);
@@ -551,7 +569,7 @@ button:disabled {
   /* cqi = % del ancho real de #menu-layout, mismo criterio que .menu-real-btn -
      piso en 0 para que encoja junto con #menu-sidebar en una ventana chica */
   font-size: clamp(0px, 2cqi, 2rem);
-  font-weight: 400;
+  font-weight: 100;
   color: #f2ede3;
 }
 
@@ -584,7 +602,7 @@ button:disabled {
   color: #ceafd6;
   /* piso en 0 a proposito, mismo motivo que .menu-real-btn de arriba */
   font-size: clamp(0px, 1.6cqw, 1.3rem);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-align: center;
   text-shadow: 0 2px 5px rgba(53, 28, 47, 0.85);
@@ -677,10 +695,13 @@ button:disabled {
   /* los botones de adentro escalan (placa Y letra) con el ancho del panel,
      igual que .menu-real-btn con el menu -> el texto LLENA el boton */
   container-type: inline-size;
+  font-weight: 300;
 }
 
-.screen-panel h2 {
+#name-entry-screen .screen-panel h2 {
   margin: 0;
+  font-size: clamp(1.1rem, 5vw, 1.6rem);
+  font-weight: 200;
 }
 
 .screen-subtitle {
@@ -785,8 +806,8 @@ button:disabled {
   padding: 0.3rem 0.35rem;
   /* tamaño del texto de las reglas en la pizarra - escala con el ancho de la
      pizarra hasta un tope de 1.15rem */
-  font-size: clamp(0.6rem, 2.6vw, 1.15rem);
-  line-height: 1.35;
+  font-size: clamp(0.7rem, 2.6vw, 1.15rem);
+  line-height: 1.4;
 }
 
 /* botones de la pantalla de reglas, ahora DEBAJO de la pizarra (no encima) */
@@ -804,7 +825,7 @@ button:disabled {
   border-radius: 6px;
   padding: 0.5rem 0.8rem;
   margin: 0.4rem 0 0.8rem;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 /*
@@ -1030,11 +1051,13 @@ button:disabled {
 #jefa-portrait.jefaKatana { background-image: url("../img/jefa/jefaKatana.png"); }
 #jefa-portrait.jefaEnojo { background-image: url("../img/jefa/jefaEnojo.png"); }
 
-/* mensaje de la Jefa: ya hereda Jersey 10 de --font-body (ver :root), solo
-   hace falta el tamano/interlineado mas comodo para parrafos largos -
-   typeDialogue() tipea texto que puede crecer (mensajeIntro de un dia
-   futuro, por ejemplo). */
+/* mensaje de la Jefa: siempre --font-jefa (pixel-art legible), nunca
+   --font-display en el parrafo - typeDialogue() tipea texto que puede
+   crecer (mensajeIntro de un dia futuro, por ejemplo) y Press Start 2P no
+   aguanta un parrafo largo. Jersey 10 dibuja mas chico que Pixelify Sans al
+   mismo tamano de fuente, por eso el font-size mas grande. */
 #next-day-message {
+  font-family: var(--font-jefa);
   font-size: 1.15rem;
   line-height: 1.5;
 }
@@ -1245,26 +1268,39 @@ button:disabled {
    ajustadas una vez ya jugado: DIA quedo bien en horizontal, solo hacia
    falta bajarlo; ERRORES y RACHA (RACHA mas todavia) se corrieron a la
    derecha para caer despues de la palabra ya dibujada en el arte */
-#day-counter,
-#error-counter,
+#day-counter {
+  position: absolute;
+  top: 59%;
+  transform: translateY(-50%);
+  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
+  color: #f2ede3;
+  font-weight: 300;
+  left: 32%;
+}
+
+#error-counter {
+  position: absolute;
+  top: 59%;
+  transform: translateY(-50%);
+  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
+  color: #f2ede3;
+  font-weight: 400;
+  left: 56%;
+}
+
+#error-counter.danger {
+  color: #ff6f91;
+  font-weight: 600;
+}
+
 #streak-counter {
   position: absolute;
   top: 59%;
   transform: translateY(-50%);
-  /* cqw = % del ancho real de #character-scene (ver container-type ahi) -
-     no vw, que no sigue el tamaño real de la caja en toda proporcion de
-     pantalla (ver diario.md) */
-  font-size: clamp(0.6rem, 1.7cqw, 1.1rem);
+  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
   color: #f2ede3;
-}
-
-#day-counter { left: 32%; }
-#error-counter { left: 56%; }
-#streak-counter { left: 77%; }
-
-#error-counter.danger {
-  color: #ff6f91;
-  font-weight: bold;
+  font-weight: 400;
+  left: 77%;
 }
 
 /* el boton de pausa del HUD (#pause-btn, lleva .exit-to-menu-btn pero PAUSA,
@@ -1284,6 +1320,43 @@ button:disabled {
   background: rgba(20, 16, 31, 0.55);
   border-radius: 6px;
   text-shadow: none;
+}
+
+/* debajo del reloj de arena, misma columna que #coin-widget/#day-clock
+   (left: 10.9%) - la flor es la misma que ya aparece junto a DIA/ERRORES/
+   RACHA en fondoPantallaJuegoT.png, recortada aparte (ver public/img/tienda/
+   florHud.png) porque ahi vive pintada en el fondo, no como icono suelto.
+   Sin el estilo generico de boton (fondo/borde/padding): es un icono solo. */
+#shop-btn {
+  position: absolute;
+  left: 10.9%;
+  top: 80%;
+  transform: translate(-50%, -50%);
+  width: 7%;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: url("../img/tienda/florHud.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: pointer;
+  z-index: 5;
+}
+
+/* resalta el campo del pasaporte (o el rasgo del personaje) que la pista de
+   la tienda senala como problematico - ver Game.buyHint() y
+   hintTargetSelector() en main.ts. Se saca sola a los pocos segundos. */
+.hint-highlight {
+  animation: hint-glow 0.6s ease-in-out 3;
+}
+
+@keyframes hint-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 209, 102, 0)); }
+  50% { filter: drop-shadow(0 0 0.6rem rgba(255, 209, 102, 0.95)); }
 }
 
 /* moneda + dinero: antes flotaba fuera del canvas, pegado al costado de la
@@ -1323,9 +1396,10 @@ button:disabled {
 #money-counter {
   /* mismo criterio cqw que el HUD/dialogo/pasaporte de arriba (ver
      container-type en #character-scene) */
-  font-size: clamp(0.5rem, 1.35cqw, 0.8rem);
+  font-size: clamp(0.7rem, 1.8cqw, 1.2rem);
   color: #f2ede3;
   text-align: center;
+  font-weight: 500;
 }
 
 /* debajo del reloj de arena, misma columna que #coin-widget/#day-clock
@@ -1457,11 +1531,11 @@ button:disabled {
   align-items: center;
   overflow: hidden;
   font-style: italic;
-  line-height: 1.25;
+  line-height: 1.3;
   /* cqw = % del ancho real de #character-scene (ver container-type ahi),
      no vw - la caja tiene overflow:hidden, si un dialogo largo queda
      cortado bajar el tope */
-  font-size: clamp(0.6rem, 2.54cqw, 1.5rem);
+  font-size: clamp(0.7rem, 2.54cqw, 1.5rem);
   color: #f2ede3;
 }
 
@@ -1671,8 +1745,8 @@ button:disabled {
   /* cqw = % del ancho real de #character-scene (ver container-type ahi),
      no rem fijo - la caja tiene overflow:hidden, si un dato queda muy
      largo revisar que no se corte */
-  font-size: clamp(0.3rem, 1.86cqw, 1rem);
-  line-height: 1;
+  font-size: clamp(0.55rem, 1.86cqw, 1rem);
+  line-height: 1.2;
 }
 
 #passport-page-left p {
