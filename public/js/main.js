@@ -65,22 +65,22 @@ const PASSPORT_ARC_MS = 700;
 // probo 89%, el borde geometrico de la caja del personaje, y se veia
 // "hundirse" de mas, saliendose por debajo del escritorio). 71% es la base
 // REAL del dibujo del personaje dentro de su caja (donde termina el
-// contenido visible de rostro-N.png con "contain", antes del margen vacio
+// contenido visible de rostro-N.webp con "contain", antes del margen vacio
 // que deja la caja mas angosta - ver el mismo calculo en el comentario de
 // .part-horns en style.css), y ademas cae comodo en el medio de la franja
 // del escritorio.
-// DESK.top re-ajustado cuando DesktopNew.png se achico - el escritorio real
+// DESK.top re-ajustado cuando DesktopNew.webp se achico - el escritorio real
 // ahora ocupa solo hasta ~86% de alto (antes desktop.png llegaba al 100%),
 // asi que el pasaporte tiene que aterrizar mas arriba para no pisar la barra
 // de dialogo.
 const PASSPORT_ARC_BASE = { left: 58, top: 71, height: 3 };
 const PASSPORT_ARC_CONTROL = { left: 55, top: -35 };
 const PASSPORT_ARC_DESK = { left: 60, top: 68, height: 16 };
-// variantes de "apoyado sobre la mesa" (pasaporte1/2/3.png) que reemplazan a
-// pasaporte.png una vez que la entrega termina de caer - ver el final de
+// variantes de "apoyado sobre la mesa" (pasaporte1/2/3.webp) que reemplazan a
+// pasaporte.webp una vez que la entrega termina de caer - ver el final de
 // renderVisitor(). La devolucion no las usa: antes de arrancar el arco de
 // vuelta se sacan de nuevo, asi que el personaje siempre se lo lleva mostrando
-// pasaporte.png, como si el cambio de imagen fuera solo "una vez posado".
+// pasaporte.webp, como si el cambio de imagen fuera solo "una vez posado".
 const PASSPORT_DESK_LOOK_VARIANTS = ["desk1", "desk2", "desk3"];
 // cubic-bezier de desaceleracion sin overshoot (el 4to valor no pasa de 1): sin
 // rebote al llegar, frena suave - se aplica igual en la entrega y la vuelta
@@ -265,7 +265,7 @@ function pickGameBackground() {
     const n = Math.floor(Math.random() * GAME_BACKGROUND_COUNT) + 1;
     const gameScreenEl = document.querySelector("#game-screen");
     if (gameScreenEl !== null) {
-        gameScreenEl.style.backgroundImage = "url(\"img/backgrounds/fondoJuego" + n + ".png\")";
+        gameScreenEl.style.backgroundImage = "url(\"img/backgrounds/fondoJuego" + n + ".webp\")";
     }
 }
 function beginGame(name, totalDays, hardMode, randomFn, dayDurationMs) {
@@ -612,7 +612,7 @@ function renderVisitor() {
             hornsEl.style.display = "none";
         }
     }
-    // "DÍA"/"ERRORES"/"RACHA" ya estan dibujados dentro de fondoPantallaJuegoT.png
+    // "DÍA"/"ERRORES"/"RACHA" ya estan dibujados dentro de fondoPantallaJuegoT.webp
     // (ver style.css #hud) - aca solo se ponen los valores, no el texto completo
     const dayEl = document.querySelector("#day-counter");
     const errorsEl = document.querySelector("#error-counter");
@@ -633,7 +633,7 @@ function renderVisitor() {
         }
     }
     // modo alerta: a un error de perder, el recuadro solido detras de
-    // fondoPantallaJuegoT.png (ver style.css .alerta) empieza a parpadear en
+    // fondoPantallaJuegoT.webp (ver style.css .alerta) empieza a parpadear en
     // rosa, lo que se lee como todo el borde de la pantalla en alerta
     if (sceneEl !== null) {
         if (game.errors >= dangerThreshold) {
@@ -740,7 +740,7 @@ function resolveDecision(accept, usedAlienStamp = false) {
             decisionStampEl.classList.remove("show", "approved", "rejected", "alien");
         }
         if (passportEl !== null) {
-            // vuelve a pasaporte.png (saca la variante "en la mesa" si tenia una):
+            // vuelve a pasaporte.webp (saca la variante "en la mesa" si tenia una):
             // se devuelve mostrando el mismo aspecto con el que se entrego
             passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
             passportEl.classList.add("closed");
@@ -815,20 +815,20 @@ const DAY_END_MESSAGES = [
     "Jornada de trabajo terminada... día agotador, pero te tranquiliza la idea de que solo te quedan 45 años para jubilarte... suerte.",
     "Fin del día 7... buen trabajo.",
 ];
-// una pantallaIntermediaN.png por dia, en el mismo orden que DAY_END_MESSAGES
+// una pantallaIntermediaN.webp por dia, en el mismo orden que DAY_END_MESSAGES
 // (no es 1..7 en orden porque asi las pidio el arte - ver imagenes en
 // public/img/backgrounds/). backdrop = true para las que vienen sin fondo
-// propio (necesitan el mismo general_background.png difuminado que usa la
+// propio (necesitan el mismo general_background.webp difuminado que usa la
 // Jefa detras suyo, ver #day-end-backdrop en style.css) - pantallaIntermedia4
 // y pantallaIntermedia6 ya traen su propia escena completa, no lo necesitan.
 const DAY_END_IMAGES = [
-    { file: "pantallaIntermedia1.png", backdrop: true },
-    { file: "pantallaIntermedia2.png", backdrop: true },
-    { file: "pantallaIntermedia3.png", backdrop: true },
-    { file: "pantallaIntermedia5.png", backdrop: true },
-    { file: "pantallaIntermedia4.png", backdrop: false },
-    { file: "pantallaIntermedia0.png", backdrop: true },
-    { file: "pantallaIntermedia6.png", backdrop: false },
+    { file: "pantallaIntermedia1.webp", backdrop: true },
+    { file: "pantallaIntermedia2.webp", backdrop: true },
+    { file: "pantallaIntermedia3.webp", backdrop: true },
+    { file: "pantallaIntermedia5.webp", backdrop: true },
+    { file: "pantallaIntermedia4.webp", backdrop: false },
+    { file: "pantallaIntermedia0.webp", backdrop: true },
+    { file: "pantallaIntermedia6.webp", backdrop: false },
 ];
 function renderDaySummaryScreen(dayNumber, maxStreak) {
     if (game === null) {

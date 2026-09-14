@@ -46,9 +46,9 @@
      verde = siguiente / pasar de dia. La CAJA del boton tiene una proporcion
      fija cercana a la de la placa (~2.15:1) para que la imagen NO se estire;
      el texto es el que se adapta (se achica y salta de linea si hace falta). */
-  --btn-morado: url("../img/backgrounds/botonMorado.png");
-  --btn-rojo: url("../img/backgrounds/botonRojo.png");
-  --btn-verde: url("../img/backgrounds/botonVerde.png");
+  --btn-morado: url("../img/backgrounds/botonMorado.webp");
+  --btn-rojo: url("../img/backgrounds/botonRojo.webp");
+  --btn-verde: url("../img/backgrounds/botonVerde.webp");
   /* ancho estandar de boton: SIN piso en rem -> se achica con la pantalla
      19vw hasta un tope de 14rem (solo en pantallas anchas > ~1180px). La altura
      sale sola de --btn-ar, asi la PLACA entera (no solo la letra) encoge con la
@@ -99,6 +99,64 @@ section {
   margin: 0 auto;
 }
 
+/* ---------- pantallas de texto: una columna que se achica con la ventana ----------
+   Todas menos menu, gate y juego (esas 3 ya ocupan la ventana por su cuenta).
+   Cada una es una columna "position: fixed" centrada de ancho --scr-w, con 3
+   topes: su ancho normal en px, el ancho de la ventana (menos un margen) y un
+   % del ALTO de la ventana - ese ultimo es el que la achica en una ventana baja.
+   --u es el "rem" de la pantalla: vale 16px con la columna en su ancho normal
+   (--scr-w / --scr-ref) y se achica con ella. Todo lo de adentro (letra,
+   margenes, imagenes, botones) se mide en --u, em, % o cqi de la columna, asi
+   que se achica entero en la misma proporcion - nada queda con un tamaño fijo
+   que ya no entra.
+   El % de alto de cada pantalla sale de cuanto mide su contenido mas largo
+   (texto mas largo, lista mas larga) respecto de su ancho: si se agrega
+   contenido y queda cortado abajo en una ventana baja, bajar ese numero.
+   Al ser fixed no empuja el alto del body, asi que la pagina nunca muestra
+   barras de scroll. Sin "display" por ID, mismo motivo que #menu-screen (le
+   ganaria a .hidden y changeState() no podria ocultarla). */
+#options-screen,
+#pause-screen,
+#shop-screen,
+#credits-screen,
+#exit-screen,
+#name-entry-screen,
+#story-screen,
+#day-summary-screen,
+#day-result-screen,
+#day-start-screen,
+#final-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: var(--scr-w);
+  max-width: none;
+  margin: 0 auto;
+  padding-top: calc(var(--u) * 0.5);
+  --u: calc(var(--scr-w) / var(--scr-ref));
+  font-size: var(--u);
+}
+
+/* pantallas con panel: el panel mide lo mismo que la columna (400px normal) */
+#options-screen,
+#pause-screen,
+#shop-screen,
+#credits-screen,
+#exit-screen,
+#name-entry-screen {
+  --scr-w: min(400px, calc(100vw - 2rem), 60vh);
+  --scr-ref: 25;
+}
+
+#story-screen       { --scr-w: min(480px, calc(100vw - 2rem), 58vh); --scr-ref: 30; }
+#day-summary-screen { --scr-w: min(480px, calc(100vw - 2rem), 46vh); --scr-ref: 30; }
+/* la mas exigente de las de 480px: el mensajeIntro mas largo de dias.json
+   (dia 4, ~680 letras) mas la linea de errores/dinero de #day-result-summary */
+#day-result-screen  { --scr-w: min(480px, calc(100vw - 2rem), 50vh); --scr-ref: 30; }
+#day-start-screen   { --scr-w: min(480px, calc(100vw - 2rem), 62vh); --scr-ref: 30; }
+#final-screen       { --scr-w: min(720px, calc(100vw - 2rem), 80vh); --scr-ref: 45; }
+
 /* ---------- gate de audio: pantalla negra con un boton antes del menu ---------- */
 
 /*
@@ -125,7 +183,7 @@ section {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.6rem, 3vh, 1.1rem);
+  gap: clamp(0px, 3vh, 1.1rem);
   padding: 1rem;
 }
 
@@ -148,7 +206,8 @@ section {
 #start-gate-hint {
   margin: 0;
   color: #cfc7dd;
-  font-size: clamp(0.8rem, 2.2vw, 1.15rem);
+  /* 3vh: tambien encoge en una ventana baja, no solo angosta */
+  font-size: clamp(0px, min(2.2vw, 3vh), 1.15rem);
   letter-spacing: 0.06em;
   text-align: center;
 }
@@ -201,7 +260,7 @@ section {
 }
 
 /*
-  a pantalla completa, mismo criterio que #menu-screen: fondoPantallaJuegoT.png
+  a pantalla completa, mismo criterio que #menu-screen: fondoPantallaJuegoT.webp
   esta pensado como el fondo de TODA la pantalla de juego (HUD, barra lateral
   y de dialogo ya vienen dibujados adentro), asi que ya no tiene sentido
   encerrarlo en la columna angosta de 480px que usan el resto de pantallas
@@ -334,7 +393,7 @@ button:disabled {
   aspect-ratio: 2.8;
   margin: 0 auto;
   /* mas arriba que abajo = baja la letra para centrarla en la placa */
-  padding: 0.5rem 4% 0.14rem;
+  padding: calc(var(--u) * 0.5) 4% calc(var(--u) * 0.14);
   font-size: var(--scr-btn-fs, clamp(0px, 6cqi, 1.3rem));
 }
 
@@ -345,12 +404,12 @@ button:disabled {
   width: var(--scr-btn-w, 44cqi);
   aspect-ratio: 2.6;
   margin: 0;
-  padding: 0.45rem 4% 0.12rem;
+  padding: calc(var(--u) * 0.45) 4% calc(var(--u) * 0.12);
   font-size: var(--scr-btn-fs, clamp(0px, 4.2cqi, 1.05rem));
 }
 #credits-screen .screen-panel {
   /* separacion VERTICAL: lista de creditos <-> zona de borrado */
-  gap: 0.8rem;
+  gap: calc(var(--u) * 0.8);
 }
 
 /* pantallas SIN panel (historia, resultado del dia, reglas del dia, final):
@@ -368,8 +427,8 @@ button:disabled {
 #final-screen > button {
   width: var(--scr-btn-w, 36cqi);
   aspect-ratio: 2.8;
-  margin: 0.5rem auto;
-  padding: 0.5rem 5% 0.14rem;
+  margin: calc(var(--u) * 0.5) auto;
+  padding: calc(var(--u) * 0.5) 5% calc(var(--u) * 0.14);
   font-size: var(--scr-btn-fs, clamp(0px, 4cqi, 1.3rem));
 }
 
@@ -383,12 +442,12 @@ button:disabled {
   position: absolute;
   left: 0;
   top: 100%;            /* justo debajo del borde inferior del panel */
-  margin: 0.55rem 0 0;
+  margin: calc(var(--u) * 0.55) 0 0;
   align-self: auto;
   z-index: 5;
   width: var(--bk-btn-w, 40cqi);
   aspect-ratio: 2.8;
-  padding: 0.4rem 6% 0.12rem;
+  padding: calc(var(--u) * 0.4) 6% calc(var(--u) * 0.12);
   font-size: var(--bk-btn-fs, clamp(0px, 3.8cqi, 1rem));
 }
 
@@ -401,7 +460,7 @@ button:disabled {
   display: none;
 }
 
-/* ---------- menu: backgroundEnd.png a pantalla completa, sin scroll ---------- */
+/* ---------- menu: backgroundEnd.webp a pantalla completa, sin scroll ---------- */
 
 /*
   ojo con este selector: NUNCA declararle un "display" directo por ID (ni
@@ -421,7 +480,7 @@ button:disabled {
 }
 
 /*
-  el contenedor mantiene siempre la proporcion real de backgroundEnd.png
+  el contenedor mantiene siempre la proporcion real de backgroundEnd.webp
   (1536/1024) y ocupa el maximo posible sin pasarse de 94% del ancho ni 90%
   del alto de la ventana - a proposito no llega a pantalla completa (en un
   monitor grande se siente demasiado invasivo), pero la diferencia es chica
@@ -468,7 +527,7 @@ button:disabled {
   -webkit-user-drag: none;
 }
 
-/* titulo (vacio, backgroundEnd.png ya lo trae dibujado) + botones reales,
+/* titulo (vacio, backgroundEnd.webp ya lo trae dibujado) + botones reales,
    posicionados sobre la imagen - bajados (top: 62%) para dejar libre el
    titulo/kanji de la parte superior */
 #menu-buttons {
@@ -487,7 +546,7 @@ button:disabled {
 }
 
 #menu-buttons h1 {
-  margin: 0 0 0.6rem;
+  margin: 0 0 clamp(0px, 0.7cqw, 0.6rem);
   font-size: clamp(1.3rem, 3.6vw, 2.2rem);
   color: #f2ede3;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
@@ -500,7 +559,8 @@ button:disabled {
   width: 60%;
   aspect-ratio: 2.8;
   margin: 0;
-  padding: 0.7rem 5% 0.1rem ;
+  /* cqw con tope en el rem de antes: el relleno tambien encoge con el menu */
+  padding: clamp(0px, 0.82cqw, 0.7rem) 5% clamp(0px, 0.12cqw, 0.1rem);
   background: transparent var(--btn-morado) center / 100% 100% no-repeat;
   border: none;
   border-radius: 0;
@@ -565,7 +625,7 @@ button:disabled {
 }
 
 #history-panel h2 {
-  margin: 0 0 0.4rem;
+  margin: 0 0 clamp(0px, 0.47cqi, 0.4rem);
   /* cqi = % del ancho real de #menu-layout, mismo criterio que .menu-real-btn -
      piso en 0 para que encoja junto con #menu-sidebar en una ventana chica */
   font-size: clamp(0px, 2cqi, 2rem);
@@ -585,7 +645,7 @@ button:disabled {
   flex-direction: row;
   align-items: center;
   /* separacion entre los dos botones de modo - subir/bajar para juntarlos o separarlos */
-  gap: 0.3rem;
+  gap: clamp(0px, 0.35cqw, 0.3rem);
 }
 
 #menu-modes button {
@@ -597,7 +657,7 @@ button:disabled {
   margin: 0;
   /* mismo truco que grupo A: mas padding arriba que abajo baja la letra para
      que quede centrada en la placa */
-  padding: 0.55rem 5% 0.1rem;
+  padding: clamp(0px, 0.65cqw, 0.55rem) 5% clamp(0px, 0.12cqw, 0.1rem);
   background: transparent var(--btn-morado) center / 100% 100% no-repeat;
   color: #ceafd6;
   /* piso en 0 a proposito, mismo motivo que .menu-real-btn de arriba */
@@ -627,28 +687,28 @@ button:disabled {
 #player-name-form {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: calc(var(--u) * 0.35);
 }
 
 #player-name-form label {
-  font-size: 0.85rem;
+  font-size: calc(var(--u) * 0.85);
   color: #a89fc2;
 }
 
 #player-name-row {
   display: flex;
-  gap: 0.4rem;
+  gap: calc(var(--u) * 0.4);
 }
 
 #player-name-input {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0.55rem 0.75rem;
+  padding: calc(var(--u) * 0.55) calc(var(--u) * 0.75);
   border-radius: 6px;
   border: 1px solid #4a4658;
   background: #2a2640;
   color: #f2ede3;
-  font-size: 1rem;
+  font-size: var(--u);
 }
 
 #player-name-row button {
@@ -656,20 +716,20 @@ button:disabled {
   aspect-ratio: auto;
   align-self: stretch;
   margin: 0;
-  padding: 0.6rem 1.7rem;
-  min-width: 7rem;
-  font-size: 1.05rem;
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 1.7);
+  min-width: calc(var(--u) * 7);
+  font-size: calc(var(--u) * 1.05);
 }
 
 /* ---------- pantalla para poner el nombre (al empezar partida nueva) ---------- */
 
 #name-entry-screen #player-name-form {
-  margin-top: 1rem;
+  margin-top: var(--u);
 }
 
 #player-name-error {
-  margin: 0.4rem 0 0;
-  font-size: 0.85rem;
+  margin: calc(var(--u) * 0.4) 0 0;
+  font-size: calc(var(--u) * 0.85);
   color: #e59b96;
 }
 
@@ -681,15 +741,16 @@ button:disabled {
 /* ---------- opciones / creditos / salir ---------- */
 
 .screen-panel {
-  max-width: 400px;
-  margin: 2rem auto;
+  /* el ancho lo da la columna de la pantalla (--scr-w, ver arriba) */
+  max-width: none;
+  margin: calc(var(--u) * 2) auto;
   background: #332640;
   border-radius: 10px;
-  padding: 1.5rem;
+  padding: calc(var(--u) * 1.5);
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: calc(var(--u) * 0.8);
   /* ancla para el "Volver al menú" que cuelga debajo del panel */
   position: relative;
   /* los botones de adentro escalan (placa Y letra) con el ancho del panel,
@@ -700,12 +761,12 @@ button:disabled {
 
 #name-entry-screen .screen-panel h2 {
   margin: 0;
-  font-size: clamp(1.1rem, 5vw, 1.6rem);
+  font-size: calc(var(--u) * 1.6);
   font-weight: 200;
 }
 
 .screen-subtitle {
-  font-size: clamp(0.85rem, 2.2vw, 0.95rem);
+  font-size: calc(var(--u) * 0.95);
   line-height: 1.5;
   opacity: 0.85;
   margin: 0;
@@ -716,7 +777,7 @@ button:disabled {
 .slider-row {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: calc(var(--u) * 0.3);
   text-align: left;
 }
 
@@ -725,7 +786,7 @@ button:disabled {
 #new-game-options {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: calc(var(--u) * 0.8);
 }
 
 .slider-row input[type="range"] {
@@ -738,13 +799,14 @@ button:disabled {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 40vh;
+  /* en --u (no vh): la lista se achica junto con el resto del panel */
+  max-height: calc(var(--u) * 16);
   overflow-y: auto;
   text-align: left;
 }
 
 .styled-list li {
-  padding: 0.5rem 0.75rem;
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 0.75);
   border-bottom: 1px solid #4a4658;
 }
 
@@ -755,7 +817,7 @@ button:disabled {
 #credits-danger-zone {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: calc(var(--u) * 0.4);
   justify-content: center;
 }
 
@@ -769,22 +831,21 @@ button:disabled {
    SOLO el titulo + la lista de reglas van sobre la imagen (proporcion real
    1122x1402); los botones quedan debajo (.day-start-actions). Si el texto no
    entra, la lista scrollea adentro.
-   El termino calc(62vh * 1122/1402) es lo que hace que ESTA pantalla se
-   achique con el ALTO de la ventana (no solo con el ancho, como antes) -
-   mismo criterio que #character-scene/#menu-layout, que ya se adaptan asi.
-   62vh le deja aire a .day-start-actions (los botones de debajo) para que
-   toda la pantalla entre sin scroll. Tocá ese numero para dejarle mas/menos
-   sitio a los botones. */
+   La pizarra ocupa todo el ancho de la columna de la pantalla (--scr-w de
+   #day-start-screen): el 62vh de ahi es lo que la achica con el ALTO de la
+   ventana y le deja aire a .day-start-actions (los botones de debajo) para
+   que toda la pantalla entre sin scroll. Tocá ese numero para dejarle
+   mas/menos sitio a los botones. */
 #day-start-screen .screen-panel {
-  background: url("../img/backgrounds/pizarraReglas.png") center / 100% 100% no-repeat;
+  background: url("../img/backgrounds/pizarraReglas.webp") center / 100% 100% no-repeat;
   border-radius: 0;
-  max-width: min(92vw, calc(62vh * 1122 / 1402), 560px);
+  max-width: none;
   aspect-ratio: 1122 / 1402;
   /* padding TOP mas grande = el bloque de texto arranca mas abajo dentro de la
      imagen. Tocá el primer valor para subirlo/bajarlo. */
   padding: 21% 12% 9%;
   justify-content: flex-start;
-  gap: 0.5rem;
+  gap: calc(var(--u) * 0.5);
   overflow: hidden;
 }
 
@@ -803,10 +864,10 @@ button:disabled {
 
 #day-start-screen #day-start-rules li {
   border-bottom-color: rgba(247, 236, 216, 0.22);
-  padding: 0.3rem 0.35rem;
+  padding: calc(var(--u) * 0.3) calc(var(--u) * 0.35);
   /* tamaño del texto de las reglas en la pizarra - escala con el ancho de la
-     pizarra hasta un tope de 1.15rem */
-  font-size: clamp(0.7rem, 2.6vw, 1.15rem);
+     pizarra (--u), 1.15rem con la pizarra en su ancho normal */
+  font-size: calc(var(--u) * 1.15);
   line-height: 1.4;
 }
 
@@ -815,16 +876,19 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.4rem;
-  margin: 0.6rem auto 0;
+  gap: calc(var(--u) * 0.4);
+  margin: calc(var(--u) * 0.6) auto 0;
 }
 
+/* vive dentro de #menu-sidebar: mismo criterio cqi con piso en 0 que el resto
+   de la barra (tope = el tamaño de antes, en rem) */
 #paused-status {
   background: #4a3a1e;
   color: #f2d9a5;
   border-radius: 6px;
-  padding: 0.5rem 0.8rem;
-  margin: 0.4rem 0 0.8rem;
+  padding: clamp(0px, 0.59cqi, 0.5rem) clamp(0px, 0.94cqi, 0.8rem);
+  margin: clamp(0px, 0.47cqi, 0.4rem) 0 clamp(0px, 0.94cqi, 0.8rem);
+  font-size: clamp(0px, 1.18cqi, 1rem);
   font-weight: 600;
 }
 
@@ -890,16 +954,14 @@ button:disabled {
 
 /* ---------- pantalla de historia ---------- */
 
-/* proporcion real de protaFeliz.png ya recortada a su contenido (703x900) -
-   el calc(45vh * 703/900) es lo que la achica con el ALTO de la ventana
-   (mismo criterio que #character-scene/#menu-layout), para que en una
-   ventana baja el retrato + #story-text + el boton entren sin scroll */
+/* proporcion real de protaFeliz.webp ya recortada a su contenido (703x900) -
+   en % de la columna (280px con la columna en 480px), asi en una ventana baja
+   se achica junto con #story-text y el boton (ver --scr-w de #story-screen) */
 #story-portrait {
-  width: 60%;
-  max-width: min(280px, calc(45vh * 703 / 900));
+  width: 58.33%;
   aspect-ratio: 703 / 900;
-  margin: 0 auto 1rem;
-  background-image: url("../img/protagonista/protaFeliz.png");
+  margin: 0 auto var(--u);
+  background-image: url("../img/protagonista/protaFeliz.webp");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: bottom center;
@@ -911,33 +973,32 @@ button:disabled {
   font-style: italic;
   background: #2a2640;
   border-radius: 6px;
-  padding: 1rem;
-  min-height: 1.2rem;
-  font-size: 1.15rem;
+  padding: var(--u);
+  min-height: calc(var(--u) * 1.2);
+  font-size: calc(var(--u) * 1.15);
 }
 
 /* ---------- pantalla de resumen de fin de dia: imagen + dialogo fuera del
    recuadro (mismo criterio que #jefa-scene/#next-day-message de aca abajo) ----------
-   pantallaIntermediaN.png no comparten todas la misma proporcion (ver
+   pantallaIntermediaN.webp no comparten todas la misma proporcion (ver
    renderDaySummaryScreen() en main.js), asi que se usa "contain" en vez del
    "100% 100%" de la pizarra de reglas - cada imagen se ve completa y sin
    deformar, aunque le sobre aire a los lados.
    #day-end-scene es el contenedor (un poco mas chico que el #jefa-scene de
    mas abajo - tocá max-width para ajustar el tamaño); #day-end-backdrop es el
-   mismo fondo difuminado que usa la Jefa detras suyo (general_background.png
+   mismo fondo difuminado que usa la Jefa detras suyo (general_background.webp
    + blur), y #day-end-portrait es la imagen real del dia, encima. El fondo
    solo se muestra cuando la pantallaIntermediaN de ese dia lo necesita (ver el
    toggle de la clase "hidden" en renderDaySummaryScreen()).
-   calc(38vh * 1) = el termino que la achica con el ALTO de la ventana (mismo
-   criterio que #character-scene/#menu-layout) - esta pantalla es la que mas
-   contenido apila debajo (dialogo + el recuadro entero de resultados), por
-   eso el numero es mas chico que en las otras pantallas de este tipo. */
+   Ancho en % de la columna: se achica con el ALTO de la ventana via el 46vh
+   de --scr-w en #day-summary-screen - esta pantalla es la que mas contenido
+   apila debajo (dialogo + el recuadro entero de resultados), por eso ese
+   numero es el mas chico de las pantallas de este tipo. */
 #day-end-scene {
   position: relative;
-  width: 100%;
-  max-width: min(600px, calc(38vh * 1 / 1));
+  width: 75%;
   aspect-ratio: 1 / 1;
-  margin: 1rem auto;
+  margin: var(--u) auto;
   border-radius: 8px;
   overflow: hidden;
   background-color: #2a2640;
@@ -946,7 +1007,7 @@ button:disabled {
 #day-end-backdrop {
   position: absolute;
   inset: 0;
-  background-image: url("../img/backgrounds/general_background.png");
+  background-image: url("../img/backgrounds/general_background.webp");
   background-size: 100% 100%;
   background-repeat: no-repeat;
   filter: blur(6px) brightness(0.6);
@@ -964,7 +1025,7 @@ button:disabled {
 /* mismo tratamiento que #next-day-message: parrafo simple, sin placa, tipeado
    con typeDialogue() */
 #day-summary-text {
-  font-size: 1.15rem;
+  font-size: calc(var(--u) * 1.15);
   line-height: 1.5;
 }
 
@@ -977,7 +1038,9 @@ button:disabled {
    sea cual sea el alto de pantalla, esta pantalla entera (imagen + dialogo +
    recuadro) entra sin que la pagina necesite scrollear. */
 #day-summary-screen .screen-panel {
-  max-height: 40vh;
+  /* 400px con la columna en 480px, igual que antes */
+  max-width: 83.333%;
+  max-height: calc(var(--u) * 26);
   overflow: hidden;
 }
 
@@ -992,15 +1055,14 @@ button:disabled {
 
 /* mismo canvas que #character-scene (3670x2446) para el fondo, mas grande que
    la del personaje porque la Jefa es la protagonista de esta pantalla.
-   calc(50vh * 3670/2446) = el termino que la achica con el ALTO de la
-   ventana (mismo criterio que #character-scene/#menu-layout), asi le queda
-   aire al kicker/mensaje/boton de debajo en una ventana baja. */
+   Ocupa todo el ancho de la columna: se achica con el ALTO de la ventana via
+   el 50vh de --scr-w en #day-result-screen, asi le queda aire al
+   kicker/mensaje/boton de debajo en una ventana baja. */
 #jefa-scene {
   position: relative;
   width: 100%;
-  max-width: min(720px, calc(50vh * 3670 / 2446));
   aspect-ratio: 3670 / 2446;
-  margin: 1rem auto;
+  margin: var(--u) auto;
   border-radius: 8px;
   overflow: hidden;
   background: #2a2640;
@@ -1009,7 +1071,7 @@ button:disabled {
 #jefa-background {
   position: absolute;
   inset: 0;
-  background-image: url("../img/backgrounds/general_background.png");
+  background-image: url("../img/backgrounds/general_background.webp");
   background-size: 100% 100%;
   background-repeat: no-repeat;
   filter: blur(6px) brightness(0.6);
@@ -1033,23 +1095,23 @@ button:disabled {
   background-position: bottom center;
 }
 
-#jefa-portrait.jefaExplica-1 { background-image: url("../img/jefa/jefaExplica-1.png"); }
-#jefa-portrait.jefaExplica-2 { background-image: url("../img/jefa/jefaExplica-2.png"); }
-#jefa-portrait.jefaExplica-3 { background-image: url("../img/jefa/jefaExplica-3.png"); }
-#jefa-portrait.jefaExplica-4 { background-image: url("../img/jefa/jefaExplica-4.png"); }
-#jefa-portrait.jefaExplica-5 { background-image: url("../img/jefa/jefaExplica-5.png"); }
+#jefa-portrait.jefaExplica-1 { background-image: url("../img/jefa/jefaExplica-1.webp"); }
+#jefa-portrait.jefaExplica-2 { background-image: url("../img/jefa/jefaExplica-2.webp"); }
+#jefa-portrait.jefaExplica-3 { background-image: url("../img/jefa/jefaExplica-3.webp"); }
+#jefa-portrait.jefaExplica-4 { background-image: url("../img/jefa/jefaExplica-4.webp"); }
+#jefa-portrait.jefaExplica-5 { background-image: url("../img/jefa/jefaExplica-5.webp"); }
 
 /* usadas en la intro del dia 1 (ver DAY_ONE_INTRO_BEATS en main.ts) y en las
    reacciones de la Jefa por cada error (ver ERROR_REACTIONS en main.ts) -
    mismo #jefa-portrait/#jefa-scene de siempre, solo mas variantes de imagen */
-#jefa-portrait.jefaPresentacion { background-image: url("../img/jefa/jefaPresentacion.png"); }
-#jefa-portrait.jefaNeutral { background-image: url("../img/jefa/jefaNeutral.png"); }
-#jefa-portrait.jefaEnojo2 { background-image: url("../img/jefa/jefaEnojo2.png"); }
-#jefa-portrait.jefaDecepcion { background-image: url("../img/jefa/jefaDecepcion.png"); }
-#jefa-portrait.jefaGolpea { background-image: url("../img/jefa/jefaGolpea.png"); }
-#jefa-portrait.jefaAsustada { background-image: url("../img/jefa/jefaAsustada.png"); }
-#jefa-portrait.jefaKatana { background-image: url("../img/jefa/jefaKatana.png"); }
-#jefa-portrait.jefaEnojo { background-image: url("../img/jefa/jefaEnojo.png"); }
+#jefa-portrait.jefaPresentacion { background-image: url("../img/jefa/jefaPresentacion.webp"); }
+#jefa-portrait.jefaNeutral { background-image: url("../img/jefa/jefaNeutral.webp"); }
+#jefa-portrait.jefaEnojo2 { background-image: url("../img/jefa/jefaEnojo2.webp"); }
+#jefa-portrait.jefaDecepcion { background-image: url("../img/jefa/jefaDecepcion.webp"); }
+#jefa-portrait.jefaGolpea { background-image: url("../img/jefa/jefaGolpea.webp"); }
+#jefa-portrait.jefaAsustada { background-image: url("../img/jefa/jefaAsustada.webp"); }
+#jefa-portrait.jefaKatana { background-image: url("../img/jefa/jefaKatana.webp"); }
+#jefa-portrait.jefaEnojo { background-image: url("../img/jefa/jefaEnojo.webp"); }
 
 /* mensaje de la Jefa: siempre --font-jefa (pixel-art legible), nunca
    --font-display en el parrafo - typeDialogue() tipea texto que puede
@@ -1058,7 +1120,7 @@ button:disabled {
    mismo tamano de fuente, por eso el font-size mas grande. */
 #next-day-message {
   font-family: var(--font-jefa);
-  font-size: 1.15rem;
+  font-size: calc(var(--u) * 1.15);
   line-height: 1.5;
 }
 
@@ -1075,9 +1137,9 @@ button:disabled {
 #notice-kicker {
   display: block;
   font-family: var(--font-jefa);
-  font-size: 1rem;
+  font-size: var(--u);
   letter-spacing: 0.06em;
-  margin-bottom: 0.4rem;
+  margin-bottom: calc(var(--u) * 0.4);
 }
 
 /* mismos acentos que ya usa el resto del juego: el dorado informativo de
@@ -1087,13 +1149,11 @@ button:disabled {
 
 /* ---------- pantalla final ---------- */
 
-#final-screen {
-  max-width: 720px;
-}
+/* ancho de la columna (720px normal): ver --scr-w de #final-screen arriba */
 
 /*
-  el aspect-ratio coincide casi exacto con fondoPierdes.png (1536x1024) Y con
-  backgroundWin1.png (3670x2446 - misma proporcion, 1.5008 contra 1.5, la
+  el aspect-ratio coincide casi exacto con fondoPierdes.webp (1536x1024) Y con
+  backgroundWin1.webp (3670x2446 - misma proporcion, 1.5008 contra 1.5, la
   diferencia no se nota), asi que "cover" no recorta ninguna de las dos.
 
   #final-scene ahora es solo el marco (tamaño/recorte) - el contenido visual
@@ -1106,16 +1166,15 @@ button:disabled {
   "regular"). Ver renderFinalScreen()/ENDING_* en main.ts para que combinacion
   de backdrop+portrait corresponde a cada final.
 
-  max-width: calc(55vh * 1536/1024) = el termino que la achica con el ALTO de
-  la ventana (mismo criterio que #character-scene/#menu-layout), asi le queda
-  aire a #final-award y a los botones de debajo en una ventana baja.
+  Ocupa todo el ancho de la columna: se achica con el ALTO de la ventana via
+  el 80vh de --scr-w en #final-screen, asi le queda aire a #final-message y a
+  los botones de debajo en una ventana baja.
 */
 #final-scene {
   position: relative;
   width: 100%;
-  max-width: calc(55vh * 1536 / 1024);
-   aspect-ratio: 1536 / 1024;
-  margin: 0 auto 1rem;
+  aspect-ratio: 1536 / 1024;
+  margin: 0 auto var(--u);
   border-radius: 10px;
   overflow: hidden;
   background-color: #2a2640;
@@ -1137,37 +1196,37 @@ button:disabled {
 }
 
 #final-backdrop.defeat {
-  background-image: url("../img/backgrounds/fondoPierdes.png");
+  background-image: url("../img/backgrounds/fondoPierdes.webp");
 }
 
 #final-backdrop.win-regular {
-  background-image: url("../img/backgrounds/backgroundWin1.png");
+  background-image: url("../img/backgrounds/backgroundWin1.webp");
 }
 
 /* perder 3 partidas seguidas */
 #final-backdrop.yokai {
-  background-image: url("../img/backgrounds/finalConvertidoYokai.png");
+  background-image: url("../img/backgrounds/finalConvertidoYokai.webp");
 }
 
 /* ganar 3 partidas seguidas (2 cuadros) */
 #final-backdrop.boss {
-  background-image: url("../img/backgrounds/finalEresJefe.png");
+  background-image: url("../img/backgrounds/finalEresJefe.webp");
 }
 
 #final-backdrop.boss-worried {
-  background-image: url("../img/backgrounds/finaljefapreocupada.png");
+  background-image: url("../img/backgrounds/finaljefapreocupada.webp");
 }
 
 /* ganar con mucho dinero (ver RICH_BOSS_MONEY en main.ts) */
 #final-backdrop.rich-boss {
-  background-image: url("../img/backgrounds/finalJefaMillonaria.png");
+  background-image: url("../img/backgrounds/finalJefaMillonaria.webp");
 }
 
 /* mismo truco que #jefa-background: oficina de fondo, desenfocada, para las
    escenas donde el final necesita mostrar un personaje (#final-portrait)
    encima en vez de una escena completa ya dibujada */
 #final-backdrop.blurred-office {
-  background-image: url("../img/backgrounds/general_background.png");
+  background-image: url("../img/backgrounds/general_background.webp");
   background-size: 100% 100%;
   filter: blur(6px) brightness(0.6);
   transform: scale(1.05);
@@ -1188,8 +1247,8 @@ button:disabled {
   background-position: bottom center;
 }
 
-#final-portrait.protaDepre { display: block; background-image: url("../img/protagonista/protaDepre.png"); }
-#final-portrait.jefaTeAma { display: block; background-image: url("../img/jefa/jefaTeAma.png"); }
+#final-portrait.protaDepre { display: block; background-image: url("../img/protagonista/protaDepre.webp"); }
+#final-portrait.jefaTeAma { display: block; background-image: url("../img/jefa/jefaTeAma.webp"); }
 
 /*
   premio de fin de partida: la medalla/amuleto en el centro del cuadro, sobre la
@@ -1226,28 +1285,28 @@ button:disabled {
   25%, 100% { transform: translate(-50%, -50%) perspective(700px) rotateY(360deg); }
 }
 
-#final-award.premioInspector { display: block; aspect-ratio: 0.736; background-image: url("../img/animaciones/premioInspector.png"); }
-#final-award.premioBurocracia { display: block; aspect-ratio: 0.814; background-image: url("../img/animaciones/premioBurocracia.png"); }
-#final-award.premioKappa { display: block; aspect-ratio: 0.695; background-image: url("../img/animaciones/premioKappa.png"); }
-#final-award.premioKitsune { display: block; aspect-ratio: 0.618; background-image: url("../img/animaciones/premioKitsune.png"); }
-#final-award.premioOni { display: block; aspect-ratio: 0.825; background-image: url("../img/animaciones/premioOni.png"); }
-#final-award.premioVelocidad { display: block; aspect-ratio: 1.082; background-image: url("../img/animaciones/premioVelocidad.png"); }
+#final-award.premioInspector { display: block; aspect-ratio: 0.736; background-image: url("../img/animaciones/premioInspector.webp"); }
+#final-award.premioBurocracia { display: block; aspect-ratio: 0.814; background-image: url("../img/animaciones/premioBurocracia.webp"); }
+#final-award.premioKappa { display: block; aspect-ratio: 0.695; background-image: url("../img/animaciones/premioKappa.webp"); }
+#final-award.premioKitsune { display: block; aspect-ratio: 0.618; background-image: url("../img/animaciones/premioKitsune.webp"); }
+#final-award.premioOni { display: block; aspect-ratio: 0.825; background-image: url("../img/animaciones/premioOni.webp"); }
+#final-award.premioVelocidad { display: block; aspect-ratio: 1.082; background-image: url("../img/animaciones/premioVelocidad.webp"); }
 
 /* mismo estilo que el dialogo de los visitantes/la Jefa - se "habla" con typeDialogue() */
 #final-message {
   font-style: italic;
   background: #2a2640;
   border-radius: 6px;
-  padding: 0.6rem 1rem;
-  min-height: 1.2rem;
+  padding: calc(var(--u) * 0.6) var(--u);
+  min-height: calc(var(--u) * 1.2);
   line-height: 1.5;
-  font-size: 1.15rem;
+  font-size: calc(var(--u) * 1.15);
 }
 
 /* ---------- HUD y pasaporte ---------- */
 
 /*
-  fondoPantallaJuegoT.png ya trae dibujada la barra superior (iconos + las
+  fondoPantallaJuegoT.webp ya trae dibujada la barra superior (iconos + las
   palabras DIA/ERRORES/RACHA) - #hud solo pone los VALORES encima, en el
   espacio libre que queda a la derecha de cada etiqueta ya dibujada (medido a
   ojo sobre el arte, ver diario.md - puede necesitar un ajuste fino de mm).
@@ -1272,7 +1331,7 @@ button:disabled {
   position: absolute;
   top: 59%;
   transform: translateY(-50%);
-  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
+  font-size: clamp(0px, 1.8cqw, 1.1rem);
   color: #f2ede3;
   font-weight: 300;
   left: 32%;
@@ -1282,7 +1341,7 @@ button:disabled {
   position: absolute;
   top: 59%;
   transform: translateY(-50%);
-  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
+  font-size: clamp(0px, 1.8cqw, 1.1rem);
   color: #f2ede3;
   font-weight: 400;
   left: 56%;
@@ -1297,7 +1356,7 @@ button:disabled {
   position: absolute;
   top: 59%;
   transform: translateY(-50%);
-  font-size: clamp(0.6rem, 1.8cqw, 1.1rem);
+  font-size: clamp(0px, 1.8cqw, 1.1rem);
   color: #f2ede3;
   font-weight: 400;
   left: 77%;
@@ -1315,53 +1374,17 @@ button:disabled {
   width: auto;
   aspect-ratio: auto;
   margin: 0;
-  padding: 0.3rem 0.55rem;
-  font-size: 0.75rem;
+  /* cqw de #character-scene, tope = el tamaño de antes en rem */
+  padding: clamp(0px, 0.49cqw, 0.3rem) clamp(0px, 0.9cqw, 0.55rem);
+  font-size: clamp(0px, 1.22cqw, 0.75rem);
   background: rgba(20, 16, 31, 0.55);
   border-radius: 6px;
   text-shadow: none;
 }
 
-/* debajo del reloj de arena, misma columna que #coin-widget/#day-clock
-   (left: 10.9%) - la flor es la misma que ya aparece junto a DIA/ERRORES/
-   RACHA en fondoPantallaJuegoT.png, recortada aparte (ver public/img/tienda/
-   florHud.png) porque ahi vive pintada en el fondo, no como icono suelto.
-   Sin el estilo generico de boton (fondo/borde/padding): es un icono solo. */
-#shop-btn {
-  position: absolute;
-  left: 10.9%;
-  top: 80%;
-  transform: translate(-50%, -50%);
-  width: 7%;
-  aspect-ratio: 1;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background-color: transparent;
-  background-image: url("../img/tienda/florHud.png");
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  cursor: pointer;
-  z-index: 5;
-}
-
-/* resalta el campo del pasaporte (o el rasgo del personaje) que la pista de
-   la tienda senala como problematico - ver Game.buyHint() y
-   hintTargetSelector() en main.ts. Se saca sola a los pocos segundos. */
-.hint-highlight {
-  animation: hint-glow 0.6s ease-in-out 3;
-}
-
-@keyframes hint-glow {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 209, 102, 0)); }
-  50% { filter: drop-shadow(0 0 0.6rem rgba(255, 209, 102, 0.95)); }
-}
-
 /* moneda + dinero: antes flotaba fuera del canvas, pegado al costado de la
    columna - ahora vive DENTRO de #character-scene, centrado sobre el recuadro
-   que barraLateralIzq.png dibuja para el (medido con PIL sobre esa imagen,
+   que barraLateralIzq.webp dibuja para el (medido con PIL sobre esa imagen,
    ver diario.md). Por eso ya no necesita su propio fondo/borde: la barra
    lateral ya se lo da. */
 #coin-widget {
@@ -1373,30 +1396,30 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: clamp(0px, 0.33cqw, 0.2rem);
 }
 
 /* main.ts va cambiando la clase entre los 4 cuadros (moneda-1..4), cada uno con
-   su propio ancho (elipse cerrandose), para que se vea girar - tamaño en vw
-   (no rem fijo) para que crezca junto con el resto de la escena, que ahora
-   ocupa casi toda la ventana en vez de una columna angosta */
+   su propio ancho (elipse cerrandose), para que se vea girar - tamaño en cqw
+   de #character-scene (no vw ni piso en rem) para que crezca y se achique
+   junto con el resto de la escena; el tope es el mismo de antes */
 #coin-spin {
-  width: clamp(2.6rem, 4.2vw, 4.6rem);
-  height: clamp(2.9rem, 4.6vw, 5rem);
+  width: clamp(0px, 7.5cqw, 4.6rem);
+  height: clamp(0px, 8.2cqw, 5rem);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
 }
 
-#coin-spin.moneda-1 { background-image: url("../img/animaciones/moneda-1.png"); }
-#coin-spin.moneda-2 { background-image: url("../img/animaciones/moneda-2.png"); }
-#coin-spin.moneda-3 { background-image: url("../img/animaciones/moneda-3.png"); }
-#coin-spin.moneda-4 { background-image: url("../img/animaciones/moneda-4.png"); }
+#coin-spin.moneda-1 { background-image: url("../img/animaciones/moneda-1.webp"); }
+#coin-spin.moneda-2 { background-image: url("../img/animaciones/moneda-2.webp"); }
+#coin-spin.moneda-3 { background-image: url("../img/animaciones/moneda-3.webp"); }
+#coin-spin.moneda-4 { background-image: url("../img/animaciones/moneda-4.webp"); }
 
 #money-counter {
   /* mismo criterio cqw que el HUD/dialogo/pasaporte de arriba (ver
      container-type en #character-scene) */
-  font-size: clamp(0.7rem, 1.8cqw, 1.2rem);
+  font-size: clamp(0px, 1.8cqw, 1.2rem);
   color: #f2ede3;
   text-align: center;
   font-weight: 500;
@@ -1404,8 +1427,8 @@ button:disabled {
 
 /* debajo del reloj de arena, misma columna que #coin-widget/#day-clock
    (left: 10.9%) - la flor es la misma que ya aparece junto a DIA/ERRORES/
-   RACHA en fondoPantallaJuegoT.png, recortada aparte (ver public/img/tienda/
-   nuevo icono de puesto de mercado, ver public/img/backgrounds/iconoTienda.png)
+   RACHA en fondoPantallaJuegoT.webp, recortada aparte (ver public/img/tienda/
+   nuevo icono de puesto de mercado, ver public/img/backgrounds/iconoTienda.webp)
    Sin el estilo generico de boton (fondo/borde/padding): es un icono solo.
    Un poco mas grande que la flor vieja pero SIN llegar a tocar el reloj de
    arena de arriba (#day-clock, top 63% + 8% de alto ~= 71%; este arranca en
@@ -1424,7 +1447,7 @@ button:disabled {
   min-height: 0;
   text-shadow: none;
   background-color: transparent;
-  background-image: url("../img/backgrounds/iconoTienda.png");
+  background-image: url("../img/backgrounds/iconoTienda.webp");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -1460,7 +1483,7 @@ button:disabled {
 }
 
 /*
-  relojfull1.png/rejojfull2.png tienen una pequeña diferencia de tamaño real
+  relojfull1.webp/rejojfull2.webp tienen una pequeña diferencia de tamaño real
   entre si (el cuadro 2 es ~1.3% mas chico) que hace que al alternar entre
   ambos el reloj "palpite" un poco - a Mike le gusto ese efecto, pero las
   otras 3 etapas (medio/casi/vacio) no lo tienen en el arte original (sus dos
@@ -1475,15 +1498,15 @@ button:disabled {
   height: 15.8%;
 }
 
-#day-clock.stage-full.frame-a { background-image: url("../img/animaciones/relojfull1.png"); }
-#day-clock.stage-full.frame-b { background-image: url("../img/animaciones/rejojfull2.png"); }
-#day-clock.stage-half.frame-a { background-image: url("../img/animaciones/relojmedio1.png"); }
-#day-clock.stage-half.frame-b { background-image: url("../img/animaciones/rejojmedio2.png"); }
-#day-clock.stage-almost.frame-a { background-image: url("../img/animaciones/relojcasi1.png"); }
-#day-clock.stage-almost.frame-b { background-image: url("../img/animaciones/relojcasi2.png"); }
-#day-clock.stage-empty.frame-a { background-image: url("../img/animaciones/relojvacio1.png"); }
-#day-clock.stage-empty.frame-b { background-image: url("../img/animaciones/relojvacio2.png"); }
-#day-clock.broken { background-image: url("../img/animaciones/relojRoto.png"); }
+#day-clock.stage-full.frame-a { background-image: url("../img/animaciones/relojfull1.webp"); }
+#day-clock.stage-full.frame-b { background-image: url("../img/animaciones/rejojfull2.webp"); }
+#day-clock.stage-half.frame-a { background-image: url("../img/animaciones/relojmedio1.webp"); }
+#day-clock.stage-half.frame-b { background-image: url("../img/animaciones/rejojmedio2.webp"); }
+#day-clock.stage-almost.frame-a { background-image: url("../img/animaciones/relojcasi1.webp"); }
+#day-clock.stage-almost.frame-b { background-image: url("../img/animaciones/relojcasi2.webp"); }
+#day-clock.stage-empty.frame-a { background-image: url("../img/animaciones/relojvacio1.webp"); }
+#day-clock.stage-empty.frame-b { background-image: url("../img/animaciones/relojvacio2.webp"); }
+#day-clock.broken { background-image: url("../img/animaciones/relojRoto.webp"); }
 
 /* parpadeo leve (arranca desde la etapa "casi", avanzada) que se hace fuerte
    recien con el reloj roto y todavia una decision en curso - efecto chico a
@@ -1507,11 +1530,11 @@ button:disabled {
 }
 
 /* dialogo de los visitantes: ya no tiene fondo/borde propio, se apoya sobre
-   el recuadro que barraDialogos.png dibuja debajo del escritorio (medido con
+   el recuadro que barraDialogos.webp dibuja debajo del escritorio (medido con
    PIL sobre esa imagen, ver diario.md) */
 /*
   ocupa mas alto que antes (6.5% -> 8%, adentro del recuadro real que dibuja
-  barraDialogos.png: 87.82%-97.06%) para tener lugar de sobra para una 2da
+  barraDialogos.webp: 87.82%-97.06%) para tener lugar de sobra para una 2da
   linea si el texto no entra en una sola - lo ideal sigue siendo 1 sola linea
   (font-size pensado para que la mayoria de los dialogos entren asi), pero ya
   no se recorta a la fuerza: si es muy largo, ahora SI baja a la linea de
@@ -1535,14 +1558,14 @@ button:disabled {
   /* cqw = % del ancho real de #character-scene (ver container-type ahi),
      no vw - la caja tiene overflow:hidden, si un dialogo largo queda
      cortado bajar el tope */
-  font-size: clamp(0.7rem, 2.54cqw, 1.5rem);
+  font-size: clamp(0px, 2.54cqw, 1.5rem);
   color: #f2ede3;
 }
 
 /* ---------- escena completa: fondo + personaje + escritorio ---------- */
 
 /*
-  fondoPantallaJuegoT.png es ahora el fondo unico de toda la pantalla de juego
+  fondoPantallaJuegoT.webp es ahora el fondo unico de toda la pantalla de juego
   (HUD, barra lateral y barra de dialogo ya vienen dibujados adentro como
   "placeholders" - ver mas abajo #scene-sidebar/#scene-dialogue-bar, que se
   sobreponen ahi mismo). Sus bordes son transparentes/suaves a proposito (ver
@@ -1552,7 +1575,7 @@ button:disabled {
   parpadeando en modo alerta.
 
   window.png (la ventanilla que antes iba delante del personaje) se dio de
-  baja, confirmado por Mike: fondoPantallaJuegoT.png ya trae esa escena
+  baja, confirmado por Mike: fondoPantallaJuegoT.webp ya trae esa escena
   dibujada adentro y no calza con el arte nuevo.
 
   Tamaño: mismo criterio que #menu-layout (ver mas arriba) - ocupa el maximo
@@ -1568,7 +1591,10 @@ button:disabled {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: calc(min(80vw, calc(70vh * 3670 / 2446)) * var(--scene-zoom));
+  /* con el zoom de Opciones (hasta 1.4) la escena podia pasarse del ancho de
+     la ventana y quedar cortada a los costados - los 2 ultimos topes la
+     limitan a la ventana entera, sea cual sea el zoom */
+  width: min(calc(min(80vw, calc(70vh * 3670 / 2446)) * var(--scene-zoom)), 100vw, calc(100vh * 3670 / 2446));
   aspect-ratio: 3670 / 2446;
   border-radius: 8px;
   overflow: hidden;
@@ -1595,22 +1621,22 @@ button:disabled {
   top: 0;
   width: 100%;
   height: 100%;
-  background-image: url("../img/backgrounds/fondoPantallaJuegoT.png");
+  background-image: url("../img/backgrounds/fondoPantallaJuegoT.webp");
   background-size: 100% 100%;
   background-repeat: no-repeat;
   z-index: 1;
 }
 
 /*
-  ojo aca: barraLateralIzq.png/barraDialogos.png/DesktopNew.png SI son
-  3670x2446 igual que fondoPantallaJuegoT.png - el contenido real de cada una
+  ojo aca: barraLateralIzq.webp/barraDialogos.webp/DesktopNew.webp SI son
+  3670x2446 igual que fondoPantallaJuegoT.webp - el contenido real de cada una
   ocupa solo una parte de ese canvas (el resto es transparente), pero el
   ARCHIVO entero es del mismo tamaño y esta pensado para superponerse tal
   cual, inset:0, igual que #scene-background. (bug ya corregido: antes este
   bloque las achicaba a su propio bbox con PIL y despues estiraba la imagen
   COMPLETA -incluido el margen transparente- adentro de esa caja chica, lo
   que encogia y desalineaba el arte real en vez de calzarlo con
-  fondoPantallaJuegoT.png. El bbox medido con PIL sigue sirviendo para ubicar
+  fondoPantallaJuegoT.webp. El bbox medido con PIL sigue sirviendo para ubicar
   los elementos HTML que SI son mas chicos que el canvas -HUD, moneda, reloj,
   sellos, dialogo-, pero no para estas 3 imagenes de fondo.) */
 #scene-sidebar,
@@ -1627,15 +1653,15 @@ button:disabled {
 }
 
 #scene-sidebar {
-  background-image: url("../img/backgrounds/barraLateralIzq.png");
+  background-image: url("../img/backgrounds/barraLateralIzq.webp");
 }
 
 #scene-dialogue-bar {
-  background-image: url("../img/backgrounds/barraDialogos.png");
+  background-image: url("../img/backgrounds/barraDialogos.webp");
 }
 
 #scene-desktop {
-  background-image: url("../img/backgrounds/DesktopNew.png");
+  background-image: url("../img/backgrounds/DesktopNew.webp");
 }
 
 /*
@@ -1667,12 +1693,12 @@ button:disabled {
 }
 
 /* top tiene que coincidir con PASSPORT_ARC_DESK.top en main.ts - se subio de
-   83% a 68% porque DesktopNew.png solo llega hasta ~86.4% de alto (no 100%
+   83% a 68% porque DesktopNew.webp solo llega hasta ~86.4% de alto (no 100%
    como el desktop.png viejo); con 83%+16% de alto se pisaba la barra de
    dialogo (empieza en ~87.8%) */
 #passport-object.closed {
   aspect-ratio: 646 / 700;
-  background-image: url("../img/documentos/pasaporte.png");
+  background-image: url("../img/documentos/pasaporte.webp");
   top: 68%;
   height: 16%;
 }
@@ -1680,19 +1706,19 @@ button:disabled {
 /* una vez que la entrega termina de caer, se cambia a una de estas 3 variantes
    (elegida al azar en renderVisitor(), ver PASSPORT_DESK_LOOK_VARIANTS en
    main.ts) - dan la sensacion de que quedo apoyado sobre la mesa, en vez del
-   "de pie" que usa pasaporte.png en transito. Se sacan antes de la devolucion
-   (vuelve a pasaporte.png), asi que la devolucion no cambia en nada. */
+   "de pie" que usa pasaporte.webp en transito. Se sacan antes de la devolucion
+   (vuelve a pasaporte.webp), asi que la devolucion no cambia en nada. */
 #passport-object.closed.desk1 {
   aspect-ratio: 833 / 700;
-  background-image: url("../img/documentos/pasaporte1.png");
+  background-image: url("../img/documentos/pasaporte1.webp");
 }
 #passport-object.closed.desk2 {
   aspect-ratio: 732 / 700;
-  background-image: url("../img/documentos/pasaporte2.png");
+  background-image: url("../img/documentos/pasaporte2.webp");
 }
 #passport-object.closed.desk3 {
   aspect-ratio: 706 / 700;
-  background-image: url("../img/documentos/pasaporte3.png");
+  background-image: url("../img/documentos/pasaporte3.webp");
 }
 
 /*
@@ -1707,7 +1733,7 @@ button:disabled {
    del escritorio (y del canvas: 71+30=101%) */
 #passport-object.open {
   aspect-ratio: 989 / 700;
-  background-image: url("../img/documentos/pasaporteAbierto.png");
+  background-image: url("../img/documentos/pasaporteAbierto.webp");
   top: 55%;
   height: 30%;
   left: 52%;
@@ -1745,12 +1771,12 @@ button:disabled {
   /* cqw = % del ancho real de #character-scene (ver container-type ahi),
      no rem fijo - la caja tiene overflow:hidden, si un dato queda muy
      largo revisar que no se corte */
-  font-size: clamp(0.55rem, 1.86cqw, 1rem);
+  font-size: clamp(0px, 1.86cqw, 1rem);
   line-height: 1.2;
 }
 
 #passport-page-left p {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.4em;
 }
 
 #passport-stamp {
@@ -1770,10 +1796,10 @@ button:disabled {
   opacity: 0.9;
 }
 
-#passport-stamp.dorado { background-image: url("../img/documentos/selloDorado.png"); }
-#passport-stamp.rojo { background-image: url("../img/documentos/selloRojo.png"); }
-#passport-stamp.negro { background-image: url("../img/documentos/selloNegro.png"); }
-#passport-stamp.plateado { background-image: url("../img/documentos/selloPlata.png"); }
+#passport-stamp.dorado { background-image: url("../img/documentos/selloDorado.webp"); }
+#passport-stamp.rojo { background-image: url("../img/documentos/selloRojo.webp"); }
+#passport-stamp.negro { background-image: url("../img/documentos/selloNegro.webp"); }
+#passport-stamp.plateado { background-image: url("../img/documentos/selloPlata.webp"); }
 
 /* sello de aceptado/rechazado: arte real (ya viene con su propia inclinacion
    dibujada, por eso no se le suma rotacion por CSS) */
@@ -1796,18 +1822,18 @@ button:disabled {
 
 #decision-stamp.approved {
   aspect-ratio: 738 / 700;
-  background-image: url("../img/documentos/selloAceptado.png");
+  background-image: url("../img/documentos/selloAceptado.webp");
 }
 
 #decision-stamp.rejected {
   aspect-ratio: 736 / 700;
-  background-image: url("../img/documentos/selloRechazado.png");
+  background-image: url("../img/documentos/selloRechazado.webp");
 }
 
 /* la que deja el sello azul: aprueba al alien, no es "aceptado" comun */
 #decision-stamp.alien {
   aspect-ratio: 2017 / 2057;
-  background-image: url("../img/documentos/selloAliens.png");
+  background-image: url("../img/documentos/selloAliens.webp");
 }
 
 /*
@@ -1875,20 +1901,20 @@ button:disabled {
 #reject-btn { left: 80%; }
 #accept-btn { left: 91%; }
 
-.stamp-rojo.pos1 { background-image: url("../img/sellos/selloRojoPosicion1.png"); aspect-ratio: 0.966; }
-.stamp-rojo.pos2 { background-image: url("../img/sellos/selloRojoPosicion2.png"); aspect-ratio: 0.905; height: 15%; }
-.stamp-rojo.pos3 { background-image: url("../img/sellos/selloRojoposicion3.png"); aspect-ratio: 0.811; height: 17%; }
+.stamp-rojo.pos1 { background-image: url("../img/sellos/selloRojoPosicion1.webp"); aspect-ratio: 0.966; }
+.stamp-rojo.pos2 { background-image: url("../img/sellos/selloRojoPosicion2.webp"); aspect-ratio: 0.905; height: 15%; }
+.stamp-rojo.pos3 { background-image: url("../img/sellos/selloRojoposicion3.webp"); aspect-ratio: 0.811; height: 17%; }
 
-.stamp-verde.pos1 { background-image: url("../img/sellos/selloVerdePosicion1.png"); aspect-ratio: 0.969; }
-.stamp-verde.pos2 { background-image: url("../img/sellos/selloVerdePosicion2.png"); aspect-ratio: 0.903; height: 15%; }
-.stamp-verde.pos3 { background-image: url("../img/sellos/selloVerdePosicion3.png"); aspect-ratio: 0.842; height: 17%; }
+.stamp-verde.pos1 { background-image: url("../img/sellos/selloVerdePosicion1.webp"); aspect-ratio: 0.969; }
+.stamp-verde.pos2 { background-image: url("../img/sellos/selloVerdePosicion2.webp"); aspect-ratio: 0.903; height: 15%; }
+.stamp-verde.pos3 { background-image: url("../img/sellos/selloVerdePosicion3.webp"); aspect-ratio: 0.842; height: 17%; }
 
 /* alturas propias (mas que el 13/15/17% de rojo y verde): el sello azul es mas
    angosto de proporcion, asi que a la misma altura se veia mas chico que los
    otros dos - subidas hasta que los tres ocupan un ancho parecido en el escritorio */
-.stamp-azul.pos1 { background-image: url("../img/sellos/selloAzul1.png"); aspect-ratio: 0.875; height: 14.5%; }
-.stamp-azul.pos2 { background-image: url("../img/sellos/selloAzul2.png"); aspect-ratio: 1.0; height: 16.5%; }
-.stamp-azul.pos3 { background-image: url("../img/sellos/selloAzul3.png"); aspect-ratio: 1.468; height: 18.5%; }
+.stamp-azul.pos1 { background-image: url("../img/sellos/selloAzul1.webp"); aspect-ratio: 0.875; height: 14.5%; }
+.stamp-azul.pos2 { background-image: url("../img/sellos/selloAzul2.webp"); aspect-ratio: 1.0; height: 16.5%; }
+.stamp-azul.pos3 { background-image: url("../img/sellos/selloAzul3.webp"); aspect-ratio: 1.468; height: 18.5%; }
 
 /*
   ancho achicado respecto de la caja vieja (30.4% -> 20%, medida sobre
@@ -1902,7 +1928,7 @@ button:disabled {
   este es el lugar (y PORTRAIT_REST_LEFT/PASSPORT_ARC_BASE en main.ts si se
   toca el "left" o de donde sale el pasaporte).
 
-  REARMADO (set de personajes nuevo, 2026-09): el lienzo viejo (rostro-N.png)
+  REARMADO (set de personajes nuevo, 2026-09): el lienzo viejo (rostro-N.webp)
   era vertical, 500x806 (aspect 0.62); el nuevo es apaisado, 3313x2420 (aspect
   1.369). "aspect-ratio" fuerza la caja a la proporcion EXACTA del lienzo nuevo
   (asi "contain" lo llena completo, sin franjas vacias arriba/abajo - ver el
@@ -1952,65 +1978,65 @@ button:disabled {
   left: 0;
   top: 0;
 }
-.part-face.rostro-1 { background-image: url("../img/baseCharacters/rostro-1.png"); }
-.part-face.rostro-2 { background-image: url("../img/baseCharacters/rostro-2.png"); }
-.part-face.rostro-3 { background-image: url("../img/baseCharacters/rostro-3.png"); }
-.part-face.rostro-4 { background-image: url("../img/baseCharacters/rostro-4.png"); }
-.part-face.rostro-5 { background-image: url("../img/baseCharacters/rostro-5.png"); }
-.part-face.rostro-6 { background-image: url("../img/baseCharacters/rostro-6.png"); }
-.part-face.rostro-7 { background-image: url("../img/baseCharacters/rostro-7.png"); }
-.part-face.rostro-8 { background-image: url("../img/baseCharacters/rostro-8.png"); }
-.part-face.rostro-9 { background-image: url("../img/baseCharacters/rostro-9.png"); }
-.part-face.rostro-10 { background-image: url("../img/baseCharacters/rostro-10.png"); }
-.part-face.rostro-11 { background-image: url("../img/baseCharacters/rostro-11.png"); }
-.part-face.rostro-12 { background-image: url("../img/baseCharacters/rostro-12.png"); }
-.part-face.rostro-13 { background-image: url("../img/baseCharacters/rostro-13.png"); }
-.part-face.rostro-14 { background-image: url("../img/baseCharacters/rostro-14.png"); }
-.part-face.rostro-15 { background-image: url("../img/baseCharacters/rostro-15.png"); }
-.part-face.rostro-16 { background-image: url("../img/baseCharacters/rostro-16.png"); }
-.part-face.rostro-17 { background-image: url("../img/baseCharacters/rostro-17.png"); }
-.part-face.rostro-18 { background-image: url("../img/baseCharacters/rostro-18.png"); }
-.part-face.rostro-19 { background-image: url("../img/baseCharacters/rostro-19.png"); }
-.part-face.rostro-20 { background-image: url("../img/baseCharacters/rostro-20.png"); }
-.part-face.rostro-21 { background-image: url("../img/baseCharacters/rostro-21.png"); }
-.part-face.rostro-22 { background-image: url("../img/baseCharacters/rostro-22.png"); }
-.part-face.rostro-23 { background-image: url("../img/baseCharacters/rostro-23.png"); }
-.part-face.rostro-24 { background-image: url("../img/baseCharacters/rostro-24.png"); }
-.part-face.rostro-25 { background-image: url("../img/baseCharacters/rostro-25.png"); }
-.part-face.rostro-26 { background-image: url("../img/baseCharacters/rostro-26.png"); }
-.part-face.rostro-27 { background-image: url("../img/baseCharacters/rostro-27.png"); }
-.part-face.rostro-28 { background-image: url("../img/baseCharacters/rostro-28.png"); }
-.part-face.rostro-29 { background-image: url("../img/baseCharacters/rostro-29.png"); }
-.part-face.rostro-30 { background-image: url("../img/baseCharacters/rostro-30.png"); }
-.part-face.rostro-31 { background-image: url("../img/baseCharacters/rostro-31.png"); }
-.part-face.rostro-32 { background-image: url("../img/baseCharacters/rostro-32.png"); }
-.part-face.rostro-33 { background-image: url("../img/baseCharacters/rostro-33.png"); }
-.part-face.rostro-34 { background-image: url("../img/baseCharacters/rostro-34.png"); }
-.part-face.rostro-35 { background-image: url("../img/baseCharacters/rostro-35.png"); }
-.part-face.rostro-36 { background-image: url("../img/baseCharacters/rostro-36.png"); }
-.part-face.rostro-37 { background-image: url("../img/baseCharacters/rostro-37.png"); }
-.part-face.rostro-38 { background-image: url("../img/baseCharacters/rostro-38.png"); }
-.part-face.rostro-39 { background-image: url("../img/baseCharacters/rostro-39.png"); }
-.part-face.rostro-40 { background-image: url("../img/baseCharacters/rostro-40.png"); }
-.part-face.rostro-41 { background-image: url("../img/baseCharacters/rostro-41.png"); }
-.part-face.rostro-42 { background-image: url("../img/baseCharacters/rostro-42.png"); }
-.part-face.rostro-43 { background-image: url("../img/baseCharacters/rostro-43.png"); }
-.part-face.rostro-44 { background-image: url("../img/baseCharacters/rostro-44.png"); }
-.part-face.rostro-45 { background-image: url("../img/baseCharacters/rostro-45.png"); }
-.part-face.rostro-46 { background-image: url("../img/baseCharacters/rostro-46.png"); }
-.part-face.rostro-47 { background-image: url("../img/baseCharacters/rostro-47.png"); }
-.part-face.rostro-48 { background-image: url("../img/baseCharacters/rostro-48.png"); }
-.part-face.rostro-49 { background-image: url("../img/baseCharacters/rostro-49.png"); }
+.part-face.rostro-1 { background-image: url("../img/baseCharacters/rostro-1.webp"); }
+.part-face.rostro-2 { background-image: url("../img/baseCharacters/rostro-2.webp"); }
+.part-face.rostro-3 { background-image: url("../img/baseCharacters/rostro-3.webp"); }
+.part-face.rostro-4 { background-image: url("../img/baseCharacters/rostro-4.webp"); }
+.part-face.rostro-5 { background-image: url("../img/baseCharacters/rostro-5.webp"); }
+.part-face.rostro-6 { background-image: url("../img/baseCharacters/rostro-6.webp"); }
+.part-face.rostro-7 { background-image: url("../img/baseCharacters/rostro-7.webp"); }
+.part-face.rostro-8 { background-image: url("../img/baseCharacters/rostro-8.webp"); }
+.part-face.rostro-9 { background-image: url("../img/baseCharacters/rostro-9.webp"); }
+.part-face.rostro-10 { background-image: url("../img/baseCharacters/rostro-10.webp"); }
+.part-face.rostro-11 { background-image: url("../img/baseCharacters/rostro-11.webp"); }
+.part-face.rostro-12 { background-image: url("../img/baseCharacters/rostro-12.webp"); }
+.part-face.rostro-13 { background-image: url("../img/baseCharacters/rostro-13.webp"); }
+.part-face.rostro-14 { background-image: url("../img/baseCharacters/rostro-14.webp"); }
+.part-face.rostro-15 { background-image: url("../img/baseCharacters/rostro-15.webp"); }
+.part-face.rostro-16 { background-image: url("../img/baseCharacters/rostro-16.webp"); }
+.part-face.rostro-17 { background-image: url("../img/baseCharacters/rostro-17.webp"); }
+.part-face.rostro-18 { background-image: url("../img/baseCharacters/rostro-18.webp"); }
+.part-face.rostro-19 { background-image: url("../img/baseCharacters/rostro-19.webp"); }
+.part-face.rostro-20 { background-image: url("../img/baseCharacters/rostro-20.webp"); }
+.part-face.rostro-21 { background-image: url("../img/baseCharacters/rostro-21.webp"); }
+.part-face.rostro-22 { background-image: url("../img/baseCharacters/rostro-22.webp"); }
+.part-face.rostro-23 { background-image: url("../img/baseCharacters/rostro-23.webp"); }
+.part-face.rostro-24 { background-image: url("../img/baseCharacters/rostro-24.webp"); }
+.part-face.rostro-25 { background-image: url("../img/baseCharacters/rostro-25.webp"); }
+.part-face.rostro-26 { background-image: url("../img/baseCharacters/rostro-26.webp"); }
+.part-face.rostro-27 { background-image: url("../img/baseCharacters/rostro-27.webp"); }
+.part-face.rostro-28 { background-image: url("../img/baseCharacters/rostro-28.webp"); }
+.part-face.rostro-29 { background-image: url("../img/baseCharacters/rostro-29.webp"); }
+.part-face.rostro-30 { background-image: url("../img/baseCharacters/rostro-30.webp"); }
+.part-face.rostro-31 { background-image: url("../img/baseCharacters/rostro-31.webp"); }
+.part-face.rostro-32 { background-image: url("../img/baseCharacters/rostro-32.webp"); }
+.part-face.rostro-33 { background-image: url("../img/baseCharacters/rostro-33.webp"); }
+.part-face.rostro-34 { background-image: url("../img/baseCharacters/rostro-34.webp"); }
+.part-face.rostro-35 { background-image: url("../img/baseCharacters/rostro-35.webp"); }
+.part-face.rostro-36 { background-image: url("../img/baseCharacters/rostro-36.webp"); }
+.part-face.rostro-37 { background-image: url("../img/baseCharacters/rostro-37.webp"); }
+.part-face.rostro-38 { background-image: url("../img/baseCharacters/rostro-38.webp"); }
+.part-face.rostro-39 { background-image: url("../img/baseCharacters/rostro-39.webp"); }
+.part-face.rostro-40 { background-image: url("../img/baseCharacters/rostro-40.webp"); }
+.part-face.rostro-41 { background-image: url("../img/baseCharacters/rostro-41.webp"); }
+.part-face.rostro-42 { background-image: url("../img/baseCharacters/rostro-42.webp"); }
+.part-face.rostro-43 { background-image: url("../img/baseCharacters/rostro-43.webp"); }
+.part-face.rostro-44 { background-image: url("../img/baseCharacters/rostro-44.webp"); }
+.part-face.rostro-45 { background-image: url("../img/baseCharacters/rostro-45.webp"); }
+.part-face.rostro-46 { background-image: url("../img/baseCharacters/rostro-46.webp"); }
+.part-face.rostro-47 { background-image: url("../img/baseCharacters/rostro-47.webp"); }
+.part-face.rostro-48 { background-image: url("../img/baseCharacters/rostro-48.webp"); }
+.part-face.rostro-49 { background-image: url("../img/baseCharacters/rostro-49.webp"); }
 
 /* rostros de alien (partes.json -> "alienes"): mismo tamano y encuadre que los
    rostro-N, pero se sortean de un pool aparte porque su pasaporte es fijo
    ("via lactea"/"alien", ver Game#generateVisitor) */
-.part-face.alien1 { background-image: url("../img/baseCharacters/alien1.png"); }
-.part-face.alien2 { background-image: url("../img/baseCharacters/alien2.png"); }
-.part-face.alien3 { background-image: url("../img/baseCharacters/alien3.png"); }
-.part-face.alien4 { background-image: url("../img/baseCharacters/alien4.png"); }
-.part-face.alien5 { background-image: url("../img/baseCharacters/alien5.png"); }
-.part-face.alien6 { background-image: url("../img/baseCharacters/alien6.png"); }
+.part-face.alien1 { background-image: url("../img/baseCharacters/alien1.webp"); }
+.part-face.alien2 { background-image: url("../img/baseCharacters/alien2.webp"); }
+.part-face.alien3 { background-image: url("../img/baseCharacters/alien3.webp"); }
+.part-face.alien4 { background-image: url("../img/baseCharacters/alien4.webp"); }
+.part-face.alien5 { background-image: url("../img/baseCharacters/alien5.webp"); }
+.part-face.alien6 { background-image: url("../img/baseCharacters/alien6.webp"); }
 
 /*
   ojos: son imagenes de canvas completo (mismo tamaño que rostro-N), dibujadas ya
@@ -2018,7 +2044,7 @@ button:disabled {
   igual que .part-face, en vez de un recuadro chico posicionado a mano.
 
   Los ojos amarillos (Kitsune) NO son un color aplicado sobre una forma al azar -
-  son una imagen propia (yellowEyes.png). Quien arme main.ts tiene que elegir la
+  son una imagen propia (yellowEyes.webp). Quien arme main.ts tiene que elegir la
   clase segun corresponda: si personaje.obtainYellowEyes es true, usar la clase
   "yellowEyes"; si no, usar el valor de personaje.obtainEyes (una de "eyes-1".."eyes-15").
 */
@@ -2028,22 +2054,22 @@ button:disabled {
   left: 0;
   top: 0;
 }
-.part-eyes.eyes-1 { background-image: url("../img/eyes/eyes-1.png"); }
-.part-eyes.eyes-2 { background-image: url("../img/eyes/eyes-2.png"); }
-.part-eyes.eyes-3 { background-image: url("../img/eyes/eyes-3.png"); }
-.part-eyes.eyes-4 { background-image: url("../img/eyes/eyes-4.png"); }
-.part-eyes.eyes-5 { background-image: url("../img/eyes/eyes-5.png"); }
-.part-eyes.eyes-6 { background-image: url("../img/eyes/eyes-6.png"); }
-.part-eyes.eyes-7 { background-image: url("../img/eyes/eyes-7.png"); }
-.part-eyes.eyes-8 { background-image: url("../img/eyes/eyes-8.png"); }
-.part-eyes.eyes-9 { background-image: url("../img/eyes/eyes-9.png"); }
-.part-eyes.eyes-10 { background-image: url("../img/eyes/eyes-10.png"); }
-.part-eyes.eyes-11 { background-image: url("../img/eyes/eyes-11.png"); }
-.part-eyes.eyes-12 { background-image: url("../img/eyes/eyes-12.png"); }
-.part-eyes.eyes-13 { background-image: url("../img/eyes/eyes-13.png"); }
-.part-eyes.eyes-14 { background-image: url("../img/eyes/eyes-14.png"); }
-.part-eyes.eyes-15 { background-image: url("../img/eyes/eyes-15.png"); }
-.part-eyes.yellowEyes { background-image: url("../img/eyes/yellowEyes.png"); }
+.part-eyes.eyes-1 { background-image: url("../img/eyes/eyes-1.webp"); }
+.part-eyes.eyes-2 { background-image: url("../img/eyes/eyes-2.webp"); }
+.part-eyes.eyes-3 { background-image: url("../img/eyes/eyes-3.webp"); }
+.part-eyes.eyes-4 { background-image: url("../img/eyes/eyes-4.webp"); }
+.part-eyes.eyes-5 { background-image: url("../img/eyes/eyes-5.webp"); }
+.part-eyes.eyes-6 { background-image: url("../img/eyes/eyes-6.webp"); }
+.part-eyes.eyes-7 { background-image: url("../img/eyes/eyes-7.webp"); }
+.part-eyes.eyes-8 { background-image: url("../img/eyes/eyes-8.webp"); }
+.part-eyes.eyes-9 { background-image: url("../img/eyes/eyes-9.webp"); }
+.part-eyes.eyes-10 { background-image: url("../img/eyes/eyes-10.webp"); }
+.part-eyes.eyes-11 { background-image: url("../img/eyes/eyes-11.webp"); }
+.part-eyes.eyes-12 { background-image: url("../img/eyes/eyes-12.webp"); }
+.part-eyes.eyes-13 { background-image: url("../img/eyes/eyes-13.webp"); }
+.part-eyes.eyes-14 { background-image: url("../img/eyes/eyes-14.webp"); }
+.part-eyes.eyes-15 { background-image: url("../img/eyes/eyes-15.webp"); }
+.part-eyes.yellowEyes { background-image: url("../img/eyes/yellowEyes.webp"); }
 
 /*
   boca: igual que rostro/ojos, son imagenes de canvas completo (boca + nariz ya
@@ -2055,27 +2081,27 @@ button:disabled {
   left: 0;
   top: 0;
 }
-.part-mouth.mouth-1 { background-image: url("../img/mouth/mouth-1.png"); }
-.part-mouth.mouth-2 { background-image: url("../img/mouth/mouth-2.png"); }
-.part-mouth.mouth-3 { background-image: url("../img/mouth/mouth-3.png"); }
-.part-mouth.mouth-4 { background-image: url("../img/mouth/mouth-4.png"); }
-.part-mouth.mouth-5 { background-image: url("../img/mouth/mouth-5.png"); }
-.part-mouth.mouth-6 { background-image: url("../img/mouth/mouth-6.png"); }
-.part-mouth.mouth-7 { background-image: url("../img/mouth/mouth-7.png"); }
-.part-mouth.mouth-8 { background-image: url("../img/mouth/mouth-8.png"); }
-.part-mouth.mouth-9 { background-image: url("../img/mouth/mouth-9.png"); }
-.part-mouth.mouth-10 { background-image: url("../img/mouth/mouth-10.png"); }
-.part-mouth.mouth-11 { background-image: url("../img/mouth/mouth-11.png"); }
-.part-mouth.mouth-12 { background-image: url("../img/mouth/mouth-12.png"); }
-.part-mouth.mouth-13 { background-image: url("../img/mouth/mouth-13.png"); }
-.part-mouth.mouth-14 { background-image: url("../img/mouth/mouth-14.png"); }
-.part-mouth.mouth-15 { background-image: url("../img/mouth/mouth-15.png"); }
-.part-mouth.mouth-16 { background-image: url("../img/mouth/mouth-16.png"); }
-.part-mouth.mouth-17 { background-image: url("../img/mouth/mouth-17.png"); }
+.part-mouth.mouth-1 { background-image: url("../img/mouth/mouth-1.webp"); }
+.part-mouth.mouth-2 { background-image: url("../img/mouth/mouth-2.webp"); }
+.part-mouth.mouth-3 { background-image: url("../img/mouth/mouth-3.webp"); }
+.part-mouth.mouth-4 { background-image: url("../img/mouth/mouth-4.webp"); }
+.part-mouth.mouth-5 { background-image: url("../img/mouth/mouth-5.webp"); }
+.part-mouth.mouth-6 { background-image: url("../img/mouth/mouth-6.webp"); }
+.part-mouth.mouth-7 { background-image: url("../img/mouth/mouth-7.webp"); }
+.part-mouth.mouth-8 { background-image: url("../img/mouth/mouth-8.webp"); }
+.part-mouth.mouth-9 { background-image: url("../img/mouth/mouth-9.webp"); }
+.part-mouth.mouth-10 { background-image: url("../img/mouth/mouth-10.webp"); }
+.part-mouth.mouth-11 { background-image: url("../img/mouth/mouth-11.webp"); }
+.part-mouth.mouth-12 { background-image: url("../img/mouth/mouth-12.webp"); }
+.part-mouth.mouth-13 { background-image: url("../img/mouth/mouth-13.webp"); }
+.part-mouth.mouth-14 { background-image: url("../img/mouth/mouth-14.webp"); }
+.part-mouth.mouth-15 { background-image: url("../img/mouth/mouth-15.webp"); }
+.part-mouth.mouth-16 { background-image: url("../img/mouth/mouth-16.webp"); }
+.part-mouth.mouth-17 { background-image: url("../img/mouth/mouth-17.webp"); }
 
 /*
   cuernos: top/height recalculados (no a ojo) para el nuevo tamaño de
-  #character-portrait (18% x 80%, aspect real 0.338) - como rostro-N.png
+  #character-portrait (18% x 80%, aspect real 0.338) - como rostro-N.webp
   (aspect real 500/806 = 0.62) ya no coincide con la forma del contenedor
   como coincidia antes (30.4% x 73.6% ~ 0.62, calzaba case perfecto), ahora
   "contain" deja franjas vacias arriba y abajo (~22.8% del alto del
@@ -2084,7 +2110,7 @@ button:disabled {
   flotando bien arriba de la cabeza. left/width no cambian: "contain" ajusta
   por ANCHO en esta proporcion, asi que no hay franja vacia a los costados.
 
-  Mike va a agrandar el arte de horns-1..4.png directamente (para que se
+  Mike va a agrandar el arte de horns-1..4.webp directamente (para que se
   vean mas sin tener que agrandar el recuadro por CSS, ver diario.md).
 */
 /*
@@ -2097,7 +2123,7 @@ button:disabled {
   misma matematica del CSS, ver diario.md). "width" y "left" quedan como los
   habia dejado ajustados Mike.
 
-  OJO (set de personajes nuevo, 2026-09): este 72% se midio contra el rostro-N.png
+  OJO (set de personajes nuevo, 2026-09): este 72% se midio contra el rostro-N.webp
   VIEJO. #character-portrait ahora tiene otra proporcion (ver el comentario ahi
   arriba - ya NO deja franjas vacias, "contain" llena la caja entera) y el rostro
   es arte nuevo con la linea del pelo en otro lugar, asi que este valor casi
@@ -2112,9 +2138,9 @@ button:disabled {
   background-repeat: no-repeat;
   background-position: center;
 }
-.part-horns.horns-1 { background-image: url("../img/cuernos/horns-1.png"); aspect-ratio: 1.599; }
-.part-horns.horns-2 { background-image: url("../img/cuernos/horns-2.png"); aspect-ratio: 2.648; }
-.part-horns.horns-3 { background-image: url("../img/cuernos/horns-3.png"); aspect-ratio: 1.059; }
+.part-horns.horns-1 { background-image: url("../img/cuernos/horns-1.webp"); aspect-ratio: 1.599; }
+.part-horns.horns-2 { background-image: url("../img/cuernos/horns-2.webp"); aspect-ratio: 2.648; }
+.part-horns.horns-3 { background-image: url("../img/cuernos/horns-3.webp"); aspect-ratio: 1.059; }
 
 /* sombrero: el cabello ya viene dibujado dentro de cada rostro - esta capa queda
    disponible para un accesorio futuro (gorro/sombrero encima), oculta por ahora
