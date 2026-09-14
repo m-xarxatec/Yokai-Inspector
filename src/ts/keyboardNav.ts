@@ -1,11 +1,3 @@
-// --- navegacion con teclado entre los botones de las pantallas ---
-//
-// Las flechas mueven el foco entre los controles (botones) de la pantalla
-// visible; Enter/Espacio ya los activan solos por ser <button> nativos, no
-// hace falta un handler propio. Esto NO aplica a la pantalla de juego
-// (#game-screen): ahi los sellos son drag and drop con el mouse (ver
-// stampDrag.ts), el teclado no participa.
-
 const NAV_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
 
 function visibleScreen(): HTMLElement | null {
@@ -13,18 +5,12 @@ function visibleScreen(): HTMLElement | null {
   return screens.find(screen => !screen.classList.contains("hidden")) ?? null;
 }
 
-// botones (y elementos con role="button") de una pantalla que estan realmente
-// a la vista y habilitados - getClientRects() vacio = oculto (pantalla hidden,
-// display none, etc.)
 function navButtons(screen: HTMLElement): HTMLElement[] {
   const selector = "button:not([disabled]), [role=\"button\"]:not([aria-disabled=\"true\"])";
   return Array.from(screen.querySelectorAll<HTMLElement>(selector))
     .filter(element => element.getClientRects().length > 0);
 }
 
-// foco inicial al entrar a una pantalla: el input de texto si lo hay (ej. el
-// nombre del inspector), y si no el primer boton disponible. La pantalla de
-// juego se saltea a proposito.
 export function focusFirstControl(screenId: string): void {
   if (screenId === "game") {
     return;
@@ -33,9 +19,6 @@ export function focusFirstControl(screenId: string): void {
   if (screen === null) {
     return;
   }
-  // en un setTimeout(0) para correr despues de que changeState() termino de
-  // quitar/poner .hidden en las secciones (si no, la pantalla todavia figura
-  // oculta y getClientRects() da vacio)
   window.setTimeout(() => {
     const textInput = screen.querySelector<HTMLInputElement>("input[type=\"text\"]");
     if (textInput !== null && textInput.getClientRects().length > 0) {
@@ -57,8 +40,6 @@ export function initKeyboardNav(getState: () => string): void {
     if (!NAV_KEYS.includes(event.key)) {
       return;
     }
-    // dentro de un input (texto o slider) las flechas son para mover el cursor
-    // o ajustar el valor, no para cambiar de boton
     if (document.activeElement instanceof HTMLInputElement) {
       return;
     }

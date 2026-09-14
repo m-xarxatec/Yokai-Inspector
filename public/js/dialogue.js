@@ -1,4 +1,3 @@
-// --- efecto de dialogo tipo subtitulo (palabra por palabra) ---
 let dialogueIntervalId = null;
 export function typeDialogue(text, targetSelector) {
     const dialogueEl = document.querySelector(targetSelector);
@@ -22,10 +21,6 @@ export function typeDialogue(text, targetSelector) {
         }
     }, 160);
 }
-// corta el tipeo en curso si lo hay (usado al salir a mitad de un dialogo,
-// ver el handler de .exit-to-menu-btn en main.ts) - antes esto lo hacia
-// main.ts tocando dialogueIntervalId directo, ahora que vive aca hace falta
-// esta funcion para poder cortarlo desde afuera
 export function stopDialogue() {
     if (dialogueIntervalId !== null) {
         clearInterval(dialogueIntervalId);

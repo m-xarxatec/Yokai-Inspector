@@ -23,8 +23,6 @@ export class Yokai extends Character {
         _Yokai_yokaiType.set(this, void 0);
         __classPrivateFieldSet(this, _Yokai_yokaiType, yokaiType, "f");
     }
-    // tipo REAL del Yokai ("oni"/"kitsune"/"kappa"), no el que declara el pasaporte -
-    // lo usa Game para los premios de fin de partida ("no se te paso ni un solo kappa")
     get obtainYokaiType() {
         return __classPrivateFieldGet(this, _Yokai_yokaiType, "f");
     }

@@ -17,9 +17,6 @@ import { Day } from "./Day.js";
 import { VisitorGenerator } from "./VisitorGenerator.js";
 import { Economy } from "./Economy.js";
 export class Game {
-    // hardMode y randomFn son opcionales y con default "sin efecto" (modo normal
-    // y Math.random) a proposito: todo el codigo que ya llamaba new Game(nombre)
-    // o new Game(nombre, dias) -incluidos los tests- sigue comportandose igual.
     constructor(playerName = "Jugador", totalDays = 7, hardMode = false, randomFn = Math.random) {
         _Game_instances.add(this);
         _Game_dayNumber.set(this, void 0);
@@ -27,9 +24,6 @@ export class Game {
         _Game_money.set(this, void 0);
         _Game_maxErrors.set(this, void 0);
         _Game_totalDays.set(this, void 0);
-        // modo dificil: menos margen de error (#maxErrors 3 en vez de 4) y mas
-        // proporcion de visitantes problematicos (ver VisitorGenerator.generate()).
-        // Solo se elige antes de arrancar una partida nueva, nunca a mitad de una.
         _Game_hardMode.set(this, void 0);
         _Game_days.set(this, void 0);
         _Game_currentVisitor.set(this, void 0);
@@ -37,18 +31,11 @@ export class Game {
         _Game_playerName.set(this, void 0);
         _Game_visitorGenerator.set(this, void 0);
         _Game_economy.set(this, void 0);
-        // datos que solo se usan para los premios de fin de partida (ver main.ts,
-        // AWARD_BEATS): que tipo de visitante dejo pasar el jugador alguna vez, y cual
-        // fue su dia con mas visitantes atendidos
         _Game_letThroughOni.set(this, void 0);
         _Game_letThroughKitsune.set(this, void 0);
         _Game_letThroughKappa.set(this, void 0);
         _Game_bestDayVisitors.set(this, void 0);
         _Game_bestDayNumber.set(this, void 0);
-        // contadores del dia EN CURSO (se resetean en #startDay(), igual que
-        // #visitorsSeenToday) y una "foto" del ultimo dia ya cerrado (necesaria
-        // porque endDay() ya llama a #startDay() -que resetea los contadores del
-        // dia- antes de que main.ts llegue a leerlos, ver pantalla de resumen)
         _Game_dayAccepted.set(this, void 0);
         _Game_dayRejected.set(this, void 0);
         _Game_dayErrors.set(this, void 0);
@@ -109,9 +96,6 @@ export class Game {
     startNewGame() {
         __classPrivateFieldGet(this, _Game_instances, "m", _Game_startDay).call(this);
     }
-    // true si hoy rige la regla del sello azul (reglas.json, propiedad "selloAlien").
-    // La usa decide() y tambien main.ts, para mostrar el sello azul en el escritorio
-    // recien el dia en que empieza a hacer falta.
     alienStampRuleActive() {
         return this.currentDay.getActiveRules().some((rule) => rule.getProperty() === "selloAlien");
     }
@@ -121,10 +105,6 @@ export class Game {
     get usedExtraTimeToday() {
         return __classPrivateFieldGet(this, _Game_economy, "f").usedExtraTimeToday;
     }
-    // tienda: cuantos segundos sumar al reloj del dia los pone main.ts
-    // (EXTRA_TIME_MS) - aca solo se controla el dinero y el limite de una vez
-    // por dia (si no, el reloj de arena, que es la presion central del juego,
-    // dejaria de importar)
     buyExtraTime() {
         const cost = __classPrivateFieldGet(this, _Game_economy, "f").tryBuyExtraTime(__classPrivateFieldGet(this, _Game_money, "f"));
         if (cost === 0) {
@@ -139,8 +119,6 @@ export class Game {
     get hasInsurance() {
         return __classPrivateFieldGet(this, _Game_economy, "f").hasInsurance;
     }
-    // tienda: activa el indulto (ver decide()) - un solo indulto activo a la
-    // vez, no se puede comprar otro encima del que ya esta activo
     buyInsurance() {
         const cost = __classPrivateFieldGet(this, _Game_economy, "f").tryBuyInsurance(__classPrivateFieldGet(this, _Game_money, "f"));
         if (cost === 0) {
@@ -149,31 +127,21 @@ export class Game {
         __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - cost, "f");
         return true;
     }
-    // usedAlienStamp = el jugador aprobo con el sello AZUL en vez del verde. Es
-    // opcional para no romper a quien llame decide(accept) a secas (los tests, y
-    // todo el codigo anterior al dia 6).
     decide(accept, usedAlienStamp = false) {
         const currentDay = __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1];
         const visitor = __classPrivateFieldGet(this, _Game_currentVisitor, "f");
         const violatedRule = currentDay.evaluateCharacter(visitor);
-        const shouldReject = violatedRule !== null; //si se esta violando una regla, el personaje actual debe ser rechazado
-        // desde el dia en que rige la regla del sello azul, dejar pasar a un alien exige
-        // sellarlo con el AZUL, y el azul no vale para nadie mas. Ojo: esto solo cambia
-        // COMO se aprueba - a quien hay que rechazar no cambia en absoluto, un alien que
-        // viola cualquiera de las otras reglas se rechaza igual que el resto.
+        const shouldReject = violatedRule !== null;
         const needsAlienStamp = this.alienStampRuleActive() && visitor.isAlien();
         const rightStamp = usedAlienStamp === needsAlienStamp;
         const wasCorrect = (accept && !shouldReject && rightStamp) || (!accept && shouldReject);
         if (wasCorrect) {
-            __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") + 2, "f"); // antes 10 - se achico porque ahora, con dia por tiempo, se pueden ver muchos mas visitantes que antes
+            __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") + 2, "f");
             __classPrivateFieldSet(this, _Game_dayMoney, __classPrivateFieldGet(this, _Game_dayMoney, "f") + 2, "f");
         }
         else {
             __classPrivateFieldSet(this, _Game_money, __classPrivateFieldGet(this, _Game_money, "f") - 5, "f");
             __classPrivateFieldSet(this, _Game_dayMoney, __classPrivateFieldGet(this, _Game_dayMoney, "f") - 5, "f");
-            // el indulto absorbe este error (no cuenta para los 4 que pierden la
-            // partida) pero no devuelve el dinero - no es gratis equivocarse, es
-            // que no te cuesta la partida. Se consume, no queda para el proximo error.
             if (!__classPrivateFieldGet(this, _Game_economy, "f").consumeInsuranceIfActive()) {
                 __classPrivateFieldSet(this, _Game_errors, __classPrivateFieldGet(this, _Game_errors, "f") + 1, "f");
                 __classPrivateFieldSet(this, _Game_dayErrors, __classPrivateFieldGet(this, _Game_dayErrors, "f") + 1, "f");
@@ -197,13 +165,8 @@ export class Game {
         }
         __classPrivateFieldSet(this, _Game_currentVisitor, __classPrivateFieldGet(this, _Game_visitorGenerator, "f").generate(__classPrivateFieldGet(this, _Game_dayNumber, "f"), __classPrivateFieldGet(this, _Game_days, "f")[__classPrivateFieldGet(this, _Game_dayNumber, "f") - 1], __classPrivateFieldGet(this, _Game_hardMode, "f")), "f");
     }
-    // el dia ya no termina por cantidad de visitantes: lo llama main.ts cuando se
-    // acaba el temporizador del dia. Antes vivia adentro de decide(), atado a
-    // visitorsSeenToday >= currentDay.getVisitorGoal().
     endDay() {
-        __classPrivateFieldGet(this, _Game_instances, "m", _Game_recordDayVisitors).call(this); // antes de tocar #dayNumber: el conteo es del dia que se cierra
-        // foto del dia que se cierra, ANTES de que #startDay() (mas abajo) resetee
-        // los contadores del dia - ver pantalla de resumen en main.ts
+        __classPrivateFieldGet(this, _Game_instances, "m", _Game_recordDayVisitors).call(this);
         __classPrivateFieldSet(this, _Game_lastDayAccepted, __classPrivateFieldGet(this, _Game_dayAccepted, "f"), "f");
         __classPrivateFieldSet(this, _Game_lastDayRejected, __classPrivateFieldGet(this, _Game_dayRejected, "f"), "f");
         __classPrivateFieldSet(this, _Game_lastDayErrors, __classPrivateFieldGet(this, _Game_dayErrors, "f"), "f");
@@ -235,8 +198,6 @@ export class Game {
     get errors() {
         return __classPrivateFieldGet(this, _Game_errors, "f");
     }
-    // cuantos errores terminan la partida (4 normal, 3 en modo dificil) - lo lee
-    // main.ts para el "X / N" del HUD y el umbral de alerta
     get maxErrors() {
         return __classPrivateFieldGet(this, _Game_maxErrors, "f");
     }
@@ -255,7 +216,6 @@ export class Game {
     get playerName() {
         return __classPrivateFieldGet(this, _Game_playerName, "f");
     }
-    // --- datos para los premios de fin de partida (ver AWARD_BEATS en main.ts) ---
     get letThroughOni() {
         return __classPrivateFieldGet(this, _Game_letThroughOni, "f");
     }
@@ -271,7 +231,6 @@ export class Game {
     get bestDayNumber() {
         return __classPrivateFieldGet(this, _Game_bestDayNumber, "f");
     }
-    // --- datos del ultimo dia cerrado (ver pantalla de resumen en main.ts) ---
     get lastDayAccepted() {
         return __classPrivateFieldGet(this, _Game_lastDayAccepted, "f");
     }
@@ -287,8 +246,6 @@ export class Game {
     get lastDayCharge() {
         return __classPrivateFieldGet(this, _Game_economy, "f").lastDayCharge;
     }
-    // dias terminados de verdad: al perder en el dia 4 quedan 3 completos, y al ganar
-    // #dayNumber ya vale #totalDays + 1, asi que quedan los 7
     get daysCompleted() {
         return __classPrivateFieldGet(this, _Game_dayNumber, "f") - 1;
     }
@@ -300,8 +257,8 @@ export class Game {
         __classPrivateFieldSet(this, _Game_dayNumber, saved.dayNumber, "f");
         __classPrivateFieldSet(this, _Game_errors, saved.errors, "f");
         __classPrivateFieldSet(this, _Game_money, saved.money, "f");
-        __classPrivateFieldSet(this, _Game_totalDays, saved.totalDays ?? 7, "f"); // partidas guardadas de antes de este dato: 7 por defecto
-        __classPrivateFieldSet(this, _Game_hardMode, saved.hardMode ?? false, "f"); // idem: las partidas viejas eran siempre modo normal
+        __classPrivateFieldSet(this, _Game_totalDays, saved.totalDays ?? 7, "f");
+        __classPrivateFieldSet(this, _Game_hardMode, saved.hardMode ?? false, "f");
         __classPrivateFieldSet(this, _Game_maxErrors, __classPrivateFieldGet(this, _Game_hardMode, "f") ? 3 : 4, "f");
         __classPrivateFieldGet(this, _Game_instances, "m", _Game_startDay).call(this);
         return true;

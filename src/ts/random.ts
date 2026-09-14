@@ -1,12 +1,3 @@
-// --- generador pseudoaleatorio con semilla (mulberry32) ---
-//
-// Math.random() no acepta semilla: cada carga de la pagina arranca otra
-// secuencia, asi que dos personas nunca ven los mismos visitantes. El
-// "desafio diario" necesita justo lo contrario: que a partir de un mismo
-// numero (derivado de la fecha) todos obtengan EXACTAMENTE la misma secuencia,
-// en el mismo orden. mulberry32 hace eso con un estado de 32 bits y devuelve
-// una funcion con la misma forma que Math.random (un numero en el rango [0, 1)).
-
 export function mulberry32(seed: number): () => number {
   let state = seed >>> 0;
   return function (): number {
@@ -17,9 +8,6 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-// semilla del desafio del dia: la fecha local como numero YYYYMMDD (por
-// ejemplo 20260830). Es la misma para todos los que jueguen el mismo dia
-// del calendario, sin importar la hora ni la zona horaria mas alla del dia.
 export function todayChallengeSeed(date: Date = new Date()): number {
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
