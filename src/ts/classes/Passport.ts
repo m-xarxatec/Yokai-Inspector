@@ -4,7 +4,6 @@ export class Passport {
     #declaredSpecie: string;
     #stamp: string;
 
-
     constructor(name: string, region: string, declaredSpecie: string, stamp: string){
         this.#name = name;
         this.#region = region;

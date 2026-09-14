@@ -1,46 +1,37 @@
 export class SoundManager {
     #stampSound: HTMLAudioElement;
     #wrongSound: HTMLAudioElement;
-    #nextButtonSound: HTMLAudioElement; // sonido de click para los botones generales
-    #paperFlipSound: HTMLAudioElement; // sonido al abrir el pasaporte
-    #victorySound: HTMLAudioElement; // sonido cuando el usuario gana la partida
-    #loseSound: HTMLAudioElement; // sonido cuando el usuario pierde la partida
-    #writeSound: HTMLAudioElement; // sonido de escritura cuando aparece el texto de error de la jefa
-    #writeClone: HTMLAudioElement | null; // el clon de "escribir" que esta sonando ahora, para poder cortarlo
-    #volume: number; // 0 a 1, volumen de todos los efectos de sonido
+    #nextButtonSound: HTMLAudioElement;
+    #paperFlipSound: HTMLAudioElement;
+    #victorySound: HTMLAudioElement;
+    #loseSound: HTMLAudioElement;
+    #writeSound: HTMLAudioElement;
+    #writeClone: HTMLAudioElement | null;
+    #volume: number;
 
     constructor() {
         this.#stampSound = new Audio("sounds/stamp.mp3");
         this.#wrongSound = new Audio("sounds/wrong.wav");
-        this.#nextButtonSound = new Audio("sounds/nextButton.mp3"); // carga el archivo del boton
-        this.#paperFlipSound = new Audio("sounds/paperFlip.mp3"); // carga el archivo del pasaporte
-        this.#victorySound = new Audio("sounds/victorySound.mp3"); // carga el archivo de victoria
-        this.#loseSound = new Audio("sounds/loseSound.mp3"); // carga el archivo de derrota
-        this.#writeSound = new Audio("sounds/write.mp3"); // carga el archivo de escritura
-        this.#writeClone = null; // todavia no sono ninguno
-        this.#volume = 1; // arranca al 100%
+        this.#nextButtonSound = new Audio("sounds/nextButton.mp3");
+        this.#paperFlipSound = new Audio("sounds/paperFlip.mp3");
+        this.#victorySound = new Audio("sounds/victorySound.mp3");
+        this.#loseSound = new Audio("sounds/loseSound.mp3");
+        this.#writeSound = new Audio("sounds/write.mp3");
+        this.#writeClone = null;
+        this.#volume = 1;
     }
 
-    // cambia el volumen de TODOS los efectos de sonido, incluidos los que se
-    // reproduzcan despues de llamar este metodo (#playClone se lo asigna a
-    // cada clon antes de reproducirlo). No se usa la propiedad "volume" del
-    // Audio original porque #playClone clona el audio en cada reproduccion,
-    // y esa propiedad no se copia al clon (no es un atributo HTML, es estado
-    // en memoria) - por eso hay que reasignarla a mano en cada clon
     setVolume(volume: number): void {
         this.#volume = volume;
     }
 
-    // clona el audio antes de reproducirlo: si se llama de nuevo mientras el
-    // clon anterior todavia esta sonando, no se interrumpen entre si (por eso
-    // a veces el sonido no se escuchaba al clickear rapido)
     #playClone(sound: HTMLAudioElement): void {
         if (this.#volume === 0) {
-            return; // volumen al minimo: no reproduce nada
+            return;
         }
-        const clone = sound.cloneNode() as HTMLAudioElement; // copia independiente del audio
+        const clone = sound.cloneNode() as HTMLAudioElement;
         clone.volume = this.#volume;
-        clone.play().catch(() => {}); // evita que un error de reproduccion quede sin manejar
+        clone.play().catch(() => {});
     }
 
     playAccept(): void {
@@ -56,40 +47,34 @@ export class SoundManager {
     }
 
     playNextButton(): void {
-        this.#playClone(this.#nextButtonSound); // reproduce el sonido del boton
+        this.#playClone(this.#nextButtonSound);
     }
 
     playPaperFlip(): void {
-        this.#playClone(this.#paperFlipSound); // reproduce el sonido de abrir el pasaporte
+        this.#playClone(this.#paperFlipSound);
     }
 
     playVictory(): void {
-        this.#playClone(this.#victorySound); // reproduce el sonido de victoria
+        this.#playClone(this.#victorySound);
     }
 
     playLose(): void {
-        this.#playClone(this.#loseSound); // reproduce el sonido de derrota
+        this.#playClone(this.#loseSound);
     }
 
-    // este sonido NO usa #playClone: se guarda el clon aparte para poder
-    // apagarlo antes con stopWrite() (al apretar "Siguiente" o "Volver al
-    // menu"), y ademas se corta solo a los 1500ms por si el jugador tarda en
-    // clickear - el archivo original es mas largo que eso
     playWrite(): void {
         if (this.#volume === 0) {
-            return; // volumen al minimo: no reproduce nada
+            return;
         }
-        const clone = this.#writeSound.cloneNode() as HTMLAudioElement; // copia independiente del audio
+        const clone = this.#writeSound.cloneNode() as HTMLAudioElement;
         clone.volume = this.#volume;
         this.#writeClone = clone;
-        clone.play().catch(() => {}); // evita que un error de reproduccion quede sin manejar
+        clone.play().catch(() => {});
         window.setTimeout(() => {
-            clone.pause(); // corta el sonido aunque el archivo original sea mas largo
+            clone.pause();
         }, 1500);
     }
 
-    // corta de una el sonido de escritura si todavia esta sonando (se llama
-    // al apretar "Siguiente", para que no se siga escuchando en la pantalla siguiente)
     stopWrite(): void {
         if (this.#writeClone !== null) {
             this.#writeClone.pause();

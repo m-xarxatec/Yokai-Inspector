@@ -14,13 +14,9 @@ import { renderCreditsScreen, renderHistoryTable } from "./records.js";
 import { CHARACTER_ELEMENT, resetElementOffscreen, setDecisionStampsEnabled, slideOutSlidingElements } from "./characterSlide.js";
 import { initStampDrag } from "./stampDrag.js";
 let game = null;
-// arranca en la pantalla-gate (fondo semitransparente + logo animado), que ya
-// esta visible en el HTML sin pasar por changeState() - ver #start-gate-btn mas abajo
 let currentState = "start-gate";
 const soundManager = new SoundManager();
 const musicManager = new MusicManager();
-// se avisa aca (en vez de que DayTimer conozca a Game) cuando el dia vence
-// de verdad - ver DayTimer.ts para el porque puede diferirse este aviso
 const dayTimer = new DayTimer(() => {
     if (game === null) {
         return;
@@ -29,95 +25,31 @@ const dayTimer = new DayTimer(() => {
     game.endDay();
     afterDecision(dayBefore);
 });
-// gate de audio: el click en un boton real SIEMPRE cuenta como gesto de usuario
-// valido para el navegador, asi que la musica del menu arranca aca sin
-// necesidad de reintentos ni listeners de respaldo
 document.querySelector("#start-gate-btn")?.addEventListener("click", () => {
     soundManager.playNextButton();
     musicManager.playMenu();
     changeState("menu");
 });
-// racha con la que termino cada dia de la partida en curso - se guarda en
-// localStorage al cerrar cada dia (ver afterDecision()), todavia sin usarse
-// para nada mas (queda preparada para una idea a futuro, ver docs/ideas.md)
 let dayStreaks = [];
-// la duracion tiene que coincidir con la transicion de "left" de #character-portrait en style.css
 const PORTRAIT_ANIM_MS = 450;
-// duracion de la transicion "en el sitio" (abrir/cerrar sobre el escritorio,
-// sin moverse) - tiene que coincidir con la transicion de top/height de
-// #passport-object en style.css
 const PASSPORT_ANIM_MS = 400;
-// duracion del arco (lanzado/devuelto) - ver animatePassportAlongArc() mas abajo
 const PASSPORT_ARC_MS = 700;
-// puntos del arco parabolico (izquierda/arriba en %, mas la altura del pasaporte
-// en cada punta): sale de la base del personaje, chico, pasa por un punto alto
-// (a la altura de la ventanilla, dandole la curva) y cae sobre el escritorio, un
-// poco mas grande. La vuelta (al decidir) es la misma curva al reves.
-// BASE.left = centro horizontal real de #character-portrait (left + width/2
-// = 49+18/2 = 58%), no su rostro/centro - para que se vea salir literalmente
-// de su base, no flotando en la mitad del cuerpo.
-// BASE.top: tiene que caer DENTRO de la franja que tapa el escritorio
-// (#scene-desktop va de 53.68% a 86.39% de alto, z-index 4, delante del
-// personaje) para que la devolucion se vea "esconderse detras del
-// escritorio", como pidio Mike - ni tan arriba que quede a la vista (se
-// probo 52%, quedaba a la altura del pecho, no de la base) ni tan abajo que
-// se pase del borde inferior del escritorio hacia la barra de dialogo (se
-// probo 89%, el borde geometrico de la caja del personaje, y se veia
-// "hundirse" de mas, saliendose por debajo del escritorio). 71% es la base
-// REAL del dibujo del personaje dentro de su caja (donde termina el
-// contenido visible de rostro-N.webp con "contain", antes del margen vacio
-// que deja la caja mas angosta - ver el mismo calculo en el comentario de
-// .part-horns en style.css), y ademas cae comodo en el medio de la franja
-// del escritorio.
-// DESK.top re-ajustado cuando DesktopNew.webp se achico - el escritorio real
-// ahora ocupa solo hasta ~86% de alto (antes desktop.png llegaba al 100%),
-// asi que el pasaporte tiene que aterrizar mas arriba para no pisar la barra
-// de dialogo.
 const PASSPORT_ARC_BASE = { left: 58, top: 71, height: 3 };
 const PASSPORT_ARC_CONTROL = { left: 55, top: -35 };
 const PASSPORT_ARC_DESK = { left: 60, top: 68, height: 16 };
-// variantes de "apoyado sobre la mesa" (pasaporte1/2/3.webp) que reemplazan a
-// pasaporte.webp una vez que la entrega termina de caer - ver el final de
-// renderVisitor(). La devolucion no las usa: antes de arrancar el arco de
-// vuelta se sacan de nuevo, asi que el personaje siempre se lo lleva mostrando
-// pasaporte.webp, como si el cambio de imagen fuera solo "una vez posado".
 const PASSPORT_DESK_LOOK_VARIANTS = ["desk1", "desk2", "desk3"];
-// cubic-bezier de desaceleracion sin overshoot (el 4to valor no pasa de 1): sin
-// rebote al llegar, frena suave - se aplica igual en la entrega y la vuelta
 const PASSPORT_ARC_EASING = createCubicBezierEasing(0.33, 1, 0.68, 1);
-// pausa despues de que el personaje termina de llegar (y ya esta con la animacion
-// idle) antes de que aparezca el pasaporte - da la sensacion de que lo entrega al
-// llegar, no de que lo trae consigo mientras se desliza
 const PASSPORT_DELIVERY_DELAY_MS = 500;
-// cuanto se ve el sello de aceptado/rechazado sobre el pasaporte todavia abierto
-// antes de que empiece a cerrarse
 const DECISION_STAMP_FLASH_MS = 400;
-// tiempo del dia completo (ya no es por visitante) - la dificultad ya sube
-// sola por la proporcion de problematicos y la cantidad de reglas activas
-// por dia. Por defecto 60s, elegible desde el menu principal (ver
-// #day-duration-slider, que arranca en el indice 1 = 60s).
 let DAY_DURATION_MS = 60000;
-// valor elegido en el slider de Opciones - lo aplica beginGame() al arrancar
-// una partida normal. El modo dificil lo ignora (fuerza 30s) y el desafio
-// diario tambien (fija 60s para que sea igual para todos).
 let selectedDayDurationMs = 60000;
-// true en modo dificil - solo se puede cambiar en el menu, antes de arrancar
-// una partida nueva (ver #hard-mode-toggle-btn)
 let hardModeSelected = false;
 let streak = 0;
-// pico de racha alcanzado en el dia en curso (streak solo no alcanza: si hubo
-// un error a mitad de dia, streak al final puede ser menor al maximo real) -
-// ver pantalla de resumen de fin de dia
 let maxStreakToday = 0;
 let timerEnabled = true;
-// variantes del retrato de la Jefa cuando explica las reglas entre dias; se elige
-// una al azar cada vez, para que no sea siempre la misma pose
 const JEFA_EXPLICA_VARIANTS = ["jefaExplica-1", "jefaExplica-2", "jefaExplica-3", "jefaExplica-4", "jefaExplica-5"];
 function changeState(newState) {
     currentState = newState;
-    // saca el foco de lo que este enfocado (por ejemplo el input del nombre)
-    // antes de cambiar de pantalla, asi no queda un cursor de texto parpadeando
-    // "pegado" en una pantalla donde ya no corresponde
     const focusedEl = document.activeElement;
     if (focusedEl instanceof HTMLElement) {
         focusedEl.blur();
@@ -126,24 +58,17 @@ function changeState(newState) {
         section.classList.add("hidden");
     });
     document.querySelector(`#${newState}-screen`)?.classList.remove("hidden");
-    // al volver a la pantalla del nombre no debe quedar el error de una visita anterior
     if (newState === "name-entry") {
         document.querySelector("#player-name-error")?.classList.add("hidden");
     }
-    // la musica de fondo suena SOLO en el menu principal - en cualquier otra
-    // pantalla (nombre, historia, intro del dia, juego, etc.) se corta
     if (newState === "menu") {
         musicManager.playMenu();
     }
     else {
         musicManager.stop();
     }
-    // deja el foco en el primer boton (o el input de texto) de la pantalla
-    // nueva, asi se puede navegar con las flechas y confirmar con Enter sin
-    // tocar el mouse - la pantalla de juego se saltea (ver keyboardNav.ts)
     focusFirstControl(newState);
 }
-// --- Menu screen ---
 function updateContinueButton() {
     const button = document.querySelector("#continue-btn");
     const savedGame = loadCurrentGame();
@@ -175,15 +100,12 @@ function updateTimerToggleButton() {
     }
 }
 document.querySelector("#timer-toggle-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     timerEnabled = !timerEnabled;
     updateTimerToggleButton();
 });
-// --- volumen: un solo control para la musica y todos los efectos juntos ---
 function applyVolume(sliderValue) {
     const raw = sliderValue / 100;
-    // curva cuadratica: el oido percibe el volumen de forma logaritmica, no
-    // lineal - sin esto, valores "bajos" del slider seguian sonando fuerte
     const volume = raw * raw;
     soundManager.setVolume(volume);
     musicManager.setVolume(volume);
@@ -191,22 +113,14 @@ function applyVolume(sliderValue) {
 document.querySelector("#volume-slider")?.addEventListener("input", (event) => {
     applyVolume(Number(event.target.value));
 });
-// al cargar la pagina se aplica el valor inicial del slider (50 por defecto),
-// no el 100% con el que arrancan SoundManager/MusicManager - "el sonido
-// siempre al 50% salvo que alguien lo suba". Corre antes de que suene nada
-// (ningun sonido se dispara durante la carga del modulo).
 const volumeSliderEl = document.querySelector("#volume-slider");
 if (volumeSliderEl !== null) {
     applyVolume(Number(volumeSliderEl.value));
 }
-// --- zoom de la pantalla de juego: agranda #character-scene entero (HUD,
-// --- personaje, pasaporte, todo junto - ya escala solo, ver --scene-zoom en style.css) ---
 document.querySelector("#zoom-slider")?.addEventListener("input", (event) => {
     const zoom = Number(event.target.value) / 100;
     document.documentElement.style.setProperty("--scene-zoom", String(zoom));
 });
-// --- duracion del dia y cantidad de dias de la partida: solo tienen efecto ---
-// --- en la PROXIMA partida/dia que arranque, no a mitad de una en curso ---
 const DAY_DURATION_OPTIONS_MS = [30000, 60000, 90000, 120000];
 document.querySelector("#day-duration-slider")?.addEventListener("input", (event) => {
     const index = Number(event.target.value);
@@ -225,8 +139,6 @@ document.querySelector("#total-days-slider")?.addEventListener("input", (event) 
         valueEl.textContent = String(selectedTotalDays);
     }
 });
-// --- pantalla completa: usa la Fullscreen API nativa del navegador sobre ---
-// --- document.body (no hay un contenedor #app aparte, todo cuelga de body) ---
 function updateFullscreenButton() {
     const button = document.querySelector("#fullscreen-toggle-btn");
     if (button === null) {
@@ -239,27 +151,18 @@ function updateFullscreenButton() {
         button.textContent = "Salir de pantalla";
     }
 }
-// tambien se actualiza si el usuario sale con la tecla Esc, no solo con el boton
 document.addEventListener("fullscreenchange", () => {
     updateFullscreenButton();
 });
 document.querySelector("#fullscreen-toggle-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     if (document.fullscreenElement === null) {
-        document.body.requestFullscreen().catch(() => { }); // activa pantalla completa
+        document.body.requestFullscreen().catch(() => { });
     }
     else {
-        document.exitFullscreen().catch(() => { }); // sale de pantalla completa
+        document.exitFullscreen().catch(() => { });
     }
 });
-// arranca una partida nueva y lleva a la pantalla de historia. Lo comparten el
-// submit del nombre (partida normal, con o sin modo dificil) y el boton de
-// desafio diario (semilla fija). randomFn = Math.random para una partida
-// comun, o un generador con semilla para el desafio diario.
-// fondo de la pantalla de juego: uno de los 4 (fondoJuego1..4) al azar, fijo
-// para TODA la partida - no cambia entre dias, solo al arrancar una partida
-// nueva o al retomar una guardada. Es puramente decorativo (rellena el margen
-// alrededor de #character-scene), no toca la jugabilidad.
 const GAME_BACKGROUND_COUNT = 4;
 function pickGameBackground() {
     const n = Math.floor(Math.random() * GAME_BACKGROUND_COUNT) + 1;
@@ -285,10 +188,7 @@ function beginGame(name, totalDays, hardMode, randomFn, dayDurationMs) {
         changeState("story");
     });
 }
-// el nombre solo puede tener letras (incluye acentos/ñ) y espacios entre palabras
 const ONLY_LETTERS_REGEX = /^[A-Za-zÁÉÍÓÚÑÜáéíóúñü ]+$/;
-// al confirmar el nombre arranca la partida nueva (esto reemplaza lo que antes
-// hacia el click de "Nueva partida" directamente)
 document.querySelector("#player-name-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
     const input = document.querySelector("#player-name-input");
@@ -299,15 +199,12 @@ document.querySelector("#player-name-form")?.addEventListener("submit", (event) 
         return;
     }
     errorText?.classList.add("hidden");
-    soundManager.playNextButton(); // sonido de click del boton
-    input?.blur(); // saca el foco del input ya mismo (la carga de datos de abajo es async y tarda)
+    soundManager.playNextButton();
+    input?.blur();
     savePlayerName(name);
-    // el modo dificil fuerza 30s de dia (el slider de duracion queda
-    // deshabilitado mientras esta activo, ver updateHardModeButton())
     const durationMs = hardModeSelected ? DAY_DURATION_OPTIONS_MS[0] : selectedDayDurationMs;
     beginGame(name, selectedTotalDays, hardModeSelected, Math.random, durationMs);
 });
-// --- modo dificil: toggle del menu, solo antes de arrancar una partida nueva ---
 function updateHardModeButton() {
     const button = document.querySelector("#hard-mode-toggle-btn");
     if (button !== null) {
@@ -315,53 +212,34 @@ function updateHardModeButton() {
         button.setAttribute("aria-pressed", String(hardModeSelected));
         button.classList.toggle("active", hardModeSelected);
     }
-    // en modo dificil la duracion del dia esta fija en 30s, no tiene sentido
-    // dejar tocar el slider
     const durationSlider = document.querySelector("#day-duration-slider");
     if (durationSlider !== null) {
         durationSlider.disabled = hardModeSelected;
     }
 }
 document.querySelector("#hard-mode-toggle-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     hardModeSelected = !hardModeSelected;
     updateHardModeButton();
 });
-// --- desafio diario: misma secuencia de visitantes para todos los que jueguen
-// --- hoy (semilla derivada de la fecha) - siempre modo normal, 7 dias y 60s,
-// --- para que la comparacion sea justa. Game no sabe nada de fechas ni de
-// --- "desafio": solo recibe un generador con semilla (ver src/ts/random.ts).
 document.querySelector("#daily-challenge-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     const name = loadPlayerName() || "Un1c0rN10";
     beginGame(name, 7, false, mulberry32(todayChallengeSeed()), DAY_DURATION_OPTIONS_MS[1]);
 });
-// a donde vuelve el "Volver al menu" de options/credits/exit - "menu" salvo
-// que se haya entrado a options desde la pantalla de pausa (ver #pause-options-btn)
 let backLinkTarget = "menu";
 document.querySelectorAll(".back-link").forEach(button => {
     button.addEventListener("click", () => {
-        soundManager.playNextButton(); // sonido de click del boton
+        soundManager.playNextButton();
         changeState(backLinkTarget);
     });
 });
-// disponible desde historia/juego/resultado del dia: vuelve al menu sin terminar
-// el dia actual, tal como quedaria si se recargara la pagina a mitad de partida
-// (la partida guardada solo se actualiza al empezar cada dia, asi que sigue
-// disponible para "Continuar partida" desde donde arranco el dia). El boton
-// de pausa (#pause-btn) tiene su propio listener mas abajo, no entra aca.
-// #shop-btn ya no comparte esta clase (ver style.css), tiene su propio
-// aspecto de icono, no hace falta excluirlo aca.
 document.querySelectorAll(".exit-to-menu-btn:not(#pause-btn)").forEach(button => {
     button.addEventListener("click", () => {
-        soundManager.playNextButton(); // sonido de click del boton
-        soundManager.stopWrite(); // corta el sonido de escritura si todavia estaba sonando
+        soundManager.playNextButton();
+        soundManager.stopWrite();
         dayTimer.clear();
         stopDialogue();
-        // por si se sale a mitad de la intro del dia 1 o de una reaccion de error
-        // (ambas viven en #day-result-screen) - sin esto, #continue-day-btn podria
-        // arrancar mal la proxima vez que se llegue a esa pantalla en una partida
-        // nueva (saltandose dayTimer.start() por un errorReactionPending viejo, por ejemplo)
         introBeatIndex = null;
         errorReactionPending = false;
         changeState("menu");
@@ -369,59 +247,46 @@ document.querySelectorAll(".exit-to-menu-btn:not(#pause-btn)").forEach(button =>
         updateContinueButton();
     });
 });
-// --- pausa real durante el juego: pausa el temporizador del dia de verdad ---
-// --- (mismos dayTimer.pause()/dayTimer.resume() que ya usa la reaccion de la Jefa por error) ---
 document.querySelector("#pause-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     dayTimer.pause();
     changeState("pause");
 });
 document.querySelector("#pause-continue-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     changeState("game");
     dayTimer.resume(timerEnabled);
 });
-// --- tienda: comprar con el dinero acumulado durante la partida (ver shop.ts) ---
 initShop(() => game, () => timerEnabled, soundManager, dayTimer, changeState);
 document.querySelector("#pause-options-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     backLinkTarget = "pause";
-    // duracion del dia/dias de la partida solo tienen sentido antes de
-    // arrancar una partida nueva, no a mitad de una en curso
     document.querySelector("#new-game-options")?.classList.add("hidden");
     changeState("options");
 });
 document.querySelector("#options-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     backLinkTarget = "menu";
     document.querySelector("#new-game-options")?.classList.remove("hidden");
     changeState("options");
 });
 document.querySelector("#exit-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     backLinkTarget = "menu";
     changeState("exit");
 });
-// cierra la pestaña/ventana: por seguridad, los navegadores solo dejan que
-// window.close() funcione en pestañas que el propio script abrio (por ejemplo
-// con window.open()) - en una pestaña que el usuario abrio a mano (escribiendo
-// la URL, o con un marcador) casi todos los navegadores modernos ignoran el
-// pedido sin avisar, no tira error. Por eso este boton no siempre "hace algo"
-// visible: es una limitacion del navegador, no un bug de este codigo.
 document.querySelector("#close-window-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     window.close();
 });
 document.querySelector("#credits-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     backLinkTarget = "menu";
     renderCreditsScreen();
     changeState("credits");
 });
 document.querySelector("#new-game-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
-    // precarga el input con el ultimo nombre usado - quien ya jugo no tiene que
-    // volver a tipearlo desde cero
+    soundManager.playNextButton();
     const input = document.querySelector("#player-name-input");
     if (input !== null) {
         input.value = loadPlayerName();
@@ -450,10 +315,6 @@ function renderJefaBeat(beat) {
         summaryEl.classList.add("hidden");
     typeDialogue(beat.text, "#next-day-message");
 }
-// distingue, dentro de #day-result-screen, un cambio de regla (mensajeIntro/
-// DAY_ONE_INTRO_BEATS) de una reaccion por error (ERROR_REACTIONS): el color
-// del kicker es la unica pista visual, porque el propio parrafo usa siempre
-// --font-body en los dos casos
 function setNoticeType(type) {
     const screenEl = document.querySelector("#day-result-screen");
     const kickerEl = document.querySelector("#notice-kicker");
@@ -465,22 +326,21 @@ function setNoticeType(type) {
     kickerEl.textContent = type === "rule" ? "NUEVA REGLA" : "¡ERROR!";
 }
 document.querySelector("#story-next-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     introBeatIndex = 0;
-    changeState("day-result"); // primero cambia de pantalla para que no corte el audio de abajo
+    changeState("day-result");
     setNoticeType("rule");
     renderJefaBeat(DAY_ONE_INTRO_BEATS[0]);
 });
 document.querySelector("#continue-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     game = new Game(loadPlayerName());
     streak = 0;
     maxStreakToday = 0;
     dayStreaks = loadDayStreaks();
-    // una partida guardada en modo dificil sigue con sus 30s de dia al retomarla
     const savedGame = loadCurrentGame();
     DAY_DURATION_MS = (savedGame !== null && savedGame.hardMode) ? DAY_DURATION_OPTIONS_MS[0] : selectedDayDurationMs;
-    pickGameBackground(); // fondo nuevo al azar para la partida retomada (no se guarda cual era)
+    pickGameBackground();
     game.loadData(() => {
         if (game === null) {
             return;
@@ -491,39 +351,14 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
         dayTimer.start(DAY_DURATION_MS, timerEnabled);
     });
 });
-// --- Game screen ---
-// --- tiempo limite del dia ---
-//
-// el temporizador del dia entero y el reloj de arena visual que lo
-// representa en pantalla viven en DayTimer (ver src/ts/classes/DayTimer.ts,
-// instanciado como `dayTimer` mas arriba) - aca solo queda el estado que le
-// es ajeno.
-// true mientras se muestra la reaccion de la Jefa por un error (ver
-// showErrorReaction() mas abajo) - #continue-day-btn la revisa para saber si
-// tiene que volver al visitante siguiente en vez de arrancar un dia nuevo
 let errorReactionPending = false;
 function renderVisitor() {
     if (game === null || game.currentVisitor === null) {
         return;
     }
-    // ojo: NO se toca el temporizador aca - es por dia, no por visitante, tiene
-    // que seguir corriendo mientras el visitante espera una decision (ver
-    // dayTimer.start()). Se marca que hay una decision en curso DESDE que el
-    // visitante aparece en pantalla (no recien cuando se abre el pasaporte, ni
-    // cuando se suelta el sello) para que, si el dia vence mientras todavia no
-    // se decidio sobre el, no se lo salte de golpe - el dia se cierra recien
-    // cuando esa decision termine de procesarse (ver dayEndedWhileResolving en
-    // resolveDecision() y releaseResolving() en DayTimer.ts). Si el jugador deja
-    // el visitante actual sin decidir nunca, el dia tampoco cierra solo: a
-    // proposito, es preferible a saltarselo o cortarle la decision de golpe.
     dayTimer.markResolving();
     resetElementOffscreen(CHARACTER_ELEMENT);
-    // se mantienen deshabilitados hasta que el jugador abra el pasaporte (ver el
-    // listener de click de #passport-object) - no se puede decidir a ciegas
     setDecisionStampsEnabled(false);
-    // el sello azul no existe sobre el escritorio hasta el dia en que empieza a
-    // hacer falta (ver reglas.json, propiedad "selloAlien") - antes de eso ni
-    // siquiera se ve, para no confundir con una tercera opcion que no aplica
     const alienStampEl = document.querySelector("#alien-btn");
     if (alienStampEl !== null) {
         alienStampEl.classList.toggle("hidden", !game.alienStampRuleActive());
@@ -536,30 +371,17 @@ function renderVisitor() {
         decisionStampEl.classList.remove("show", "approved", "rejected", "alien");
     }
     if (passportEl !== null) {
-        // se esconde del todo (todavia no lo "lanzo") - nada de dejarlo chiquito
-        // pero visible: eso es lo que se quedaba pegado en la ventanilla despues
-        // de devolverse
         passportEl.style.display = "none";
         passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
         passportEl.classList.add("closed");
     }
     window.setTimeout(() => {
         if (passportEl !== null) {
-            // se lanza: arco parabolico desde la base del personaje, a traves de la
-            // ventanilla (el punto de control tira la curva bien arriba), cayendo
-            // sobre el escritorio
             passportEl.style.display = "";
             passportEl.style.left = PASSPORT_ARC_BASE.left + "%";
             passportEl.style.top = PASSPORT_ARC_BASE.top + "%";
             passportEl.style.height = PASSPORT_ARC_BASE.height + "%";
             animatePassportAlongArc(PASSPORT_ARC_BASE, PASSPORT_ARC_CONTROL, PASSPORT_ARC_DESK, PASSPORT_ARC_MS, PASSPORT_ARC_EASING, true, () => {
-                // "aterrizo": limpia los estilos inline (los valores de la clase
-                // .cerrado ya coinciden con PASSPORT_ARC_DESK, asi que no se mueve
-                // nada) y cambia a una de las 3 variantes "apoyado en la mesa" al azar
-                // - todo esto TODAVIA con la transicion apagada (animatePassportAlongArc
-                // la dejo en "none"), asi que el cambio de imagen es directo, sin
-                // animar. Recien despues se reactiva la transicion, para que abrir con
-                // el click (mas abajo) sí se sienta suave.
                 passportEl.style.left = "";
                 passportEl.style.top = "";
                 passportEl.style.height = "";
@@ -580,9 +402,6 @@ function renderVisitor() {
         regionEl.textContent = passport.obtainRegion;
     if (passportStampEl !== null)
         passportStampEl.className = passport.obtainStamp;
-    // visible desde el dia 1 (antes se ocultaba hasta el dia 4, que es cuando
-    // arranca a importar para alguna regla) - se muestra ya de entrada para que
-    // el jugador se acostumbre a leer el dato antes de que dependa de el
     if (specieEl !== null) {
         specieEl.style.display = "";
         specieEl.textContent = passport.obtainDeclaredSpecie;
@@ -612,14 +431,11 @@ function renderVisitor() {
             hornsEl.style.display = "none";
         }
     }
-    // "DÍA"/"ERRORES"/"RACHA" ya estan dibujados dentro de fondoPantallaJuegoT.webp
-    // (ver style.css #hud) - aca solo se ponen los valores, no el texto completo
     const dayEl = document.querySelector("#day-counter");
     const errorsEl = document.querySelector("#error-counter");
     const moneyEl = document.querySelector("#money-counter");
     const streakEl = document.querySelector("#streak-counter");
     const sceneEl = document.querySelector("#character-scene");
-    // umbral de alerta: el ultimo error antes de perder (3/4 normal, 2/3 dificil)
     const dangerThreshold = game.maxErrors - 1;
     if (dayEl !== null)
         dayEl.textContent = game.dayNumber + " / " + game.totalDays;
@@ -632,9 +448,6 @@ function renderVisitor() {
             errorsEl.classList.remove("danger");
         }
     }
-    // modo alerta: a un error de perder, el recuadro solido detras de
-    // fondoPantallaJuegoT.webp (ver style.css .alerta) empieza a parpadear en
-    // rosa, lo que se lee como todo el borde de la pantalla en alerta
     if (sceneEl !== null) {
         if (game.errors >= dangerThreshold) {
             sceneEl.classList.add("alert");
@@ -652,10 +465,6 @@ function afterDecision(dayBefore) {
     if (game === null) {
         return;
     }
-    // una partida cortada por errores no "termina el dia" de verdad - va
-    // directo al final, sin pasar por el resumen de dia (ver isWon() mas abajo,
-    // que SI pasa por el resumen: el dia 7 completo se resume igual que
-    // cualquier otro dia, antes de ir a la pantalla final)
     if (game.isLost()) {
         dayTimer.clear();
         dayStreaks.push(streak);
@@ -669,20 +478,14 @@ function afterDecision(dayBefore) {
         const dayMaxStreak = Math.max(maxStreakToday, streak);
         dayStreaks.push(streak);
         saveDayStreaks(dayStreaks);
-        streak = 0; // la racha arranca de nuevo en cada dia (ver docs/ideas.md)
+        streak = 0;
         maxStreakToday = 0;
-        changeState("day-summary"); // primero cambia de pantalla para que no corte el audio de abajo
+        changeState("day-summary");
         renderDaySummaryScreen(dayBefore, dayMaxStreak);
         return;
     }
     renderVisitor();
 }
-// --- reaccion de la Jefa por error (1ro/2do/3ro del dia) ---
-//
-// "throughReaction" = el jugador dejo pasar a alguien que debia rechazar
-// (accept=true, error) - "rejectedReaction" = rechazo a alguien que debia
-// aceptar (accept=false, error). El 4to error ya termina la partida sola
-// (isLost()), no necesita reaccion propia - ver el chequeo en resolveDecision().
 const ERROR_REACTIONS = {
     1: {
         throughReaction: { image: "jefaEnojo2", text: "Oye, te dije que no dejaras pasar ningún yokai prohibido." },
@@ -703,20 +506,16 @@ function showErrorReaction(accept, errorNumber) {
         return;
     }
     setNoticeType("error");
-    soundManager.playWrite(); // sonido de escritura mientras aparece el texto de la jefa por error
+    soundManager.playWrite();
     renderJefaBeat(accept ? reactions.throughReaction : reactions.rejectedReaction);
     errorReactionPending = true;
     dayTimer.pause();
     changeState("day-result");
 }
-// usedAlienStamp = se aprobo con el sello AZUL (el de los alien, desde el dia 6)
-// en vez del verde de siempre - ver Game.decide() y setupStampDrag() en stampDrag.ts
 function resolveDecision(accept, usedAlienStamp = false) {
     if (game === null) {
         return;
     }
-    // el "marcar decision en curso" para el temporizador del dia ya se hizo antes,
-    // apenas aparecio este visitante (ver dayTimer.markResolving() en renderVisitor())
     const dayBefore = game.dayNumber;
     const errorsBefore = game.errors;
     const direction = accept ? "left" : "right";
@@ -730,18 +529,11 @@ function resolveDecision(accept, usedAlienStamp = false) {
         decisionStampEl.className = "show " + stampLook;
     }
     const passportEl = document.querySelector("#passport-object");
-    // se ve el sello un instante sobre el pasaporte todavia abierto; despues se
-    // cierra en el sitio (el sello placeholder desaparece con el), y recien
-    // ahi se devuelve - mismo arco de la entrega pero al reves, terminando
-    // escondido del todo (no se queda pegado, chico, en la ventanilla). El
-    // personaje sale por separado, con el mecanismo de siempre.
     window.setTimeout(() => {
         if (decisionStampEl !== null) {
             decisionStampEl.classList.remove("show", "approved", "rejected", "alien");
         }
         if (passportEl !== null) {
-            // vuelve a pasaporte.webp (saca la variante "en la mesa" si tenia una):
-            // se devuelve mostrando el mismo aspecto con el que se entrego
             passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
             passportEl.classList.add("closed");
         }
@@ -752,9 +544,6 @@ function resolveDecision(accept, usedAlienStamp = false) {
                     passportEl.style.top = "";
                     passportEl.style.height = "";
                     passportEl.style.display = "none";
-                    // reactiva la transicion (animatePassportAlongArc la deja en "none")
-                    // para que el proximo visitante abra/cierre el pasaporte con la
-                    // animacion "en el sitio" normal, no de golpe
                     passportEl.style.transition = "";
                 }
                 slideOutSlidingElements(direction, PORTRAIT_ANIM_MS, () => {
@@ -766,8 +555,6 @@ function resolveDecision(accept, usedAlienStamp = false) {
                     const justErred = game.errors > errorsBefore;
                     if (justErred) {
                         streak = 0;
-                        // si este error hace perder la partida, NO suena el error: solo
-                        // el sonido de derrota (ver playLose() en renderFinalScreen())
                         if (!game.isLost()) {
                             soundManager.playWrong();
                         }
@@ -778,20 +565,11 @@ function resolveDecision(accept, usedAlienStamp = false) {
                             maxStreakToday = streak;
                         }
                     }
-                    // el dia vencio mientras se animaba esta decision (ver DayTimer.ts):
-                    // recien ahora, con el visitante que el jugador realmente vio ya
-                    // procesado, se cierra el dia - salvo que decide() ya haya terminado
-                    // la partida sola (perdio/gano), en cuyo caso no corresponde avanzar.
                     if (dayEndedWhileResolving) {
                         if (!game.isLost() && !game.isWon()) {
                             game.endDay();
                         }
                     }
-                    // reaccion de la Jefa por error (1ro/2do/3ro - el 4to ya termino la
-                    // partida arriba, isLost() corta esto solo): solo tiene sentido si
-                    // se sigue jugando el MISMO dia, ni con la partida recien perdida/
-                    // ganada ni con el dia recien cerrado por el temporizador (esos
-                    // casos ya los resuelve afterDecision() con su propia pantalla)
                     if (justErred && !game.isLost() && !game.isWon() && game.dayNumber === dayBefore) {
                         showErrorReaction(accept, game.errors);
                         return;
@@ -802,10 +580,7 @@ function resolveDecision(accept, usedAlienStamp = false) {
         }, PASSPORT_ANIM_MS);
     }, DECISION_STAMP_FLASH_MS);
 }
-// --- sellos: drag and drop real (reemplazan los botones Aceptar/Rechazar,
-// ver stampDrag.ts) - incluye el click sobre el pasaporte cerrado para abrirlo ---
 initStampDrag(soundManager, resolveDecision);
-// --- Day summary screen (resumen narrativo + estadisticas al terminar cada dia) ---
 const DAY_END_MESSAGES = [
     "Ha finalizado el día. Vas camino a casa, feliz con tu nuevo empleo.",
     "Ha finalizado tu jornada. Ahora ves que se te está exigiendo más... te duelen los pies y las manos de tanto sellar.",
@@ -815,12 +590,6 @@ const DAY_END_MESSAGES = [
     "Jornada de trabajo terminada... día agotador, pero te tranquiliza la idea de que solo te quedan 45 años para jubilarte... suerte.",
     "Fin del día 7... buen trabajo.",
 ];
-// una pantallaIntermediaN.webp por dia, en el mismo orden que DAY_END_MESSAGES
-// (no es 1..7 en orden porque asi las pidio el arte - ver imagenes en
-// public/img/backgrounds/). backdrop = true para las que vienen sin fondo
-// propio (necesitan el mismo general_background.webp difuminado que usa la
-// Jefa detras suyo, ver #day-end-backdrop en style.css) - pantallaIntermedia4
-// y pantallaIntermedia6 ya traen su propia escena completa, no lo necesitan.
 const DAY_END_IMAGES = [
     { file: "pantallaIntermedia1.webp", backdrop: true },
     { file: "pantallaIntermedia2.webp", backdrop: true },
@@ -848,8 +617,6 @@ function renderDaySummaryScreen(dayNumber, maxStreak) {
         backdropEl.classList.toggle("hidden", !dayImage.backdrop);
     }
     typeDialogue(DAY_END_MESSAGES[dayNumber - 1], "#day-summary-text");
-    // el ultimo dia de la semana (sea partida de 5, 6 o 7 dias) no lleva a otro
-    // dia sino a la pantalla final - el boton lo dice
     const continueBtn = document.querySelector("#day-summary-continue-btn");
     if (continueBtn !== null) {
         continueBtn.textContent = game.isWon() ? "Finalizar semana" : "Siguiente día";
@@ -868,8 +635,6 @@ function renderDaySummaryScreen(dayNumber, maxStreak) {
         "Racha máxima: " + maxStreak,
         "Dinero ganado: " + (money >= 0 ? "+" : "") + money,
     ];
-    // el dia 1 no tiene cobro diario (ver Game.#chargeDailyCost()), no mostrar la
-    // linea si no hubo cobro
     if (charge > 0) {
         stats.push("Cobro diario: -" + charge);
     }
@@ -880,7 +645,7 @@ function renderDaySummaryScreen(dayNumber, maxStreak) {
     });
 }
 document.querySelector("#day-summary-continue-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     if (game === null) {
         return;
     }
@@ -889,10 +654,9 @@ document.querySelector("#day-summary-continue-btn")?.addEventListener("click", (
         changeState("final");
         return;
     }
-    changeState("day-result"); // primero cambia de pantalla para que no corte el audio de abajo
+    changeState("day-result");
     renderDayResultScreen();
 });
-// --- Day result screen ---
 function renderDayResultScreen(showSummary = true) {
     if (game === null) {
         return;
@@ -919,15 +683,9 @@ function renderDayResultScreen(showSummary = true) {
         typeDialogue(game.currentDay.getIntroMessage(), "#next-day-message");
     }
 }
-// 3 modos posibles, revisados en orden: en medio de la intro del dia 1 (avanza
-// el cuadro, o pasa a la pantalla de reglas activas si ya era el ultimo),
-// reaccion de la Jefa por un error (vuelve al visitante siguiente, SIN
-// reiniciar el temporizador del dia - sigue corriendo igual que durante
-// resolveDecision()), o el paso normal entre dias (pasa a la pantalla de
-// reglas activas antes de arrancar el dia nuevo).
 document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
-    soundManager.stopWrite(); // corta el sonido de escritura si todavia estaba sonando
+    soundManager.playNextButton();
+    soundManager.stopWrite();
     if (introBeatIndex !== null) {
         introBeatIndex += 1;
         if (introBeatIndex < DAY_ONE_INTRO_BEATS.length) {
@@ -950,7 +708,6 @@ document.querySelector("#continue-day-btn")?.addEventListener("click", () => {
     changeState("day-start");
     renderDayStartScreen();
 });
-// --- Day start screen (reglas activas del dia, antes de arrancar a jugar) ---
 function renderDayStartScreen() {
     if (game === null) {
         return;
@@ -965,9 +722,6 @@ function renderDayStartScreen() {
     }
     rulesEl.innerHTML = "";
     const activeRules = game.currentDay.getActiveRules();
-    // las 4 reglas de "especie declarada prohibida" (dia 4) se muestran juntas en
-    // UNA sola linea con la lista de especies, en vez de 4 renglones casi
-    // identicos - las demas reglas siguen mostrando su descripcion tal cual
     const bannedSpecies = activeRules
         .filter(rule => rule.getProperty() === "especieProhibida")
         .map(rule => String(rule.getForbiddenValue()));
@@ -989,7 +743,7 @@ function renderDayStartScreen() {
     });
 }
 document.querySelector("#day-start-continue-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     changeState("game");
     renderVisitor();
     dayTimer.start(DAY_DURATION_MS, timerEnabled);
@@ -1004,37 +758,22 @@ const ENDING_WIN_REGULAR = [
 const ENDING_WIN_SPECIAL = [
     { backdrop: "blurred-office", portrait: "jefaTeAma", award: null, text: "Has hecho un trabajo tan eficiente que la jefa se ha enamorado de ti... ella y la agencia han ganado mucho dinero por tu desempeño, eres tan bueno que no puedes ser ascendido y deciden quedarse solo contigo y despedir a los otros trabajadores... recibes un aumento de 2 monedas más al mes... felicidades...." },
 ];
-// perder 3 partidas SEGUIDAS (ver addResultToStreak en Storage.ts): las dos
-// primeras derrotas muestran el final normal, la tercera este
 const ENDING_YOKAI = [
     { backdrop: "yokai", portrait: null, award: null, text: "Has perdido demasiadas veces consecutivas, te conviertes en yokai y eres tú quien desata el apocalipsis... la jefa llora porque te amaba en secreto... GAME OVER" },
     { backdrop: "yokai", portrait: null, award: null, text: "Del otro lado del mostrador ya no queda nada tuyo: la agencia borró tu expediente completo. Se eliminaron TODAS las partidas guardadas." },
 ];
-// ganar 3 partidas SEGUIDAS
 const ENDING_BOSS = [
     { backdrop: "boss", portrait: null, award: null, text: "Has ascendido a jefe... a la inspectora la han degradado a tu puesto... finalmente la vida te sonríe." },
     { backdrop: "boss-worried", portrait: null, award: null, text: "La antigua jefa no puede mantener su lujoso estilo de vida con su nuevo sueldo.... FIN" },
 ];
-// ganar con mucho dinero acumulado (ver RICH_BOSS_MONEY)
 const ENDING_RICH_BOSS = [
     { backdrop: "rich-boss", portrait: null, award: null, text: "Lo has hecho muy bien... Tan bien que la jefa ahora gana mucho dinero y puede permitirse la vida que siempre soñó!... a ti... te dan un pequeño bono al final del año... siempre tienes hambre... FIN?" },
 ];
-// cuantas partidas seguidas con el mismo resultado hacen falta para los finales
-// de "te convertiste en yokai" / "sos el jefe"
 const CONSECUTIVE_FOR_SPECIAL_ENDING = 3;
-// cuanto dinero hay que terminar la partida para el final de la jefa millonaria -
-// bien por encima de una partida normal de 7 dias (100-200 monedas con +2 por
-// acierto), para que haga falta jugar rapido y arriesgado de verdad.
 const RICH_BOSS_MONEY = 300;
-// premios de fin de partida: se muestran de a uno despues del final, gane o
-// pierda. La imagen es la clase de #final-award (ver public/img/animaciones/).
 function awardBeat(award, text) {
     return { backdrop: "blurred-office", portrait: null, award: award, text: text };
 }
-// los tres premios de "no se te paso ninguno" piden ademas haber llegado al dia
-// en que esa criatura empieza a aparecer (Oni dia 1, Kitsune dia 2, Kappa dia
-// 3): sin eso los ganaria de arriba cualquiera que pierda el primer dia, porque
-// nunca vio uno.
 function buildAwardBeats() {
     if (game === null) {
         return [];
@@ -1073,9 +812,6 @@ function renderEndingBeat() {
     const awardEl = document.querySelector("#final-award");
     if (awardEl !== null) {
         awardEl.className = beat.award ?? "";
-        // reinicia las animaciones para que el giro coincida con la entrada de ESTE
-        // premio en vez de seguir la fase del anterior (el elemento no se recrea,
-        // solo le cambia la clase) - mismo truco de reflow que resetElementOffscreen()
         awardEl.style.animation = "none";
         void awardEl.offsetWidth;
         awardEl.style.animation = "";
@@ -1089,12 +825,9 @@ function renderEndingBeat() {
         continueBtn.classList.toggle("hidden", !hasMoreBeats);
     if (backBtn !== null)
         backBtn.classList.toggle("hidden", hasMoreBeats);
-    // "Copiar resultado" aparece junto a "Volver al menú", solo en el ultimo cuadro
     if (shareBtn !== null)
         shareBtn.classList.toggle("hidden", hasMoreBeats);
 }
-// tarjeta de texto corta para compartir el resultado (estilo Wordle) - solo
-// lee getters que Game ya expone, no agrega nada a Game
 function buildResultCard(finished) {
     const dayReached = finished.isWon() ? finished.totalDays : finished.dayNumber;
     const lines = [
@@ -1115,14 +848,12 @@ function buildResultCard(finished) {
     return lines.join("\n");
 }
 document.querySelector("#share-result-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     if (game === null) {
         return;
     }
     const button = document.querySelector("#share-result-btn");
     const card = buildResultCard(game);
-    // navigator.clipboard no existe en contextos no seguros (file://, http sin
-    // localhost) - ahi no se puede copiar y punto
     if (navigator.clipboard === undefined) {
         if (button !== null) {
             button.textContent = "No se pudo copiar";
@@ -1130,8 +861,6 @@ document.querySelector("#share-result-btn")?.addEventListener("click", () => {
         }
         return;
     }
-    // navigator.clipboard.writeText devuelve una Promise - se resuelve con
-    // .then()/.catch() para no usar async/await (ver docs/convenciones.md)
     navigator.clipboard.writeText(card).then(() => {
         if (button !== null) {
             button.textContent = "¡Copiado!";
@@ -1148,64 +877,49 @@ function renderFinalScreen() {
     if (game === null) {
         return;
     }
-    // la racha ya viene actualizada con ESTA partida: Game la registra al guardar
-    // el resultado en el historial (ver decide()/endDay()), antes de llegar aca
     const resultStreak = getResultStreak();
     const repeatedResult = resultStreak.count >= CONSECUTIVE_FOR_SPECIAL_ENDING;
-    // orden de prioridad, de mas raro a mas comun: 3 seguidas manda sobre todo lo
-    // demas, despues el dinero, despues los errores
     if (!game.isWon()) {
         const seConvierteEnYokai = repeatedResult && resultStreak.result === "derrota";
         endingBeats = seConvierteEnYokai ? ENDING_YOKAI : ENDING_DEFEAT;
-        soundManager.playLose(); // sonido de derrota
+        soundManager.playLose();
         if (seConvierteEnYokai) {
-            // lo que anuncia el segundo cuadro de ENDING_YOKAI: se borra historial,
-            // partida en curso y rachas (la de resultados incluida, asi el contador
-            // vuelve a cero y el final no se repite en la derrota siguiente)
             clearSavedGames();
         }
     }
     else if (repeatedResult && resultStreak.result === "victoria") {
         endingBeats = ENDING_BOSS;
-        soundManager.playVictory(); // sonido de victoria
+        soundManager.playVictory();
     }
     else if (game.money >= RICH_BOSS_MONEY) {
         endingBeats = ENDING_RICH_BOSS;
-        soundManager.playVictory(); // sonido de victoria
+        soundManager.playVictory();
     }
     else if (game.errors <= 1) {
         endingBeats = ENDING_WIN_SPECIAL;
-        soundManager.playVictory(); // sonido de victoria
+        soundManager.playVictory();
     }
     else {
         endingBeats = ENDING_WIN_REGULAR;
-        soundManager.playVictory(); // sonido de victoria
+        soundManager.playVictory();
     }
-    // concat, no push: los ENDING_* son constantes compartidas entre partidas
     endingBeats = endingBeats.concat(buildAwardBeats());
     endingBeatIndex = 0;
     renderEndingBeat();
 }
 document.querySelector("#final-continue-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     endingBeatIndex += 1;
     renderEndingBeat();
 });
 document.querySelector("#back-to-menu-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     changeState("menu");
     renderHistoryTable();
     updateContinueButton();
 });
-// --- borrado manual desde la pantalla de creditos ---
-//
-// dos acciones separadas a proposito (mismo criterio que Storage.ts):
-// "partidas guardadas" = partida en curso + historial + rachas;
-// "creditos" = solo el ranking acumulado por jugador. Cada una pide
-// confirmacion nativa porque son las primeras acciones destructivas que el
-// jugador dispara el mismo desde un boton.
 document.querySelector("#clear-history-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     if (!window.confirm("¿Borrar la partida en curso, el historial y las rachas? No se puede deshacer.")) {
         return;
     }
@@ -1214,14 +928,13 @@ document.querySelector("#clear-history-btn")?.addEventListener("click", () => {
     updateContinueButton();
 });
 document.querySelector("#clear-credits-btn")?.addEventListener("click", () => {
-    soundManager.playNextButton(); // sonido de click del boton
+    soundManager.playNextButton();
     if (!window.confirm("¿Borrar el ranking de créditos de todos los inspectores? No se puede deshacer.")) {
         return;
     }
     clearCredits();
     renderCreditsScreen();
 });
-// --- Estado inicial al cargar la página ---
 updateContinueButton();
 updateTimerToggleButton();
 updateHardModeButton();

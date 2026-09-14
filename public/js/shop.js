@@ -1,10 +1,5 @@
 const EXTRA_TIME_MS = 15000;
-// registra los listeners de la tienda - getGame()/getTimerEnabled() se llaman
-// en cada evento (no una sola vez al iniciar) porque esos valores cambian con
-// el tiempo (nueva partida, toggle de opciones), no con la carga del modulo.
 export function initShop(getGame, getTimerEnabled, soundManager, dayTimer, changeState) {
-    // refresca el dinero mostrado y deshabilita los botones de compra que ya no
-    // se pueden pagar - se llama al abrir la tienda y despues de cada compra
     function updateShopScreen() {
         const game = getGame();
         if (game === null) {
@@ -25,13 +20,13 @@ export function initShop(getGame, getTimerEnabled, soundManager, dayTimer, chang
         }
     }
     document.querySelector("#shop-btn")?.addEventListener("click", () => {
-        soundManager.playNextButton(); // sonido de click del boton
+        soundManager.playNextButton();
         dayTimer.pause();
         updateShopScreen();
         changeState("shop");
     });
     document.querySelector("#shop-continue-btn")?.addEventListener("click", () => {
-        soundManager.playNextButton(); // sonido de click del boton
+        soundManager.playNextButton();
         changeState("game");
         dayTimer.resume(getTimerEnabled());
     });
@@ -40,14 +35,11 @@ export function initShop(getGame, getTimerEnabled, soundManager, dayTimer, chang
         if (game === null) {
             return;
         }
-        soundManager.playNextButton(); // sonido de click del boton
+        soundManager.playNextButton();
         const bought = game.buyExtraTime();
         if (!bought) {
             return;
         }
-        // la tienda esta abierta con el dia en pausa (ver dayTimer.pause() en el
-        // listener de #shop-btn) - sumar tiempo extra reprograma el cierre del dia
-        // con el tiempo real que queda cuando se cierre la tienda (dayTimer.resume())
         dayTimer.addExtraTime(EXTRA_TIME_MS);
         updateShopScreen();
         const moneyCounterEl = document.querySelector("#money-counter");
@@ -60,7 +52,7 @@ export function initShop(getGame, getTimerEnabled, soundManager, dayTimer, chang
         if (game === null) {
             return;
         }
-        soundManager.playNextButton(); // sonido de click del boton
+        soundManager.playNextButton();
         const bought = game.buyInsurance();
         if (!bought) {
             return;

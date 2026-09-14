@@ -1,6 +1,3 @@
-// El pasaporte NO usa este mecanismo: viaja en un arco parabolico propio, ver
-// bezierArc.ts y su uso en renderVisitor()/resolveDecision() (en main.ts).
-
 type SlidableElement = { selector: string; restLeft: string };
 
 const PORTRAIT_REST_LEFT = "39%";
@@ -15,16 +12,11 @@ export function resetElementOffscreen(element: SlidableElement): void {
   }
   el.style.transition = "none";
   el.style.left = "130%";
-  void el.offsetWidth; // fuerza el reflow para que el salto instantaneo se registre antes de reactivar la transicion
+  void el.offsetWidth;
   el.style.transition = "";
   el.style.left = element.restLeft;
 }
 
-// los sellos ya no son <button>: son <div role="button"> arrastrables (ver
-// setupStampDrag() en stampDrag.ts), asi que "disabled" no existe como
-// propiedad - se simula con aria-disabled + pointer-events:none (ver
-// .stamp-drag[aria-disabled] en style.css), un solo lugar para los 4 puntos
-// del codigo que antes tocaban acceptBtn.disabled/rejectBtn.disabled directo.
 export function setDecisionStampsEnabled(enabled: boolean): void {
   const acceptBtn = document.querySelector("#accept-btn") as HTMLElement | null;
   const rejectBtn = document.querySelector("#reject-btn") as HTMLElement | null;

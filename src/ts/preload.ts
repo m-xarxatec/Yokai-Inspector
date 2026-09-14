@@ -1,5 +1,3 @@
-// --- Precarga de imagenes (evita el parpadeo al cambiar de visitante) ---
-
 function preloadImages(urls: string[]): void {
   urls.forEach(url => {
     const img = new Image();
