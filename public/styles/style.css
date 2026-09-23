@@ -84,11 +84,11 @@ section {
   --scr-ref: 25;
 }
 
-#story-screen       { --scr-w: min(480px, calc(100vw - 2rem), 58vh); --scr-ref: 30; }
-#day-summary-screen { --scr-w: min(480px, calc(100vw - 2rem), 46vh); --scr-ref: 30; }
-#day-result-screen  { --scr-w: min(480px, calc(100vw - 2rem), 50vh); --scr-ref: 30; }
-#day-start-screen   { --scr-w: min(480px, calc(100vw - 2rem), 62vh); --scr-ref: 30; }
-#final-screen       { --scr-w: min(720px, calc(100vw - 2rem), 80vh); --scr-ref: 45; }
+#story-screen       { --scr-w: min(820px, calc(100vw - 2rem)); --u: clamp(13px, min(2.15vh, 4.2vw), 21px); }
+#day-summary-screen { --scr-w: min(560px, calc(100vw - 2rem), 52vh); --scr-ref: 30; }
+#day-result-screen  { --scr-w: min(820px, calc(100vw - 2rem)); --u: clamp(13px, min(2.15vh, 4.2vw), 21px); }
+#day-start-screen   { --scr-w: min(560px, calc(100vw - 2rem), 64vh); --scr-ref: 30; }
+#final-screen       { --scr-w: min(880px, calc(100vw - 2rem)); --u: clamp(13px, min(2.15vh, 4.2vw), 21px); }
 
 #start-gate-screen {
   position: fixed;
@@ -239,10 +239,10 @@ button:disabled {
 #name-entry-screen  { --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0px, 3.8cqi, 1rem); }
 #day-summary-screen { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0px, 5cqi, 1.15rem); }
 #credits-screen     { --scr-btn-w: 44cqi; --scr-btn-fs: clamp(0px, 4.2cqi, 1.05rem); --bk-btn-w: 40cqi; --bk-btn-fs: clamp(0px, 3.8cqi, 1rem); }
-#story-screen       { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0px, 3.8cqi, 1.3rem); }
-#day-result-screen  { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0px, 3.8cqi, 1.3rem); }
-#day-start-screen   { --scr-btn-w: 36cqi; --scr-btn-fs: clamp(0px, 3.8cqi, 1.3rem); }
-#final-screen       { --scr-btn-w: 34cqi; --scr-btn-fs: clamp(0px, 4cqi, 1.5rem); }
+#story-screen       { --scr-btn-w: calc(var(--u) * 11); --scr-btn-fs: calc(var(--u) * 1.15); }
+#day-result-screen  { --scr-btn-w: calc(var(--u) * 11); --scr-btn-fs: calc(var(--u) * 1.15); }
+#day-start-screen   { --scr-btn-w: 40cqi; --scr-btn-fs: clamp(0px, 4.2cqi, 1.5rem); }
+#final-screen       { --scr-btn-w: calc(var(--u) * 11); --scr-btn-fs: calc(var(--u) * 1.15); }
 
 .screen-panel > button:not(.back-link):not(.exit-to-menu-btn) {
   align-self: center;
@@ -272,6 +272,49 @@ button:disabled {
   container-type: inline-size;
 }
 
+#story-screen:not(.hidden),
+#day-result-screen:not(.hidden),
+#day-summary-screen:not(.hidden),
+#final-screen:not(.hidden) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 1rem);
+  overflow: hidden;
+}
+
+#story-text,
+#day-result-text,
+#day-summary-text,
+#final-message {
+  flex: 0 0 auto;
+}
+
+#story-portrait,
+#jefa-scene,
+#day-end-scene,
+#final-scene {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.dialogue-ghost {
+  display: none;
+}
+
+.type-reserve {
+  display: grid;
+}
+
+.type-reserve > .dialogue-ghost,
+.type-reserve > .dialogue-live {
+  grid-area: 1 / 1;
+}
+
+.type-reserve > .dialogue-ghost {
+  display: block;
+  visibility: hidden;
+}
+
 #story-screen > button,
 #day-result-screen > button,
 #day-start-screen .day-start-actions > button,
@@ -281,6 +324,7 @@ button:disabled {
   margin: calc(var(--u) * 0.5) auto;
   padding: calc(var(--u) * 0.5) 5% calc(var(--u) * 0.14);
   font-size: var(--scr-btn-fs, clamp(0px, 4cqi, 1.3rem));
+  flex-shrink: 0;
 }
 
 .back-link,
@@ -416,7 +460,7 @@ button:disabled {
 
 #history-panel h2 {
   margin: 0 0 clamp(0px, 0.47cqi, 0.4rem);
-  font-size: clamp(0px, 2cqi, 2rem);
+  font-size: clamp(0px, 3cqi, 3rem);
   font-weight: 100;
   color: #f2ede3;
 }
@@ -586,8 +630,9 @@ button:disabled {
   background: url("../img/backgrounds/pizarraReglas.webp") center / 100% 100% no-repeat;
   border-radius: 0;
   max-width: none;
+  margin-bottom: calc(var(--u) * 0.8);
   aspect-ratio: 1122 / 1402;
-  padding: 21% 12% 9%;
+  padding: 17% 12% 13%;
   justify-content: flex-start;
   gap: calc(var(--u) * 0.5);
   overflow: hidden;
@@ -608,9 +653,9 @@ button:disabled {
 
 #day-start-screen #day-start-rules li {
   border-bottom-color: rgba(247, 236, 216, 0.22);
-  padding: calc(var(--u) * 0.3) calc(var(--u) * 0.35);
-  font-size: calc(var(--u) * 1.15);
-  line-height: 1.4;
+  padding: calc(var(--u) * 0.1) calc(var(--u) * 0.1);
+  font-size: calc(var(--u) * 1.3);
+  line-height: 1;
 }
 
 .day-start-actions {
@@ -618,7 +663,7 @@ button:disabled {
   flex-wrap: wrap;
   justify-content: center;
   gap: calc(var(--u) * 0.4);
-  margin: calc(var(--u) * 0.6) auto 0;
+  margin: calc(var(--u) * 0.4) auto 0;
 }
 
 #paused-status {
@@ -627,7 +672,7 @@ button:disabled {
   border-radius: 6px;
   padding: clamp(0px, 0.59cqi, 0.5rem) clamp(0px, 0.94cqi, 0.8rem);
   margin: clamp(0px, 0.47cqi, 0.4rem) 0 clamp(0px, 0.94cqi, 0.8rem);
-  font-size: clamp(0px, 1.18cqi, 1rem);
+  font-size: clamp(0px, 2cqi, 1.5rem);
   font-weight: 600;
 }
 
@@ -679,7 +724,7 @@ button:disabled {
 }
 
 #story-portrait {
-  width: 58.33%;
+  width: min(100%, calc(38vh * 703 / 900));
   aspect-ratio: 703 / 900;
   margin: 0 auto var(--u);
   background-image: url("../img/protagonista/protaFeliz.webp");
@@ -691,16 +736,13 @@ button:disabled {
 #story-text {
   line-height: 1.5;
   font-style: italic;
-  background: #2a2640;
-  border-radius: 6px;
-  padding: var(--u);
-  min-height: calc(var(--u) * 1.2);
-  font-size: calc(var(--u) * 1.15);
+  padding: 0 calc(var(--u) * 0.6);
+  font-size: calc(var(--u) * 1.45);
 }
 
 #day-end-scene {
   position: relative;
-  width: 75%;
+  width: min(75%, 34vh);
   aspect-ratio: 1 / 1;
   margin: var(--u) auto;
   border-radius: 8px;
@@ -727,12 +769,12 @@ button:disabled {
 }
 
 #day-summary-text {
-  font-size: calc(var(--u) * 1.15);
+  font-size: calc(var(--u) * 1.35);
   line-height: 1.5;
 }
 
 #day-summary-screen .screen-panel {
-  max-width: 83.333%;
+  width: 83.333%;
   max-height: calc(var(--u) * 26);
   overflow: hidden;
 }
@@ -746,7 +788,7 @@ button:disabled {
 
 #jefa-scene {
   position: relative;
-  width: 100%;
+  width: min(100%, calc(40vh * 3670 / 2446));
   aspect-ratio: 3670 / 2446;
   margin: var(--u) auto;
   border-radius: 8px;
@@ -791,16 +833,24 @@ button:disabled {
 #jefa-portrait.jefaKatana { background-image: url("../img/jefa/jefaKatana.webp"); }
 #jefa-portrait.jefaEnojo { background-image: url("../img/jefa/jefaEnojo.webp"); }
 
+#day-result-text {
+  padding: 0 calc(var(--u) * 0.6);
+}
+
+#day-result-summary {
+  font-size: calc(var(--u) * 1.1);
+}
+
 #next-day-message {
   font-family: var(--font-jefa);
-  font-size: calc(var(--u) * 1.15);
+  font-size: calc(var(--u) * 1.45);
   line-height: 1.5;
 }
 
 #notice-kicker {
   display: block;
   font-family: var(--font-jefa);
-  font-size: var(--u);
+  font-size: calc(var(--u) * 1.15);
   letter-spacing: 0.06em;
   margin-bottom: calc(var(--u) * 0.4);
 }
@@ -810,7 +860,7 @@ button:disabled {
 
 #final-scene {
   position: relative;
-  width: 100%;
+  width: min(100%, calc(42vh * 1536 / 1024));
   aspect-ratio: 1536 / 1024;
   margin: 0 auto var(--u);
   border-radius: 10px;
@@ -905,12 +955,9 @@ button:disabled {
 
 #final-message {
   font-style: italic;
-  background: #2a2640;
-  border-radius: 6px;
-  padding: calc(var(--u) * 0.6) var(--u);
-  min-height: calc(var(--u) * 1.2);
+  padding: 0 calc(var(--u) * 0.6);
   line-height: 1.5;
-  font-size: calc(var(--u) * 1.15);
+  font-size: calc(var(--u) * 1.45);
 }
 
 #hud {
@@ -1329,9 +1376,16 @@ button:disabled {
 .stamp-azul.pos2 { background-image: url("../img/sellos/selloAzul2.webp"); aspect-ratio: 1.0; height: 16.5%; }
 .stamp-azul.pos3 { background-image: url("../img/sellos/selloAzul3.webp"); aspect-ratio: 1.468; height: 18.5%; }
 
+#character-slot {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  clip-path: inset(0 3% 0 21.5%);
+  pointer-events: none;
+}
+
 #character-portrait {
   position: absolute;
-  z-index: 2;
   left: 49%;
   bottom: 42%;
   width: 38%;
