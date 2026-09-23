@@ -150,7 +150,7 @@
 
   <section id="story-screen" class="hidden">
     <div id="story-portrait"></div>
-    <p id="story-text"></p>
+    <p id="story-text" class="type-reserve"></p>
     <button id="story-next-btn" class="next-btn">Siguiente</button>
     <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
@@ -166,12 +166,14 @@
         <button id="pause-btn" class="exit-to-menu-btn">⏸</button>
       </div>
 
-      <div id="character-portrait">
-        <div class="part part-face"></div>
-        <div class="part part-eyes"></div>
-        <div class="part part-mouth"></div>
-        <div class="part part-horns"></div>
-        <div class="part part-hair"></div>
+      <div id="character-slot">
+        <div id="character-portrait">
+          <div class="part part-face"></div>
+          <div class="part part-eyes"></div>
+          <div class="part part-mouth"></div>
+          <div class="part part-horns"></div>
+          <div class="part part-hair"></div>
+        </div>
       </div>
 
       <div id="scene-sidebar"></div>
@@ -212,7 +214,7 @@
       <div id="day-end-backdrop"></div>
       <div id="day-end-portrait"></div>
     </div>
-    <p id="day-summary-text"></p>
+    <p id="day-summary-text" class="type-reserve"></p>
     <div class="screen-panel">
       <h2>Día <span id="day-summary-number"></span> terminado</h2>
       <ul id="day-summary-stats" class="styled-list"></ul>
@@ -226,9 +228,11 @@
       <div id="jefa-background"></div>
       <div id="jefa-portrait"></div>
     </div>
-    <p id="day-result-summary"></p>
-    <span id="notice-kicker"></span>
-    <p id="next-day-message"></p>
+    <div id="day-result-text">
+      <p id="day-result-summary"></p>
+      <span id="notice-kicker"></span>
+      <p id="next-day-message" class="type-reserve"></p>
+    </div>
     <button id="continue-day-btn" class="next-btn">Continuar</button>
     <button class="exit-to-menu-btn">Volver al menú</button>
   </section>
@@ -250,7 +254,7 @@
       <div id="final-portrait"></div>
       <div id="final-award"></div>
     </div>
-    <p id="final-message"></p>
+    <p id="final-message" class="type-reserve"></p>
     <button id="final-continue-btn" class="hidden next-btn">Siguiente</button>
     <button id="share-result-btn" class="hidden">Copiar resultado</button>
     <button id="back-to-menu-btn">Volver al menú</button>

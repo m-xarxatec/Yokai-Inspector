@@ -7,11 +7,16 @@ export function typeDialogue(text, targetSelector) {
     if (dialogueIntervalId !== null) {
         clearInterval(dialogueIntervalId);
     }
+    const ghost = document.createElement("span");
+    ghost.className = "dialogue-ghost";
+    ghost.textContent = text;
+    const live = document.createElement("span");
+    live.className = "dialogue-live";
+    dialogueEl.replaceChildren(ghost, live);
     const words = text.split(" ");
-    dialogueEl.textContent = "";
     let index = 0;
     dialogueIntervalId = window.setInterval(() => {
-        dialogueEl.textContent = words.slice(0, index + 1).join(" ");
+        live.textContent = words.slice(0, index + 1).join(" ");
         index += 1;
         if (index >= words.length) {
             if (dialogueIntervalId !== null) {
