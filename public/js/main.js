@@ -880,6 +880,23 @@ function buildResultCard(finished) {
     }
     return lines.join("\n");
 }
+function copyResultFallback(text) {
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    document.body.appendChild(field);
+    field.select();
+    try {
+        return document.execCommand("copy");
+    }
+    catch {
+        return false;
+    }
+    finally {
+        field.remove();
+    }
+}
 document.querySelector("#share-result-btn")?.addEventListener("click", () => {
     soundManager.playNextButton();
     if (game === null) {
@@ -887,24 +904,19 @@ document.querySelector("#share-result-btn")?.addEventListener("click", () => {
     }
     const button = document.querySelector("#share-result-btn");
     const card = buildResultCard(game);
-    if (navigator.clipboard === undefined) {
+    const showCopyResult = (copied) => {
         if (button !== null) {
-            button.textContent = "No se pudo copiar";
+            button.textContent = copied ? "¡Copiado!" : "No se pudo copiar";
             window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
         }
+    };
+    if (navigator.clipboard === undefined) {
+        showCopyResult(copyResultFallback(card));
         return;
     }
-    navigator.clipboard.writeText(card).then(() => {
-        if (button !== null) {
-            button.textContent = "¡Copiado!";
-            window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
-        }
-    }).catch(() => {
-        if (button !== null) {
-            button.textContent = "No se pudo copiar";
-            window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
-        }
-    });
+    navigator.clipboard.writeText(card)
+        .then(() => showCopyResult(true))
+        .catch(() => showCopyResult(copyResultFallback(card)));
 });
 function renderFinalScreen() {
     if (game === null) {
