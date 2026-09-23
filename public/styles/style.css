@@ -78,9 +78,14 @@ section {
 #pause-screen,
 #shop-screen,
 #credits-screen,
-#exit-screen,
-#name-entry-screen {
+#exit-screen {
   --scr-w: min(400px, calc(100vw - 2rem), 60vh);
+  --scr-ref: 25;
+}
+
+/* La entrada de nombre crece un poco sin perder sus límites relativos a la ventana. */
+#name-entry-screen {
+  --scr-w: min(450px, calc(100vw - 2rem), 64vh);
   --scr-ref: 25;
 }
 
@@ -356,6 +361,51 @@ button:disabled {
   margin: 0;
   padding: 0;
   background: #1e1b2e;
+}
+
+#menu-yokai {
+  position: fixed;
+  z-index: 5;
+  width: clamp(24px, 3.6vw, 58px);
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#menu-yokai:focus-visible {
+  outline: 2px solid #f2ede3;
+  outline-offset: 2px;
+}
+
+.menu-yokai-jump {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#menu-yokai img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.88;
+  user-select: none;
+  -webkit-user-drag: none;
+  animation: idle-bob 2.6s ease-in-out infinite;
+}
+
+#menu-yokai.is-jumping .menu-yokai-jump {
+  animation: menu-yokai-jump 0.34s cubic-bezier(0.2, 0.8, 0.35, 1) both;
+}
+
+@keyframes menu-yokai-jump {
+  0%, 100% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-32%) scale(1.1, 0.92); }
+  72% { transform: translateY(0) scale(0.94, 1.06); }
 }
 
 #menu-layout {
@@ -833,6 +883,79 @@ button:disabled {
 #jefa-portrait.jefaKatana { background-image: url("../img/jefa/jefaKatana.webp"); }
 #jefa-portrait.jefaEnojo { background-image: url("../img/jefa/jefaEnojo.webp"); }
 
+#tutorial-visual {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+#tutorial-visual.hidden { display: none; }
+
+#jefa-scene.tutorial-passport #jefa-portrait,
+#jefa-scene.tutorial-stamps #jefa-portrait,
+#jefa-scene.tutorial-hud #jefa-portrait { display: none; }
+
+[data-tutorial-visual] {
+  display: none;
+  position: absolute;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 0.3rem 0.25rem rgba(0, 0, 0, 0.38));
+}
+
+.tutorial-passport-image {
+  left: 50%;
+  top: 50%;
+  width: 43%;
+  aspect-ratio: 1.12;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  background-image: url("../img/documentos/pasaporte.webp");
+}
+
+#tutorial-red-stamp,
+#tutorial-green-stamp {
+  top: 50%;
+  width: 31%;
+  aspect-ratio: 0.97;
+  transform: translate(-50%, -50%) rotate(-3deg);
+}
+
+#tutorial-red-stamp {
+  left: 29%;
+  background-image: url("../img/sellos/selloRojoPosicion1.webp");
+}
+
+#tutorial-green-stamp {
+  left: 71%;
+  background-image: url("../img/sellos/selloVerdePosicion1.webp");
+}
+
+#tutorial-coin,
+#tutorial-clock,
+#tutorial-shop {
+  top: 50%;
+  width: 23%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+#tutorial-coin {
+  left: 21%;
+  background-image: url("../img/animaciones/moneda-3.webp");
+}
+
+#tutorial-clock {
+  left: 50%;
+  background-image: url("../img/animaciones/relojcasi1.webp");
+}
+
+#tutorial-shop {
+  left: 79%;
+  background-image: url("../img/backgrounds/iconoTienda.webp");
+}
+
 #day-result-text {
   padding: 0 calc(var(--u) * 0.6);
 }
@@ -1233,10 +1356,10 @@ button:disabled {
 }
 
 #passport-object.open {
-  aspect-ratio: 989 / 700;
-  background-image: url("../img/documentos/pasaporteAbierto.webp");
+  aspect-ratio: 4382 / 2922;
+  background-image: url("../img/documentos/pasaporteAbierto2.webp");
   top: 55%;
-  height: 30%;
+  height: 35%;
   left: 52%;
   transform: translateX(-50%) perspective(900px) rotateX(20deg);
   transform-origin: center bottom;
@@ -1260,18 +1383,33 @@ button:disabled {
 #passport-object.open #passport-page-left {
   display: block;
   position: absolute;
-  left: 16%;
-  top: 20%;
-  width: 20%;
+  left: 25%;
+  top: 23%;
+  width: 27%;
   height: 80%;
   overflow: hidden;
-  color: #2a2a1a;
-  font-size: clamp(0px, 1.86cqw, 1rem);
-  line-height: 1.2;
+  color: #54722c;
+  font-size: clamp(0px, 2cqw, 2rem);
+  line-height: 1.4;
+}
+
+#passport-object.open:not(.passport-details-visible) #passport-page-left,
+#passport-object.open:not(.passport-details-visible) #passport-stamp {
+  visibility: hidden;
+}
+
+#passport-object.open.passport-details-visible #passport-page-left,
+#passport-object.open.passport-details-visible #passport-stamp {
+  animation: passport-details-appear 0.14s ease-out both;
+}
+
+@keyframes passport-details-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 #passport-page-left p {
-  margin: 0 0 0.4em;
+  margin: 0 0 0.5em;
 }
 
 #passport-stamp {
