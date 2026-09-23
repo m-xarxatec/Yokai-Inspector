@@ -13,7 +13,9 @@ var _MusicManager_menuMusic;
 export class MusicManager {
     constructor() {
         _MusicManager_menuMusic.set(this, void 0);
-        __classPrivateFieldSet(this, _MusicManager_menuMusic, new Audio("sounds/menu.mp3"), "f");
+        __classPrivateFieldSet(this, _MusicManager_menuMusic, new Audio(), "f");
+        __classPrivateFieldGet(this, _MusicManager_menuMusic, "f").preload = "none";
+        __classPrivateFieldGet(this, _MusicManager_menuMusic, "f").src = "sounds/menu.mp3";
         __classPrivateFieldGet(this, _MusicManager_menuMusic, "f").loop = true;
     }
     setVolume(volume) {

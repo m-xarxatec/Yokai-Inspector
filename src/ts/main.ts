@@ -7,7 +7,7 @@ import { MusicManager } from "./classes/MusicManager.js";
 import { DayTimer } from "./classes/DayTimer.js";
 import { createCubicBezierEasing, animatePassportAlongArc } from "./bezierArc.js";
 import { typeDialogue, stopDialogue } from "./dialogue.js";
-import { preloadCharacterImages } from "./preload.js";
+import { preloadVisitorImages } from "./preload.js";
 import { startCoinSpin } from "./coinSpin.js";
 import { initShop } from "./shop.js";
 import { renderCreditsScreen, renderHistoryTable } from "./records.js";
@@ -221,6 +221,7 @@ function beginGame(name: string, totalDays: number, hardMode: boolean, randomFn:
       return;
     }
     game.startNewGame();
+    if (game.currentVisitor !== null) preloadVisitorImages(game.currentVisitor);
     renderStoryScreen();
     changeState("story");
   });
@@ -442,6 +443,7 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
       return;
     }
     game.loadProgress();
+    if (game.currentVisitor !== null) preloadVisitorImages(game.currentVisitor);
     changeState("game");
     renderVisitor();
     dayTimer.start(DAY_DURATION_MS, timerEnabled);
@@ -1108,7 +1110,6 @@ updateContinueButton();
 updateTimerToggleButton();
 updateHardModeButton();
 renderHistoryTable();
-preloadCharacterImages();
 startCoinSpin();
 initMenuYokai();
 initKeyboardNav(() => currentState);

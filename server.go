@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,6 +37,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("no se encuentran los recursos del juego: %v", err)
 	}
+	version, err := assetVersion(assets)
+	if err != nil {
+		log.Fatalf("no se pudo verificar el contenido del juego: %v", err)
+	}
 
 	host := "0.0.0.0"
 	if *local {
@@ -49,7 +55,7 @@ func main() {
 	actualPort := listener.Addr().(*net.TCPAddr).Port
 	localURL := fmt.Sprintf("http://127.0.0.1:%d/", actualPort)
 	server := &http.Server{
-		Handler:           http.FileServer(http.FS(assets)),
+		Handler:           gameHandler(assets, version),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -85,6 +91,46 @@ func main() {
 			log.Printf("error al cerrar el servidor: %v", err)
 		}
 	}
+}
+
+func assetVersion(assets fs.FS) (string, error) {
+	hash := sha256.New()
+	err := fs.WalkDir(assets, ".", func(name string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil || entry.IsDir() {
+			return walkErr
+		}
+		content, err := fs.ReadFile(assets, name)
+		if err != nil {
+			return err
+		}
+		hash.Write([]byte(name))
+		hash.Write([]byte{0})
+		hash.Write(content)
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)[:12]), nil
+}
+
+func gameHandler(assets fs.FS, version string) http.Handler {
+	prefix := "/game-" + version + "/"
+	files := http.FileServer(http.FS(assets))
+	mux := http.NewServeMux()
+	mux.Handle(prefix, http.StripPrefix(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		files.ServeHTTP(w, r)
+	})))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, prefix, http.StatusFound)
+	})
+	return mux
 }
 
 func listen(host string, requestedPort int) (net.Listener, error) {

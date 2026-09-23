@@ -2,7 +2,9 @@ export class MusicManager {
     #menuMusic: HTMLAudioElement;
 
     constructor() {
-        this.#menuMusic = new Audio("sounds/menu.mp3");
+        this.#menuMusic = new Audio();
+        this.#menuMusic.preload = "none";
+        this.#menuMusic.src = "sounds/menu.mp3";
         this.#menuMusic.loop = true;
     }
 

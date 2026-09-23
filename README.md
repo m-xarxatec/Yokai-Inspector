@@ -34,6 +34,8 @@ npm run package:executables
 
 Los archivos resultantes aparecen en `release/YokaiInspector-linux-amd64` y `release/YokaiInspector-windows-amd64.exe`. En Linux quizá debas habilitar su ejecución con `chmod +x release/YokaiInspector-linux-amd64`. Si otro dispositivo no puede conectarse, permite el puerto mostrado por el programa en el firewall de la red privada.
 
+Las imágenes de `public/img/` ya están optimizadas. Para procesar imágenes nuevas o modificadas se puede ejecutar `npm run optimize:images` con FFmpeg y ffprobe instalados; el script conserva el original cuando la versión nueva no ahorra al menos un 10 %.
+
 *Estado actual*
 
 *en construcción* :D
