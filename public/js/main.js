@@ -7,7 +7,7 @@ import { MusicManager } from "./classes/MusicManager.js";
 import { DayTimer } from "./classes/DayTimer.js";
 import { createCubicBezierEasing, animatePassportAlongArc } from "./bezierArc.js";
 import { typeDialogue, stopDialogue } from "./dialogue.js";
-import { preloadVisitorImages } from "./preload.js";
+import { preloadCharacterImages } from "./preload.js";
 import { startCoinSpin } from "./coinSpin.js";
 import { initShop } from "./shop.js";
 import { renderCreditsScreen, renderHistoryTable } from "./records.js";
@@ -186,8 +186,6 @@ function beginGame(name, totalDays, hardMode, randomFn, dayDurationMs) {
             return;
         }
         game.startNewGame();
-        if (game.currentVisitor !== null)
-            preloadVisitorImages(game.currentVisitor);
         renderStoryScreen();
         changeState("story");
     });
@@ -376,8 +374,6 @@ document.querySelector("#continue-btn")?.addEventListener("click", () => {
             return;
         }
         game.loadProgress();
-        if (game.currentVisitor !== null)
-            preloadVisitorImages(game.currentVisitor);
         changeState("game");
         renderVisitor();
         dayTimer.start(DAY_DURATION_MS, timerEnabled);
@@ -884,23 +880,6 @@ function buildResultCard(finished) {
     }
     return lines.join("\n");
 }
-function copyResultFallback(text) {
-    const field = document.createElement("textarea");
-    field.value = text;
-    field.style.position = "fixed";
-    field.style.opacity = "0";
-    document.body.appendChild(field);
-    field.select();
-    try {
-        return document.execCommand("copy");
-    }
-    catch {
-        return false;
-    }
-    finally {
-        field.remove();
-    }
-}
 document.querySelector("#share-result-btn")?.addEventListener("click", () => {
     soundManager.playNextButton();
     if (game === null) {
@@ -908,19 +887,24 @@ document.querySelector("#share-result-btn")?.addEventListener("click", () => {
     }
     const button = document.querySelector("#share-result-btn");
     const card = buildResultCard(game);
-    const showCopyResult = (copied) => {
+    if (navigator.clipboard === undefined) {
         if (button !== null) {
-            button.textContent = copied ? "¡Copiado!" : "No se pudo copiar";
+            button.textContent = "No se pudo copiar";
             window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
         }
-    };
-    if (navigator.clipboard === undefined) {
-        showCopyResult(copyResultFallback(card));
         return;
     }
-    navigator.clipboard.writeText(card)
-        .then(() => showCopyResult(true))
-        .catch(() => showCopyResult(copyResultFallback(card)));
+    navigator.clipboard.writeText(card).then(() => {
+        if (button !== null) {
+            button.textContent = "¡Copiado!";
+            window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
+        }
+    }).catch(() => {
+        if (button !== null) {
+            button.textContent = "No se pudo copiar";
+            window.setTimeout(() => { button.textContent = "Copiar resultado"; }, 1500);
+        }
+    });
 });
 function renderFinalScreen() {
     if (game === null) {
@@ -988,6 +972,7 @@ updateContinueButton();
 updateTimerToggleButton();
 updateHardModeButton();
 renderHistoryTable();
+preloadCharacterImages();
 startCoinSpin();
 initMenuYokai();
 initKeyboardNav(() => currentState);

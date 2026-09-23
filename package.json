@@ -6,9 +6,7 @@
   "description": "Yokai Inspector - juego web de POO basica inspirado en Papers Please",
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch",
-    "optimize:images": "node scripts/optimize-images.mjs",
-    "package:executables": "node scripts/package-executables.mjs"
+    "watch": "tsc --watch"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

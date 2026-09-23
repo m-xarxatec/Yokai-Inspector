@@ -13,6 +13,8 @@ Aqui viene la parte divertida y desafiante, ya que solo se nos permite usar los 
 
 *Ejecución*
 
+El código de `main` conserva la versión web anterior a la adaptación para ejecutables. Los ejecutables publicados en **Releases** se generan desde la rama `objetosMike`: incluyen un servidor local, caché, optimización de imágenes y ajustes de precarga. Por eso, su código y sus recursos no son idénticos a los de `main`.
+
 Descarga el ejecutable de tu sistema operativo y ábrelo. El juego se abrirá en el navegador de ese equipo. La ventana del ejecutable mostrará también las direcciones para entrar desde un móvil u otro ordenador conectado a la misma red local. Mantén el ejecutable en marcha mientras jueguen otros dispositivos.
 
 Para detener el servidor, pulsa `Ctrl+C` en la terminal donde se ejecuta. En Windows, si lo abriste con doble clic, también puedes cerrar la ventana de consola. En Linux, si lo abriste con doble clic y no aparece ninguna terminal, localiza el proceso con `pgrep -af YokaiInspector-linux-amd64` y detenlo con `kill PID`, sustituyendo `PID` por el número que muestre el comando. Si en Windows no aparece la consola, puedes finalizar `YokaiInspector-windows-amd64.exe` desde el Administrador de tareas. Cerrar la pestaña del navegador **no** detiene el servidor; por ahora no hay un botón para apagarlo desde el juego.
@@ -27,7 +29,7 @@ Opciones de inicio:
 --no-open     No abre el navegador automáticamente.
 ```
 
-Para crear ambos ejecutables desde Linux se necesita Node.js para compilar TypeScript y Go 1.22 o posterior para generar los binarios. Después:
+Para crear ambos ejecutables desde el código de `objetosMike` (no desde `main`) se necesita Linux, Node.js para compilar TypeScript y Go 1.22 o posterior para generar los binarios. Una vez situada la terminal en esa rama:
 
 ```bash
 npm ci
@@ -36,7 +38,7 @@ npm run package:executables
 
 Los archivos resultantes aparecen en `release/YokaiInspector-linux-amd64` y `release/YokaiInspector-windows-amd64.exe`. En Linux quizá debas habilitar su ejecución con `chmod +x release/YokaiInspector-linux-amd64`. Si otro dispositivo no puede conectarse, permite el puerto mostrado por el programa en el firewall de la red privada.
 
-Las imágenes de `public/img/` ya están optimizadas. Para procesar imágenes nuevas o modificadas se puede ejecutar `npm run optimize:images` con FFmpeg y ffprobe instalados; el script conserva el original cuando la versión nueva no ahorra al menos un 10 %.
+Las imágenes incluidas en los ejecutables ya están optimizadas. En `objetosMike`, para procesar imágenes nuevas o modificadas se puede ejecutar `npm run optimize:images` con FFmpeg y ffprobe instalados; el script conserva el original cuando la versión nueva no ahorra al menos un 10 %.
 
 *Estado actual*
 

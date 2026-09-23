@@ -1,16 +1,21 @@
-export function preloadVisitorImages(visitor) {
-    const eyes = visitor.obtainYellowEyes ? "yellowEyes" : visitor.obtainEyes;
-    const urls = [
-        "img/baseCharacters/" + visitor.obtainFace + ".webp",
-        "img/eyes/" + eyes + ".webp",
-        "img/mouth/" + visitor.obtainMouth + ".webp",
-    ];
-    if (visitor.obtainHaveHorns) {
-        urls.push("img/cuernos/" + visitor.obtainHorns + ".webp");
-    }
+function preloadImages(urls) {
     urls.forEach(url => {
-        const image = new Image();
-        image.src = url;
+        const img = new Image();
+        img.src = url;
     });
+}
+export function preloadCharacterImages() {
+    fetch("data/partes.json")
+        .then(r => r.json())
+        .then(parts => {
+        const faceUrls = parts.rostro.concat(parts.alienes).map((name) => "img/baseCharacters/" + name + ".webp");
+        const eyesUrls = parts.ojos.map((name) => "img/eyes/" + name + ".webp");
+        const mouthUrls = parts.boca.map((name) => "img/mouth/" + name + ".webp");
+        preloadImages(faceUrls);
+        preloadImages(eyesUrls);
+        preloadImages(mouthUrls);
+        preloadImages(["img/eyes/" + parts.ojosAmarillos + ".webp"]);
+    })
+        .catch(error => console.log("no se pudieron precargar las imagenes", error));
 }
 //# sourceMappingURL=preload.js.map
