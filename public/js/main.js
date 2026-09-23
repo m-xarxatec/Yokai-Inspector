@@ -13,6 +13,7 @@ import { initShop } from "./shop.js";
 import { renderCreditsScreen, renderHistoryTable } from "./records.js";
 import { CHARACTER_ELEMENT, resetElementOffscreen, setDecisionStampsEnabled, slideOutSlidingElements } from "./characterSlide.js";
 import { initStampDrag } from "./stampDrag.js";
+import { initMenuYokai, setMenuYokaiActive } from "./menuYokai.js";
 let game = null;
 let currentState = "start-gate";
 const soundManager = new SoundManager();
@@ -58,6 +59,7 @@ function changeState(newState) {
         section.classList.add("hidden");
     });
     document.querySelector(`#${newState}-screen`)?.classList.remove("hidden");
+    setMenuYokaiActive(newState === "menu");
     if (newState === "name-entry") {
         document.querySelector("#player-name-error")?.classList.add("hidden");
     }
@@ -303,13 +305,39 @@ function renderStoryScreen() {
 const DAY_ONE_INTRO_BEATS = [
     { image: "jefaPresentacion", text: "Es tu primer día en la agencia espiritual. Nadie te dio un manual de bienvenida, no lo necesitas porque en tu currículum dice que tienes mucha experiencia." },
     { image: "jefaNeutral", text: "La regla es muy clara: PROHIBIDA LA ENTRADA A QUIEN TENGA CUERNOS. Los oni no pasan." },
-    { image: "jefaExplica-1", text: "Cuidado, ellos saben esconderlos bien. ¡Bienvenido a tu nuevo puesto!" },
+    { tutorial: "passport", text: "Cuando un espíritu te arroje su pasaporte, clica sobre él para abrirlo y ver la información." },
+    { tutorial: "stamps", text: "Estos son los 2 sellos que usarás por ahora. El rojo es para rechazar y el verde para aceptar. Arrastra el que quieras usar y suéltalo sobre el pasaporte." },
+    { tutorial: "hud", text: "La moneda te dirá el dinero que ganarás. El reloj te indicará el tiempo que te resta. En la tienda puedes comprar más tiempo o un indulto si tienes muchas fallas." },
+    { image: "jefaExplica-1", text: "Mucha suerte en tu primer día, detective.", buttonLabel: "Continuar" },
 ];
 let introBeatIndex = null;
 function renderJefaBeat(beat) {
     const jefaEl = document.querySelector("#jefa-portrait");
     if (jefaEl !== null)
-        jefaEl.className = beat.image;
+        jefaEl.className = beat.image ?? "";
+    const sceneEl = document.querySelector("#jefa-scene");
+    const tutorialEl = document.querySelector("#tutorial-visual");
+    if (sceneEl !== null && tutorialEl !== null) {
+        sceneEl.classList.remove("tutorial-passport", "tutorial-stamps", "tutorial-hud");
+        if (beat.tutorial === undefined) {
+            tutorialEl.classList.add("hidden");
+            tutorialEl.setAttribute("aria-hidden", "true");
+        }
+        else {
+            sceneEl.classList.add("tutorial-" + beat.tutorial);
+            tutorialEl.classList.remove("hidden");
+            tutorialEl.setAttribute("aria-hidden", "false");
+        }
+    }
+    const kickerEl = document.querySelector("#notice-kicker");
+    kickerEl?.classList.toggle("hidden", beat.tutorial !== undefined);
+    tutorialEl?.querySelectorAll("[data-tutorial-visual]").forEach((visualEl) => {
+        visualEl.style.display = visualEl.dataset.tutorialVisual === beat.tutorial ? "block" : "none";
+    });
+    const continueButton = document.querySelector("#continue-day-btn");
+    if (continueButton !== null) {
+        continueButton.textContent = beat.buttonLabel ?? "Siguiente";
+    }
     const summaryEl = document.querySelector("#day-result-summary");
     if (summaryEl !== null)
         summaryEl.classList.add("hidden");
@@ -372,7 +400,7 @@ function renderVisitor() {
     }
     if (passportEl !== null) {
         passportEl.style.display = "none";
-        passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
+        passportEl.classList.remove("open", "delivered", "passport-details-visible", ...PASSPORT_DESK_LOOK_VARIANTS);
         passportEl.classList.add("closed");
     }
     window.setTimeout(() => {
@@ -534,7 +562,7 @@ function resolveDecision(accept, usedAlienStamp = false) {
             decisionStampEl.classList.remove("show", "approved", "rejected", "alien");
         }
         if (passportEl !== null) {
-            passportEl.classList.remove("open", "delivered", ...PASSPORT_DESK_LOOK_VARIANTS);
+            passportEl.classList.remove("open", "delivered", "passport-details-visible", ...PASSPORT_DESK_LOOK_VARIANTS);
             passportEl.classList.add("closed");
         }
         window.setTimeout(() => {
@@ -661,6 +689,11 @@ function renderDayResultScreen(showSummary = true) {
     if (game === null) {
         return;
     }
+    const sceneEl = document.querySelector("#jefa-scene");
+    const tutorialEl = document.querySelector("#tutorial-visual");
+    sceneEl?.classList.remove("tutorial-passport", "tutorial-stamps", "tutorial-hud");
+    tutorialEl?.classList.add("hidden");
+    tutorialEl?.setAttribute("aria-hidden", "true");
     const summaryEl = document.querySelector("#day-result-summary");
     const messageEl = document.querySelector("#next-day-message");
     if (summaryEl !== null) {
@@ -941,6 +974,7 @@ updateHardModeButton();
 renderHistoryTable();
 preloadCharacterImages();
 startCoinSpin();
+initMenuYokai();
 initKeyboardNav(() => currentState);
 focusFirstControl("start-gate");
 //# sourceMappingURL=main.js.map

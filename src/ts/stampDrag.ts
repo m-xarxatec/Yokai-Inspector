@@ -2,6 +2,7 @@ import { SoundManager } from "./classes/SoundManager.js";
 import { setDecisionStampsEnabled } from "./characterSlide.js";
 
 const PASSPORT_OPEN_DELAY_MS = 150;
+const PASSPORT_OPEN_TRANSITION_MS = 400;
 
 const STAMP_REST_POSITION: Record<string, { left: number; top: number }> = {
   "alien-btn": { left: 29, top: 78 },
@@ -117,10 +118,14 @@ export function initStampDrag(
     }
     soundManager.playPaperFlip();
     passportEl.classList.remove("delivered");
+    passportEl.classList.remove("passport-details-visible");
     window.setTimeout(() => {
       passportEl.classList.remove("closed");
       passportEl.classList.add("open");
-      setDecisionStampsEnabled(true);
+      window.setTimeout(() => {
+        passportEl.classList.add("passport-details-visible");
+        setDecisionStampsEnabled(true);
+      }, PASSPORT_OPEN_TRANSITION_MS);
     }, PASSPORT_OPEN_DELAY_MS);
   });
 }
