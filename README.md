@@ -13,7 +13,9 @@ Aqui viene la parte divertida y desafiante, ya que solo se nos permite usar los 
 
 *Ejecución*
 
-Descarga el ejecutable de tu sistema operativo y ábrelo. El juego se abrirá en el navegador de ese equipo. La ventana del ejecutable mostrará también las direcciones para entrar desde un móvil u otro ordenador conectado a la misma red local. Mantén esa ventana abierta mientras jueguen otros dispositivos y ciérrala con Ctrl+C.
+Descarga el ejecutable de tu sistema operativo y ábrelo. El juego se abrirá en el navegador de ese equipo. La ventana del ejecutable mostrará también las direcciones para entrar desde un móvil u otro ordenador conectado a la misma red local. Mantén el ejecutable en marcha mientras jueguen otros dispositivos.
+
+Para detener el servidor, pulsa `Ctrl+C` en la terminal donde se ejecuta. En Windows, si lo abriste con doble clic, también puedes cerrar la ventana de consola. En Linux, si lo abriste con doble clic y no aparece ninguna terminal, localiza el proceso con `pgrep -af YokaiInspector-linux-amd64` y detenlo con `kill PID`, sustituyendo `PID` por el número que muestre el comando. Si en Windows no aparece la consola, puedes finalizar `YokaiInspector-windows-amd64.exe` desde el Administrador de tareas. Cerrar la pestaña del navegador **no** detiene el servidor; por ahora no hay un botón para apagarlo desde el juego.
 
 Los ejecutables incluyen todos los recursos del juego y no requieren instalar Node.js ni Go. Cada navegador guarda su partida por separado mediante `localStorage`.
 
